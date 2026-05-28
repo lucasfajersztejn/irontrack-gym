@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "sync:exercises": "node src/scripts/syncExercises.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
