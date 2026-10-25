@@ -1,48 +1,78 @@
-import Exercise from '../models/Exercise.js'
+import { z } from 'zod'
+import Exercise from '../models/exercise.model.js'
+import {
+  MUSCLES,
+  BODY_PARTS,
+  EQUIPMENT,
+} from '../models/constants.js'
 
-export const getExercises = async (req, res) => {
+// Fase 1: catálogo público (createdBy: null). Los ejercicios custom se filtrarán
+// por propietario cuando Better Auth y req.user estén montados.
+const CATALOG_ONLY = { createdBy: null }
+
+const listQuerySchema = z.object({
+  muscle: z.enum(MUSCLES).optional(),
+  bodyPart: z.enum(BODY_PARTS).optional(),
+  equipment: z.enum(EQUIPMENT).optional(),
+  search: z.string().trim().min(1).max(80).optional(),
+})
+
+export const getExercises = async (req, res, next) => {
+  const parsed = listQuerySchema.safeParse(req.query)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Parámetros inválidos',
+      issues: parsed.error.issues,
+    })
+  }
+
+  const { muscle, bodyPart, equipment, search } = parsed.data
+  const filter = { ...CATALOG_ONLY }
+  if (muscle) filter.muscle = muscle
+  if (bodyPart) filter.bodyPart = bodyPart
+  if (equipment) filter.equipment = equipment
+  // Usa el índice de texto bilingüe del modelo en vez de $regex sobre un subdoc.
+  if (search) filter.$text = { $search: search }
+
   try {
-    const { muscle, bodyPart, equipment, search } = req.query
-
-    const filter = {}
-    if (muscle) filter.muscle = { $regex: muscle, $options: 'i' }
-    if (bodyPart) filter.bodyPart = { $regex: bodyPart, $options: 'i' }
-    if (equipment) filter.equipment = { $regex: equipment, $options: 'i' }
-    if (search) filter.name = { $regex: search, $options: 'i' }
-
-    const exercises = await Exercise.find(filter).sort({ name: 1 })
+    const exercises = await Exercise.find(filter)
+      .sort({ 'name.es': 1 })
+      .limit(200)
     res.json(exercises)
-  } catch (error) {
-    res.status(500).json({ message: error.message })
+  } catch (err) {
+    next(err)
   }
 }
 
-export const getBodyParts = async (req, res) => {
+export const getBodyParts = async (req, res, next) => {
   try {
-    const bodyParts = await Exercise.distinct('bodyPart')
+    const bodyParts = await Exercise.distinct('bodyPart', CATALOG_ONLY)
     res.json(bodyParts.sort())
-  } catch (error) {
-    res.status(500).json({ message: error.message })
+  } catch (err) {
+    next(err)
   }
 }
 
-export const getMuscles = async (req, res) => {
+export const getMuscles = async (req, res, next) => {
   try {
-    const muscles = await Exercise.distinct('muscle')
+    const muscles = await Exercise.distinct('muscle', CATALOG_ONLY)
     res.json(muscles.sort())
-  } catch (error) {
-    res.status(500).json({ message: error.message })
+  } catch (err) {
+    next(err)
   }
 }
 
-export const getExerciseById = async (req, res) => {
+export const getExerciseById = async (req, res, next) => {
   try {
-    const exercise = await Exercise.findById(req.params.id)
+    const exercise = await Exercise.findOne({
+      _id: req.params.id,
+      ...CATALOG_ONLY,
+    })
     if (!exercise) {
       return res.status(404).json({ message: 'Ejercicio no encontrado' })
     }
     res.json(exercise)
-  } catch (error) {
-    res.status(500).json({ message: error.message })
+  } catch (err) {
+    next(err)
   }
 }
