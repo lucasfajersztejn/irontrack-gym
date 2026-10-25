@@ -25,9 +25,11 @@ const setSchema = new mongoose.Schema({
 
   // Comunes:
   rpe:       { type: Number, min: 1, max: 10 }, // esfuerzo percibido 1-10
-  isWarmup:  { type: Boolean, default: false }, // no cuenta para récords
   completed: { type: Boolean, default: false }, // marcada con el check
   restSec:   { type: Number, min: 0 },          // descanso que SE tomó
+
+  // Nota de diseño: no hay flag "isWarmup". El calentamiento se hace fuera de
+  // la sesión; aquí se anota solo lo que cuenta.
 
 }, { _id: false });
 
@@ -91,6 +93,12 @@ const sessionSchema = new mongoose.Schema({
    * "terminar". Un job detrás cierra las sesiones abiertas > MAX_SESSION_HOURS,
    * fija endedAt y marca este flag para que el usuario sepa que esa duración
    * es orientativa.
+   *
+   * Si más tarde el usuario edita `endedAt` a mano ("en realidad acabé a las
+   * 13:48"), este flag debe volver a false. ESO SE HACE EN EL SERVICIO que
+   * atiende el PATCH de la sesión, no aquí: el modelo no sabe quién le está
+   * hablando (job automático vs. usuario), así que la decisión de resetear
+   * vive donde sí se sabe.
    */
   durationEstimated: { type: Boolean, default: false },
 
@@ -123,10 +131,6 @@ sessionSchema.pre('validate', function (next) {
   for (const entry of this.entries) {
     const required = REQUIRED_SET_FIELDS[entry.tracking] || [];
     for (const set of entry.sets) {
-      // Un warmup puede ir con menos datos: lo típico es anotar la aproximación
-      // sin exigir reps exactas. Lo omitimos de la validación estricta.
-      if (set.isWarmup) continue;
-
       for (const field of required) {
         if (set[field] == null) {
           return next(new Error(
