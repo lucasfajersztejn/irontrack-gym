@@ -5,13 +5,14 @@ import {
   getMuscles,
   getExerciseById,
 } from '../controllers/exerciseController.js'
-import { protect } from '../middleware/authMiddleware.js'
 
+// Fase 1: endpoints públicos del catálogo (ejercicios con createdBy: null).
+// Se añadirá el middleware de Better Auth cuando se expongan los custom.
 const router = express.Router()
 
-router.get('/', protect, getExercises)
-router.get('/bodyparts', protect, getBodyParts)
-router.get('/muscles', protect, getMuscles)
-router.get('/:id', protect, getExerciseById)
+router.get('/', getExercises)
+router.get('/bodyparts', getBodyParts)
+router.get('/muscles', getMuscles)
+router.get('/:id', getExerciseById)
 
 export default router
