@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import dns from 'dns'
 
 // Algunas redes locales no resuelven los SRV de MongoDB Atlas con el resolver
@@ -9,15 +10,15 @@ if (process.env.FORCE_IPV4_DNS === '1') {
   dns.setServers(['8.8.8.8', '8.8.4.4'])
 }
 
-import dotenv from 'dotenv'
-dotenv.config()
-
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
+import { toNodeHandler } from 'better-auth/node'
 import connectDB from './config/db.js'
+import { auth } from './config/auth.js'
 import exerciseRoutes from './routes/exerciseRoutes.js'
+import userRoutes from './routes/userRoutes.js'
 
 connectDB()
 
@@ -40,11 +41,11 @@ app.use(
       if (allowedOrigins.includes(origin)) return cb(null, true)
       return cb(new Error(`Origen no permitido: ${origin}`))
     },
+    // Las sesiones de Better Auth viajan en cookie, así que CORS tiene que
+    // permitir credentials o el navegador no envía la cookie a la API.
     credentials: true,
   })
 )
-
-app.use(express.json({ limit: '100kb' }))
 
 // Rate limit global suave. Los endpoints sensibles (auth, mail) añadirán el suyo.
 app.use(
@@ -56,7 +57,20 @@ app.use(
   })
 )
 
+/**
+ * IMPORTANTE: el handler de Better Auth va ANTES de `express.json()`.
+ *
+ * Better Auth lee el request como un stream (API Fetch estándar: `request.body`
+ * se consume una sola vez). Si `express.json()` lo lee primero para poblar
+ * `req.body`, Better Auth recibe un stream vacío y los POST (callbacks OAuth,
+ * sign-out, etc.) rompen. La doc de Better Auth lo advierte explícitamente.
+ */
+app.all('/api/auth/*', toNodeHandler(auth))
+
+app.use(express.json({ limit: '100kb' }))
+
 app.use('/api/exercises', exerciseRoutes)
+app.use('/api/me', userRoutes)
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', project: 'IronTrack API' })

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import {
-  OAUTH_PROVIDERS, LOCALES, UNIT_SYSTEMS, PRIVACY_LEVELS,
+  LOCALES, UNIT_SYSTEMS, PRIVACY_LEVELS,
   BAR_INPUT_MODES, RESERVED_USERNAMES,
 } from './constants.js';
 
@@ -30,7 +30,7 @@ const settingsSchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema({
   // -------------------------------------------------------------------------
-  // Identidad
+  // Identidad — campos que Better Auth escribe durante el flujo OAuth
   // -------------------------------------------------------------------------
 
   email: {
@@ -45,22 +45,38 @@ const userSchema = new mongoose.Schema({
    * Lo aporta el proveedor de OAuth. Solo vinculamos cuentas entre proveedores
    * cuando el email viene verificado; si no, cualquiera podría crear una cuenta
    * en un proveedor con TU email y quedarse con tu cuenta de IronTrack.
+   *
+   * Better Auth lo setea desde `profile.email_verified` del proveedor.
    */
   emailVerified: { type: Boolean, default: false },
 
   /**
-   * Proveedores con los que esta persona ha entrado alguna vez.
-   * Al entrar con uno nuevo cuyo email verificado ya existe, se añade aquí en
-   * lugar de crear un usuario duplicado.
+   * Nombre público — lo trae Google como `given_name + family_name`. El usuario
+   * puede editarlo luego sin problema; a diferencia del username, puede repetirse.
+   *
+   * El campo se llama `name` (no `displayName`) para alinearse con el schema
+   * por defecto de Better Auth: así ambos escriben al mismo campo y evitamos
+   * un mapper innecesario.
    */
-  providers: [{ type: String, enum: OAUTH_PROVIDERS }],
+  name:  { type: String, trim: true, maxlength: 50 },
+
+  /**
+   * Avatar del proveedor OAuth. Mismo motivo de alineación con Better Auth:
+   * su campo por defecto es `image`.
+   */
+  image: { type: String, trim: true },
+
+  // -------------------------------------------------------------------------
+  // Identidad — campos propios de IronTrack
+  // -------------------------------------------------------------------------
 
   /**
    * Username público: la URL del perfil es /u/<username>.
    *
    * Empieza en null porque OAuth no nos da uno: Google devuelve nombre y email,
    * no un identificador corto. El usuario lo elige en el onboarding, justo
-   * después del primer login.
+   * después del primer login. Mientras el username siga en null, `GET /api/me`
+   * devuelve `needsOnboarding: true` y el frontend redirige al wizard.
    *
    * NO ponemos unique: true aquí. Un índice unique normal trata null como un
    * valor más, así que el segundo usuario sin username fallaría al guardar.
@@ -82,9 +98,6 @@ const userSchema = new mongoose.Schema({
     },
   },
 
-  displayName: { type: String, trim: true, maxlength: 50 },
-  avatarUrl:   { type: String, trim: true },
-
   // -------------------------------------------------------------------------
   // Configuración
   // -------------------------------------------------------------------------
@@ -100,6 +113,15 @@ const userSchema = new mongoose.Schema({
 }, {
   // Añade createdAt y updatedAt automáticamente y los mantiene al día.
   timestamps: true,
+
+  /**
+   * Better Auth puede añadir campos a esta colección que Mongoose no conoce
+   * (p.ej. metadatos de sesión, token refresh de cuenta vinculada). strict:false
+   * evita que Mongoose los descarte al leer un documento, pero sigue aplicando
+   * nuestras validaciones cuando escribimos a través del modelo. Lo mejor de
+   * los dos mundos.
+   */
+  strict: false,
 });
 
 // ---------------------------------------------------------------------------
@@ -122,7 +144,7 @@ userSchema.index(
  * hace imposible por construcción que se cuele un perfil privado.
  */
 userSchema.index(
-  { username: 1, displayName: 1 },
+  { username: 1, name: 1 },
   { partialFilterExpression: { privacy: 'public' } },
 );
 
@@ -140,11 +162,16 @@ userSchema.index(
  */
 userSchema.methods.toPublicJSON = function () {
   return {
-    username:    this.username,
-    displayName: this.displayName,
-    avatarUrl:   this.avatarUrl,
-    createdAt:   this.createdAt,
+    username:  this.username,
+    name:      this.name,
+    image:     this.image,
+    createdAt: this.createdAt,
   };
 };
 
-export default mongoose.model('User', userSchema);
+/**
+ * Nombre de colección fijo. Mongoose por defecto pluraliza "User" a "users",
+ * y Better Auth escribe también a `users` (ver config/auth.js). Lo dejamos
+ * explícito para que no se descoordine si alguien renombra el modelo.
+ */
+export default mongoose.model('User', userSchema, 'users');
