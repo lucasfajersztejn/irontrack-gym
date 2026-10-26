@@ -23,7 +23,7 @@ export const BODY_PARTS = [
 
 export const EQUIPMENT = [
   'barbell', 'dumbbell', 'cable', 'machine', 'bodyweight', 'band',
-  'kettlebell', 'smith', 'ez-bar', 'lever', 'other',
+  'kettlebell', 'smith', 'ez-bar', 'lever', 'sled', 'other',
 ];
 
 export const CATEGORIES = ['strength', 'stretching', 'cardio', 'plyometrics'];
