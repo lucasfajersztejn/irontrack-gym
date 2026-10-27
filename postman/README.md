@@ -126,6 +126,13 @@ añade `Cookie: better-auth.session_token=…`. Más tedioso, pero sirve.
 - `Me → GET /api/me` otra vez
   - Ahora: `needsOnboarding: false`, `username: "lucas"`.
 
+> **Header `Origin` obligatorio en los POST.** Better Auth rechaza con `403
+> MISSING_OR_NULL_ORIGIN` cualquier POST que no traiga el header `Origin`
+> (es su protección anti-CSRF). Un navegador lo manda solo; Postman no.
+> La colección ya incluye `Origin: {{baseUrl}}` en las dos requests POST
+> (`/api/auth/sign-out` y `/api/me/username`): si creas otra request POST,
+> acuérdate de añadirlo.
+
 ### 7. (Opcional) Cerrar sesión
 
 - `Auth → POST /api/auth/sign-out` → `200 {success:true}` y la cookie queda

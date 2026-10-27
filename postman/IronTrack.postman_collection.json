@@ -75,7 +75,8 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
             ],
             "body": {
               "mode": "raw",
@@ -86,7 +87,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "sign-out"]
             },
-            "description": "Cierra la sesión activa. Requiere que Postman tenga la cookie `better-auth.session_token` cargada. Devuelve 200 con `{success: true}` y limpia la cookie en la respuesta."
+            "description": "Cierra la sesión activa. Requiere que Postman tenga la cookie `better-auth.session_token` cargada. Devuelve 200 con `{success: true}` y limpia la cookie del jar en la respuesta.\n\nEl header `Origin` es OBLIGATORIO: Better Auth rechaza con 403 'MISSING_OR_NULL_ORIGIN' cualquier POST que llegue sin él (protección anti-CSRF). El navegador lo pone solo, Postman no; de ahí el valor explícito aquí."
           },
           "response": []
         }
@@ -115,7 +116,8 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
             ],
             "body": {
               "mode": "raw",
