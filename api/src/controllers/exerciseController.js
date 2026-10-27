@@ -5,6 +5,8 @@ import {
   MUSCLES,
   BODY_PARTS,
   EQUIPMENT,
+  CATEGORIES,
+  TRACKING_TYPES,
 } from '../models/constants.js'
 
 /**
@@ -99,6 +101,192 @@ export const getExerciseById = async (req, res, next) => {
       return res.status(404).json({ message: 'Ejercicio no encontrado' })
     }
     res.json(exercise)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Custom: create / update / delete
+// ---------------------------------------------------------------------------
+
+/**
+ * Genera un slug ASCII a partir de un nombre humano.
+ *
+ * No es un identificador público (no hay URL tipo /exercise/press-loco), es
+ * un id interno + ayuda para debugging. Lo que importa es que sea estable
+ * para un mismo nombre y que no rompa el índice único (slug, createdBy).
+ */
+function slugify(input) {
+  return input
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // quita acentos
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'exercise'
+}
+
+/**
+ * Encuentra un slug libre dentro del ámbito del usuario.
+ *
+ * El usuario tiene libertad de crear 28 ejercicios con el mismo `name` visible
+ * ("tengo 5 variantes de press loco"); el slug interno se desambigua con
+ * sufijo numérico silencioso — el usuario nunca lo ve, pero el índice único
+ * (slug, createdBy) sigue vivo y protegiéndonos de duplicados exactos a nivel
+ * de datos.
+ *
+ * No hay condición de carrera realista: un usuario no envía dos POST a la
+ * vez para crear dos ejercicios idénticos. Aun así, el índice único es la
+ * última barrera: si por lo que sea dos requests chocan, Mongo rechaza una
+ * con E11000 y el frontend reintentará.
+ */
+async function nextFreeSlug(base, userId) {
+  const existing = await Exercise.find(
+    { createdBy: userId, slug: new RegExp(`^${base}(-\\d+)?$`) },
+    { slug: 1 },
+  ).lean()
+  if (existing.length === 0) return base
+
+  const used = new Set(existing.map((e) => e.slug))
+  if (!used.has(base)) return base
+  let n = 2
+  while (used.has(`${base}-${n}`)) n += 1
+  return `${base}-${n}`
+}
+
+/**
+ * Nombre bilingüe: debe traer al menos un idioma. Si pide los dos, los dos
+ * tienen que cumplir longitud; si pide solo uno, solo se valida ese.
+ */
+const localizedNameSchema = z.object({
+  es: z.string().trim().min(1).max(60).optional(),
+  en: z.string().trim().min(1).max(60).optional(),
+}).refine(
+  (v) => Boolean(v.es || v.en),
+  { message: 'El ejercicio necesita nombre en al menos un idioma' },
+)
+
+const instructionsSchema = z.object({
+  es: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
+  en: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
+}).optional()
+
+const createSchema = z.object({
+  name: localizedNameSchema,
+  muscle: z.enum(MUSCLES),
+  bodyPart: z.enum(BODY_PARTS).optional(),
+  equipment: z.enum(EQUIPMENT).optional(),
+  category: z.enum(CATEGORIES).optional(),
+  secondaryMuscles: z.array(z.enum(MUSCLES)).max(5).optional(),
+  instructions: instructionsSchema,
+  tracking: z.enum(TRACKING_TYPES),
+  visibility: z.enum(['private', 'public']).optional(),
+})
+
+/**
+ * PATCH: todo opcional pero al menos un campo. No permito tocar `createdBy`,
+ * `slug`, `usesBar`, `defaultBarWeightKg`, `gifUrl` ni `copiesCount` desde
+ * body — son derivados o mantenidos por el servidor.
+ *
+ * El `name` sí se puede editar, pero el `slug` NO se regenera: es un id
+ * interno estable (si el frontend lo cachea en algún sitio, cambiarlo con
+ * un rename sería un bug sutil). Si el usuario quiere un slug distinto,
+ * crea un ejercicio nuevo.
+ */
+const updateSchema = z.object({
+  name: localizedNameSchema.optional(),
+  muscle: z.enum(MUSCLES).optional(),
+  bodyPart: z.enum(BODY_PARTS).optional(),
+  equipment: z.enum(EQUIPMENT).optional(),
+  category: z.enum(CATEGORIES).optional(),
+  secondaryMuscles: z.array(z.enum(MUSCLES)).max(5).optional(),
+  instructions: instructionsSchema,
+  tracking: z.enum(TRACKING_TYPES).optional(),
+  visibility: z.enum(['private', 'public']).optional(),
+}).refine(
+  (v) => Object.keys(v).length > 0,
+  { message: 'El PATCH necesita al menos un campo' },
+)
+
+export const createExercise = async (req, res, next) => {
+  const parsed = createSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Payload inválido',
+      issues: parsed.error.issues,
+    })
+  }
+  try {
+    // Base del slug: preferimos el nombre español si existe, si no el inglés.
+    const base = slugify(parsed.data.name.es || parsed.data.name.en)
+    const slug = await nextFreeSlug(base, req.user.id)
+
+    const exercise = await Exercise.create({
+      ...parsed.data,
+      slug,
+      createdBy: req.user.id,  // forzado desde sesión, nunca del body
+    })
+    res.status(201).json(exercise)
+  } catch (err) {
+    // E11000 = carrera perdida contra el índice único (slug, createdBy).
+    // Devolver 409 para que el cliente reintente; es más honesto que un 500.
+    if (err?.code === 11000) {
+      return res.status(409).json({ message: 'Colisión de slug, reintenta' })
+    }
+    next(err)
+  }
+}
+
+export const updateExercise = async (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(404).json({ message: 'Ejercicio no encontrado' })
+  }
+  const parsed = updateSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Payload inválido',
+      issues: parsed.error.issues,
+    })
+  }
+  try {
+    // Doble filtro: id + propietario. Un ejercicio del catálogo global
+    // (createdBy: null) nunca entrará aquí porque req.user.id != null.
+    // 404 si no existe O si existe y no es del usuario — misma razón que
+    // en routines, no leak de ids ajenos.
+    const exercise = await Exercise.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user.id },
+      { $set: parsed.data },
+      {
+        new: true,
+        runValidators: true,
+      },
+    )
+    if (!exercise) {
+      return res.status(404).json({ message: 'Ejercicio no encontrado' })
+    }
+    res.json(exercise)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export const deleteExercise = async (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(404).json({ message: 'Ejercicio no encontrado' })
+  }
+  try {
+    const deleted = await Exercise.findOneAndDelete({
+      _id: req.params.id,
+      createdBy: req.user.id,  // bloquea borrar el catálogo global y ajenos
+    })
+    if (!deleted) {
+      return res.status(404).json({ message: 'Ejercicio no encontrado' })
+    }
+    // Hard delete seguro: las sesiones pasadas guardan `entries[].exerciseName`
+    // y `muscle` denormalizados, así que el historial sobrevive al borrado
+    // del documento original. Mismo contrato que en routines.
+    res.status(204).send()
   } catch (err) {
     next(err)
   }
