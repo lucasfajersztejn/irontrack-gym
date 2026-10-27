@@ -1,0 +1,252 @@
+{
+  "info": {
+    "name": "IronTrack API",
+    "description": "Colección de pruebas de la API de IronTrack. Agrupa los endpoints por recurso. Los que requieren sesión (Me) necesitan que previamente hayas hecho login en el navegador y cargado la cookie `better-auth.session_token` en Postman — mira el README de esta carpeta para el paso a paso.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "description": "Endpoints de diagnóstico. No requieren sesión. Útiles para confirmar que el servidor arranca y que Better Auth está montado.",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Health check propio del servidor Express. Debe responder 200 con `{status, project}`."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/auth/ok",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/ok",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "ok"]
+            },
+            "description": "Health check que expone Better Auth. Si responde `{ok: true}` el handler está correctamente mounteado y la librería ha podido inicializar su conexión a Mongo."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "description": "El flujo OAuth necesita un navegador para la pantalla de consentimiento de Google; Postman no puede ejecutarlo entero. Esta carpeta DOCUMENTA el flujo y guarda la URL de arranque como referencia.",
+      "item": [
+        {
+          "name": "POST /api/auth/sign-in/social (NO disparar desde Postman)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"google\",\n  \"callbackURL\": \"/health\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-in/social",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "sign-in", "social"]
+            },
+            "description": "Endpoint real que inicia el flujo OAuth. Lo DOCUMENTA aquí la colección, pero no se puede probar entero desde Postman: la respuesta trae un campo `url` que apunta a Google, y la pantalla de consentimiento necesita un navegador. Flujo real: el frontend (o la consola de DevTools, mira el README) hace este POST y asigna `location.href = response.url` para redirigir al navegador. En entorno gráfico Google acepta, redirige al callback de Better Auth, se setea la cookie `better-auth.session_token` y aterrizas en el `callbackURL`."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/sign-out",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-out",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "sign-out"]
+            },
+            "description": "Cierra la sesión activa. Requiere que Postman tenga la cookie `better-auth.session_token` cargada. Devuelve 200 con `{success: true}` y limpia la cookie del jar en la respuesta.\n\nEl header `Origin` es OBLIGATORIO: Better Auth rechaza con 403 'MISSING_OR_NULL_ORIGIN' cualquier POST que llegue sin él (protección anti-CSRF). El navegador lo pone solo, Postman no; de ahí el valor explícito aquí."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Me",
+      "description": "Endpoints del usuario autenticado. Todos requieren la cookie `better-auth.session_token` cargada en Postman (mira el README).",
+      "item": [
+        {
+          "name": "GET /api/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me"]
+            },
+            "description": "Devuelve el perfil del usuario autenticado + el flag `needsOnboarding: true/false`. Si falta la cookie o es inválida, responde 401 `{message: 'No autenticado'}`. Si el usuario no tiene username todavía, `needsOnboarding` será `true` — eso le dice al frontend que lo lleve al wizard."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/me/username (primera vez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"lucas\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/me/username",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "username"]
+            },
+            "description": "Fija el username la primera vez. Reglas: 3–20 chars, `[a-z0-9_-]`, no puede estar en la lista de reservados (admin, me, settings, etc.). Posibles respuestas:\n- 200 `{username}`: éxito.\n- 400 con `issues`: la forma del username no es válida (Zod).\n- 409 'Ese nombre de usuario no está disponible': estaba reservado.\n- 409 'Ya tienes un username asignado': ya habías completado el onboarding.\n- 409 'Ese nombre de usuario ya está en uso': carrera, otro usuario se lo quedó antes."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Exercises",
+      "description": "Catálogo público de ejercicios. No requieren sesión. Los endpoints devuelven únicamente ejercicios del catálogo global (`createdBy: null`); los customs del usuario se expondrán cuando se añada el endpoint autenticado.",
+      "item": [
+        {
+          "name": "GET /api/exercises (todos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exercises",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exercises"]
+            },
+            "description": "Lista los primeros 200 ejercicios del catálogo (hard limit del servidor, pensado para evitar que un cliente despistado se traiga los 1323 de golpe)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/exercises?muscle=biceps",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exercises?muscle=biceps",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exercises"],
+              "query": [
+                { "key": "muscle", "value": "biceps" }
+              ]
+            },
+            "description": "Filtra por músculo. El valor tiene que estar en el enum `MUSCLES` de `constants.js`: si pasas 'biceeps' el servidor responde 400 con el detalle de Zod."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/exercises?muscle=pectorals&equipment=barbell",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exercises?muscle=pectorals&equipment=barbell",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exercises"],
+              "query": [
+                { "key": "muscle", "value": "pectorals" },
+                { "key": "equipment", "value": "barbell" }
+              ]
+            },
+            "description": "Dos filtros a la vez: pectorals + barra. Es la consulta que usará el buscador del frontend."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/exercises?search=press",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exercises?search=press",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exercises"],
+              "query": [
+                { "key": "search", "value": "press" }
+              ]
+            },
+            "description": "Búsqueda por texto en `name.es` y `name.en` (ambos indexados por el índice de texto del modelo). Reemplaza el `$regex` del esquema antiguo, que era vulnerable a ReDoS."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/exercises/muscles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exercises/muscles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exercises", "muscles"]
+            },
+            "description": "Lista única de músculos presentes en el catálogo. Útil para rellenar un selector."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/exercises/bodyparts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exercises/bodyparts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exercises", "bodyparts"]
+            },
+            "description": "Lista única de grupos corporales en el catálogo."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/exercises/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exercises/REEMPLAZAR_POR_UN_ID_REAL",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exercises", "REEMPLAZAR_POR_UN_ID_REAL"]
+            },
+            "description": "Devuelve un ejercicio por id. Sustituye `REEMPLAZAR_POR_UN_ID_REAL` por un `_id` que te haya devuelto `GET /api/exercises`. 404 si no existe en el catálogo global."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
