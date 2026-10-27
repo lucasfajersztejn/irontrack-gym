@@ -65,6 +65,37 @@ const routineSchema = new mongoose.Schema({
 
   lastUsedAt: { type: Date, default: null },
 
+  /**
+   * Visibilidad de la rutina de cara al resto del mundo.
+   *
+   *   "private" (default) — solo la ve y usa su dueño. Es el estado hoy.
+   *   "public"            — se expone en el futuro buscador de rutinas y
+   *                         otros usuarios pueden "forkearla" (crear su propia
+   *                         copia privada) y marcarla con estrella.
+   *
+   * El campo se declara ya aunque los endpoints sociales llegan en Fase 3:
+   * dejarlo sembrado evita migrar la colección entera para añadirlo cuando
+   * haya rutinas vivas, y permite que cualquier consulta nueva filtre por
+   * visibility desde el día uno.
+   */
+  visibility: {
+    type: String,
+    enum: ['private', 'public'],
+    default: 'private',
+    index: true,
+  },
+
+  /**
+   * Contador denormalizado de estrellas (patrón GitHub).
+   *
+   * Se mantendrá con $inc al star/unstar — no se recalcula contando documentos
+   * cada vez porque esa consulta no escala. La fuente de verdad vivirá en la
+   * colección `routineStars` (una fila por par user+routine, único compuesto)
+   * que se añadirá en Fase 3; este contador existe para poder ordenar el
+   * buscador de rutinas públicas por popularidad sin un $lookup por página.
+   */
+  starsCount: { type: Number, default: 0, min: 0, index: true },
+
 }, { timestamps: true });
 
 // ---------------------------------------------------------------------------
