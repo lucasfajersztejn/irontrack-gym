@@ -135,6 +135,98 @@
       ]
     },
     {
+      "name": "Routines",
+      "description": "CRUD de las rutinas del usuario autenticado. Todos los endpoints requieren la cookie `better-auth.session_token`. Las operaciones de mutación (POST/PATCH/DELETE) también exigen el header `Origin` por la protección anti-CSRF de Better Auth.",
+      "item": [
+        {
+          "name": "GET /api/routines",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/routines",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "routines"]
+            },
+            "description": "Lista RESUMIDA de las rutinas del usuario. Cada item trae `exerciseCount` (calculado por Mongo con $size) pero NO el array de ejercicios: el detalle completo se pide con GET /:id. Ordenado por `lastUsedAt desc, createdAt desc`."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/routines",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pecho A\",\n  \"description\": \"Rutina de empuje con énfasis en pecho\",\n  \"exercises\": [\n    {\n      \"exercise\": \"REEMPLAZAR_POR_UN_ID_DE_EXERCISE\",\n      \"order\": 0,\n      \"targetSets\": 4,\n      \"targetReps\": 8,\n      \"targetWeightKg\": 60\n    },\n    {\n      \"exercise\": \"REEMPLAZAR_POR_UN_ID_DE_EXERCISE\",\n      \"order\": 1,\n      \"targetSets\": 3,\n      \"targetReps\": 12\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/routines",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "routines"]
+            },
+            "description": "Crea una rutina para el usuario autenticado. Reglas:\n- `name` 1-60 chars, obligatorio.\n- `description` opcional, max 500.\n- `exercises` NO puede estar vacío (el modelo lo exige con un validator).\n- Cada `exercise` debe ser un ObjectId válido de la colección `exercises`. Coge uno de GET /api/exercises y pégalo en `exercise`.\n\nRespuesta: 201 con el documento creado completo. El `user` lo setea el servidor desde la sesión, nunca desde el body: por eso no aparece en el payload."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/routines/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/routines/REEMPLAZAR_POR_UN_ID_DE_ROUTINE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "routines", "REEMPLAZAR_POR_UN_ID_DE_ROUTINE"]
+            },
+            "description": "Detalle completo de una rutina con los ejercicios POPULADOS (vienen con nombre, musculo, gifUrl, etc.). 404 si el id no existe o si existe pero es de otro usuario (devuelve 404 a propósito en los dos casos, para no filtrar información sobre la existencia del recurso)."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /api/routines/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pecho A — v2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/routines/REEMPLAZAR_POR_UN_ID_DE_ROUTINE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "routines", "REEMPLAZAR_POR_UN_ID_DE_ROUTINE"]
+            },
+            "description": "Actualiza una rutina. Acepta cualquier subset de `name`, `description`, `exercises`. Si pasas `exercises`, REEMPLAZA el array entero (no es merge por índice: evita bugs al reordenar o borrar). Al menos un campo tiene que venir, un PATCH vacío devuelve 400.\n\nMongoose ejecuta validators en el update gracias a `runValidators: true` en el controller."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/routines/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/routines/REEMPLAZAR_POR_UN_ID_DE_ROUTINE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "routines", "REEMPLAZAR_POR_UN_ID_DE_ROUTINE"]
+            },
+            "description": "Hard delete. Devuelve 204 sin cuerpo. Las sesiones pasadas que apuntaban a esta rutina NO se rompen porque `session.routineName` guarda una copia congelada del nombre al crear la sesión — ver docs/api/models/session.model.md."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Exercises",
       "description": "Catálogo público de ejercicios. No requieren sesión. Los endpoints devuelven únicamente ejercicios del catálogo global (`createdBy: null`); los customs del usuario se expondrán cuando se añada el endpoint autenticado.",
       "item": [
