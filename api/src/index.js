@@ -28,10 +28,16 @@ app.use(helmet())
 
 // CORS por whitelist. CORS_ORIGINS = "http://localhost:5173,https://irontrack.app".
 // Sin la variable, bloquea cross-origin: evita el wildcard por defecto.
-const allowedOrigins = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean)
+//
+// Añadimos la URL propia (BETTER_AUTH_URL) a la lista: Chrome inyecta el header
+// Origin incluso en POST same-origin, así que si no lo permitimos explícitamente
+// el propio servidor no puede llamar a sus endpoints desde una pestaña del
+// navegador (p.ej. para pruebas desde DevTools antes de que haya frontend).
+// Es seguro porque un atacante no puede falsificar la URL del propio servidor.
+const allowedOrigins = [
+  ...(process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+  process.env.BETTER_AUTH_URL,
+].filter(Boolean)
 
 app.use(
   cors({
