@@ -59,21 +59,46 @@ consentimiento de Google necesita un navegador real. Esto es exactamente lo
 que va a hacer tu frontend cuando esté hecho, así que no es un atajo: es el
 flujo correcto, con Postman sustituyendo solo al cliente autenticado.
 
-Copia esta URL al navegador (es la misma que guarda la request
-"Google sign-in" en la carpeta Auth):
+**El endpoint de arranque es `POST /api/auth/sign-in/social`**, no un `GET`.
+No se puede disparar desde la barra de URL del navegador: hay que hacer el
+POST desde JavaScript. Lo más rápido mientras no exista el frontend es
+usar la consola de DevTools:
 
+1. En el navegador abre `http://localhost:5000/health`. Al estar en la misma
+   origen del backend evitas problemas de CORS.
+2. Abre DevTools (F12) → pestaña **Console**.
+3. Pega y ejecuta:
+
+```js
+const r = await fetch('/api/auth/sign-in/social', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ provider: 'google', callbackURL: '/health' })
+});
+const d = await r.json();
+location.href = d.url;
 ```
-http://localhost:5000/api/auth/sign-in/social?provider=google&callbackURL=http://localhost:5000/health
-```
 
-Pasos:
+Qué hace esto por dentro:
 
-1. El navegador te lleva a Google. Elige tu cuenta y acepta.
-2. Google te redirige de vuelta a la API, Better Auth crea tu usuario +
-   sesión y te deja en `/health`.
-3. Abre **DevTools → Application → Cookies → http://localhost:5000**.
-4. Localiza la cookie `better-auth.session_token`. Copia su **valor**
-   completo (es largo).
+- Hace el POST que Better Auth espera. La respuesta trae un campo `url`:
+  el enlace de consentimiento de Google con el `state` y el PKCE ya
+  generados.
+- Al asignar `location.href = d.url`, el navegador va a Google.
+- Google te pide permiso → te devuelve a
+  `/api/auth/callback/google?state=…&code=…` → Better Auth cambia el
+  `code` por el access token, crea tu usuario + sesión, setea la cookie
+  `better-auth.session_token` y te redirige al `callbackURL` que pediste
+  (aquí `/health`).
+
+Cuando estés en `/health`, abre **DevTools → Application → Cookies →
+http://localhost:5000** y localiza la cookie `better-auth.session_token`.
+Copia su **valor** completo (es largo).
+
+> Más adelante, cuando el frontend exista, este snippet lo sustituye el SDK
+> `authClient.signIn.social({ provider: "google" })` que hace exactamente
+> lo mismo: POST, lee la respuesta, redirige al navegador.
 
 ### 5. Mete la cookie en Postman
 

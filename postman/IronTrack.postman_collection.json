@@ -51,20 +51,22 @@
       "description": "El flujo OAuth necesita un navegador para la pantalla de consentimiento de Google; Postman no puede ejecutarlo entero. Esta carpeta DOCUMENTA el flujo y guarda la URL de arranque como referencia.",
       "item": [
         {
-          "name": "Google sign-in (ABRIR EN NAVEGADOR)",
+          "name": "POST /api/auth/sign-in/social (NO disparar desde Postman)",
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/sign-in/social?provider=google&callbackURL={{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "auth", "sign-in", "social"],
-              "query": [
-                { "key": "provider", "value": "google" },
-                { "key": "callbackURL", "value": "{{baseUrl}}/health" }
-              ]
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"google\",\n  \"callbackURL\": \"/health\"\n}"
             },
-            "description": "Esta request NO se dispara desde Postman: la copias al navegador. Al cargarla, Better Auth te redirige a Google; tras aceptar, vuelves a `/health` con la cookie de sesión seteada en el navegador. El siguiente paso lo tienes en el README: copiar esa cookie al cookie jar de Postman."
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-in/social",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "sign-in", "social"]
+            },
+            "description": "Endpoint real que inicia el flujo OAuth. Lo DOCUMENTA aquí la colección, pero no se puede probar entero desde Postman: la respuesta trae un campo `url` que apunta a Google, y la pantalla de consentimiento necesita un navegador. Flujo real: el frontend (o la consola de DevTools, mira el README) hace este POST y asigna `location.href = response.url` para redirigir al navegador. En entorno gráfico Google acepta, redirige al callback de Better Auth, se setea la cookie `better-auth.session_token` y aterrizas en el `callbackURL`."
           },
           "response": []
         },
