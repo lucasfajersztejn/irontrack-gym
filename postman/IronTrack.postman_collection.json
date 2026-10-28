@@ -334,7 +334,65 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "exercises", "REEMPLAZAR_POR_UN_ID_REAL"]
             },
-            "description": "Devuelve un ejercicio por id. Sustituye `REEMPLAZAR_POR_UN_ID_REAL` por un `_id` que te haya devuelto `GET /api/exercises`. 404 si no existe en el catálogo global."
+            "description": "Devuelve un ejercicio por id. Sustituye `REEMPLAZAR_POR_UN_ID_REAL` por un `_id` que te haya devuelto `GET /api/exercises`. 404 si no existe en el catálogo global ni entre tus custom."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/exercises",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": { \"es\": \"Press loco de Lucas\", \"en\": \"Lucas crazy press\" },\n  \"muscle\": \"pectorals\",\n  \"bodyPart\": \"chest\",\n  \"equipment\": \"dumbbell\",\n  \"category\": \"strength\",\n  \"tracking\": \"weight_reps\",\n  \"visibility\": \"private\",\n  \"instructions\": {\n    \"es\": [\"Agarra las mancuernas\", \"Baja controlando\"],\n    \"en\": [\"Grab the dumbbells\", \"Lower under control\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exercises",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exercises"]
+            },
+            "description": "Crea un ejercicio custom. `createdBy` lo pone el servidor desde tu sesión; `slug` se genera del nombre con sufijo numérico silencioso si ya tienes otro con el mismo nombre; `usesBar`/`defaultBarWeightKg` los deriva el modelo según `equipment`. Devuelve 201 con el documento creado. `visibility` acepta `'private'` o `'public'` (el buscador público llega en Fase 3, pero el campo ya se guarda)."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /api/exercises/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": { \"es\": \"Press loco de Lucas v2\" },\n  \"visibility\": \"public\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exercises/REEMPLAZAR_POR_UN_ID_DE_CUSTOM",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exercises", "REEMPLAZAR_POR_UN_ID_DE_CUSTOM"]
+            },
+            "description": "Edita un ejercicio custom tuyo. 404 si el id no existe, es del catálogo global (createdBy:null) o es custom de otro usuario — nunca 403 para no filtrar existencia. No se puede tocar `createdBy`, `slug`, `usesBar`, `defaultBarWeightKg`, `gifUrl` ni `copiesCount` por body: el servidor los ignora y Zod rechazaría otros campos. El `slug` NO se regenera al renombrar: es un id interno estable."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/exercises/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exercises/REEMPLAZAR_POR_UN_ID_DE_CUSTOM",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exercises", "REEMPLAZAR_POR_UN_ID_DE_CUSTOM"]
+            },
+            "description": "Hard delete de un ejercicio custom tuyo. 204 sin cuerpo. Seguro porque las sesiones pasadas guardan `entries[].exerciseName` y `muscle` denormalizados — el historial sobrevive al borrado."
           },
           "response": []
         }

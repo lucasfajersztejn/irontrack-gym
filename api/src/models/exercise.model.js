@@ -112,6 +112,38 @@ const exerciseSchema = new mongoose.Schema({
     index: true,
   },
 
+  /**
+   * Visibilidad de un ejercicio custom de cara al resto del mundo.
+   *
+   *   "private" (default) — solo lo ve y usa su autor. Es el estado hoy
+   *                         para TODO ejercicio custom.
+   *   "public"            — en el futuro aparecerá en un buscador público
+   *                         de ejercicios custom; otros podrán "forkearlo"
+   *                         con un botón "agregar a mi catálogo", que crea
+   *                         una copia independiente (ver `copiesCount`).
+   *
+   * Para los ejercicios del catálogo global (`createdBy: null`) el campo
+   * no se usa en consultas: nunca se filtran por `visibility`. Queda a
+   * `'private'` sin consecuencias.
+   *
+   * El campo se declara ya aunque la vista pública llega en Fase 3: evita
+   * una migración de la colección entera cuando empiece a usarse.
+   */
+  visibility: {
+    type: String,
+    enum: ['private', 'public'],
+    default: 'private',
+    index: true,
+  },
+
+  /**
+   * Cuántas veces se ha "forkeado" este ejercicio (patrón GitHub, paralelo a
+   * `routine.starsCount`). Se mantendrá con `$inc` al forkear — no se calcula
+   * contando sesiones ni rutinas porque esa consulta no escala. Sirve para
+   * ordenar el futuro buscador público por popularidad.
+   */
+  copiesCount: { type: Number, default: 0, min: 0, index: true },
+
 }, { timestamps: true });
 
 // ---------------------------------------------------------------------------
