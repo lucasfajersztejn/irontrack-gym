@@ -20,6 +20,7 @@ import { auth } from './config/auth.js'
 import exerciseRoutes from './routes/exerciseRoutes.js'
 import userRoutes from './routes/userRoutes.js'
 import routineRoutes from './routes/routineRoutes.js'
+import sessionRoutes from './routes/sessionRoutes.js'
 
 connectDB()
 
@@ -79,6 +80,7 @@ app.use(express.json({ limit: '100kb' }))
 app.use('/api/exercises', exerciseRoutes)
 app.use('/api/me', userRoutes)
 app.use('/api/routines', routineRoutes)
+app.use('/api/sessions', sessionRoutes)
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', project: 'IronTrack API' })
