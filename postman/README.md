@@ -21,7 +21,11 @@ Carpetas de la colección:
 - **Auth** · Documenta el flujo OAuth. La request principal se abre **en el
   navegador**, no desde Postman (ver abajo).
 - **Me** · `/api/me`, `/api/me/username`. Requieren cookie.
-- **Exercises** · Catálogo público, varios filtros documentados.
+- **Routines** · CRUD de las rutinas (plantillas) del usuario.
+- **Sessions** · CRUD de las sesiones (entrenamientos reales) del usuario, más
+  el endpoint admin `/sweep` que usa `X-Admin-Secret` en lugar de cookie y está
+  pensado para disparar desde un cron externo.
+- **Exercises** · Catálogo público + custom del usuario.
 
 ---
 

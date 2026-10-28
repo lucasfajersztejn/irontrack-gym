@@ -227,6 +227,152 @@
       ]
     },
     {
+      "name": "Sessions",
+      "description": "Lo que PASÓ de verdad el día X: entrenamientos concretos del usuario, con sus pesos y reps reales. Rutina y Sesión son entidades distintas (ver CLAUDE.md §2): editar una sesión NUNCA toca la plantilla de la rutina.\n\nTodos los endpoints salvo `/sweep` requieren cookie `better-auth.session_token`; los POST/PATCH/DELETE también `Origin`. `/sweep` es admin y usa `X-Admin-Secret` en lugar de cookie.",
+      "item": [
+        {
+          "name": "GET /api/sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20", "description": "Máximo 50. Techo duro en el servidor." },
+                { "key": "from", "value": "", "description": "ISO date opcional. Filtra por startedAt >= from.", "disabled": true },
+                { "key": "to", "value": "", "description": "ISO date opcional. Filtra por startedAt <= to.", "disabled": true },
+                { "key": "routine", "value": "", "description": "ObjectId opcional. Solo sesiones de esa rutina.", "disabled": true }
+              ]
+            },
+            "description": "Historial paginado del usuario. Devuelve un summary SIN el array `entries` (puede pesar varios kB por sesión). Incluye `entryCount`, `setCount` y `durationSec` calculados por Mongo con $size/$map, para no transportar datos que no se van a pintar. Ordenado por `startedAt desc` (índice `{user:1, startedAt:-1}`)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/sessions/active",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions", "active"]
+            },
+            "description": "Devuelve la sesión abierta (`endedAt: null`) del usuario, o `null` si no hay ninguna. 200 en ambos casos: \"no hay activa\" es una respuesta normal, no un error.\n\nEl frontend llama a esto en CADA boot de la PWA: así, abrir la app en un segundo dispositivo no crea una sesión paralela, sino que recupera la ya abierta."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/sessions",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"routine\": \"REEMPLAZAR_POR_UN_ID_DE_ROUTINE_O_NULL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions"]
+            },
+            "description": "Arranca una sesión. Dos modos:\n\n- **Con `routine`**: carga la rutina del usuario y COPIA sus ejercicios denormalizando `exerciseName`, `muscle`, `tracking`. Los `sets` arrancan vacíos y se van rellenando con PATCH durante el entreno. Esta copia es la razón de que editar la rutina mañana no toque la sesión de hoy.\n- **Sin `routine`** (omitir el campo o pasarlo como `null`): sesión libre, sin plantilla.\n\nRechaza con 409 si ya hay una sesión activa del usuario (incluye `activeId` en el body para que el cliente te lleve directo a ella). `startedAt` opcional: si no viene, se setea a `now`."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/sessions/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/REEMPLAZAR_POR_UN_ID_DE_SESSION",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions", "REEMPLAZAR_POR_UN_ID_DE_SESSION"]
+            },
+            "description": "Detalle completo con el array `entries` y el virtual `durationSec` (calculado al vuelo desde `startedAt`/`endedAt`, no almacenado). 404 si el id no existe O si existe pero es de otro usuario — misma política que en routines y exercises, no leak de ids ajenos."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /api/sessions/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entries\": [\n    {\n      \"exercise\": \"REEMPLAZAR_POR_UN_ID_DE_EXERCISE\",\n      \"exerciseName\": \"Press banca\",\n      \"muscle\": \"pectorals\",\n      \"tracking\": \"weight_reps\",\n      \"order\": 0,\n      \"sets\": [\n        { \"order\": 0, \"weightKg\": 60, \"reps\": 8, \"completed\": true },\n        { \"order\": 1, \"weightKg\": 60, \"reps\": 7, \"completed\": true, \"rpe\": 8 }\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/REEMPLAZAR_POR_UN_ID_DE_SESSION",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions", "REEMPLAZAR_POR_UN_ID_DE_SESSION"]
+            },
+            "description": "Edita la sesión. Acepta subset de `entries`, `notes`, `startedAt`, `endedAt`. Si pasas `entries`, REEMPLAZA el array entero (igual criterio que routines).\n\nValidación cruzada del modelo:\n- `endedAt` no puede ser anterior a `startedAt`.\n- Cada set debe tener los campos del tracking de su entry: `weight_reps` → `weightKg + reps`, `reps` → `reps`, `time` → `durationSec`, `distance_time` → `distanceM + durationSec`. Si falta uno, 400 con mensaje concreto (`Entry X / set Y: falta \"campo\"`).\n\nSi editas `endedAt`, el servidor resetea `durationEstimated` a `false`: cuando el usuario corrige el final a mano, el \"estimado\" automático deja de aplicar.\n\nEl controller hace fetch+save en vez de findOneAndUpdate porque la validación cruzada vive en un `pre('validate')` del modelo, que solo dispara `save()`."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/sessions/:id/finish",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/REEMPLAZAR_POR_UN_ID_DE_SESSION/finish",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions", "REEMPLAZAR_POR_UN_ID_DE_SESSION", "finish"]
+            },
+            "description": "Cierra la sesión. Transición de estado, por eso tiene endpoint propio en vez de ser un PATCH de `endedAt`: incrementa `routine.timesUsed`, actualiza `routine.lastUsedAt` y en Fase 3 disparará el motor de insignias.\n\n**Idempotente**: si la sesión ya está cerrada, devuelve 200 con el estado actual SIN reincrementar el contador. Puedes reintentar con red flaky o doble tap sin cuadruplicar `timesUsed`.\n\nSi la sesión era libre (`routine: null`), no se toca ninguna rutina."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/sessions/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/REEMPLAZAR_POR_UN_ID_DE_SESSION",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions", "REEMPLAZAR_POR_UN_ID_DE_SESSION"]
+            },
+            "description": "Hard delete. Devuelve 204 sin cuerpo. NO decrementa `routine.timesUsed`: ese contador refleja \"veces que la rutina se completó en su día\", no un estado presente — decrementarlo lo convertiría en una cuenta volátil."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/sessions/sweep (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Admin-Secret", "value": "REEMPLAZAR_POR_ADMIN_SECRET" },
+              { "key": "Origin", "value": "{{baseUrl}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/sweep",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions", "sweep"]
+            },
+            "description": "Endpoint ADMIN. Cierra en lote las sesiones abiertas con `startedAt < now - 4h` (`MAX_SESSION_HOURS` en `constants.js`), fija `endedAt = startedAt + 4h` (no `now`: el jitter del cron no debe meterse en la duración real) y marca `durationEstimated: true`.\n\nAuth: header `X-Admin-Secret` validado con `crypto.timingSafeEqual` contra `process.env.ADMIN_SECRET`. Si la env var no está definida en el servidor, responde 503 (el endpoint queda cerrado por defecto). Sin cookie: el llamante es un cron externo (Fly.io scheduled machines, GitHub Actions, cron-job.org), no un humano logueado.\n\nRespuesta: `{ closed: n, cutoff }`. Idempotente: si no hay sesiones huérfanas, `closed: 0` y 200."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Exercises",
       "description": "Catálogo público de ejercicios. No requieren sesión. Los endpoints devuelven únicamente ejercicios del catálogo global (`createdBy: null`); los customs del usuario se expondrán cuando se añada el endpoint autenticado.",
       "item": [
