@@ -1,5 +1,6 @@
 import express from 'express'
 import { requireSession } from '../middleware/requireSession.js'
+import { requireAdminSecret } from '../middleware/requireAdminSecret.js'
 import {
   listSessions,
   getActiveSession,
@@ -8,9 +9,19 @@ import {
   updateSession,
   finishSession,
   deleteSession,
+  sweepSessions,
 } from '../controllers/sessionController.js'
 
 const router = express.Router()
+
+/**
+ * /sweep va ANTES del `router.use(requireSession)` porque usa otro mecanismo
+ * de auth: no es un usuario con cookie, es un cron externo con un secreto
+ * en header. Mezclarlo con requireSession rompería el flujo (no hay cookie)
+ * y arrastraría la ruta admin al mismo modelo de autorización que las de
+ * usuario, que es justo lo que queremos evitar.
+ */
+router.post('/sweep', requireAdminSecret, sweepSessions)
 
 router.use(requireSession)
 

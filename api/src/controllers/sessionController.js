@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 import { z } from 'zod'
 import Session from '../models/session.model.js'
 import Routine from '../models/routine.model.js'
-import { MUSCLES, TRACKING_TYPES } from '../models/constants.js'
+import { MUSCLES, TRACKING_TYPES, MAX_SESSION_HOURS } from '../models/constants.js'
 
 /**
  * Schemas Zod
@@ -423,6 +423,61 @@ export async function finishSession(req, res, next) {
  * CARGÓ y COMPLETÓ la rutina en su día", no un estado presente. Decrementar
  * al borrar lo convertiría en una cuenta volátil y perderíamos la historia.
  */
+// ---------------------------------------------------------------------------
+// POST /api/sessions/sweep  -> cierra sesiones huérfanas (admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * Cierra en lote las sesiones que llevan más de MAX_SESSION_HOURS abiertas.
+ * Cubre el caso "el usuario se olvidó de darle a terminar y se fue a casa".
+ *
+ * Por qué un endpoint y no un `setInterval` en Node:
+ *   - Fly.io reinicia contenedores y un timer en memoria se pierde.
+ *   - Un endpoint es reproducible desde fuera (curl + token), testeable
+ *     a mano y disparable por cualquier scheduler (Fly cron, GH Actions,
+ *     cron-job.org). La máquina que lo llama es intercambiable.
+ *
+ * Por qué `endedAt = startedAt + MAX_SESSION_HOURS` y no `endedAt = now`:
+ *   - El cron puede correr a las 2 h o a las 2 h y 7 min. Usar `now`
+ *     metería ese jitter en la duración "real" de las sesiones cerradas.
+ *   - Fijar el final al límite del dominio (4 h) es consistente con lo que
+ *     el flag `durationEstimated: true` ya promete al usuario: "no sabemos
+ *     cuándo acabaste, asumimos el máximo".
+ *
+ * updateMany atómico en Mongo: no cargamos N documentos a Node para iterar;
+ * una sola operación los cierra todos y nos dice cuántos. Si no hay ninguno,
+ * `modifiedCount` es 0 y el 200 vale igual (idempotente).
+ */
+export async function sweepSessions(req, res, next) {
+  try {
+    const now = new Date()
+    const cutoff = new Date(now.getTime() - MAX_SESSION_HOURS * 3600 * 1000)
+
+    const result = await Session.updateMany(
+      { endedAt: null, startedAt: { $lt: cutoff } },
+      [
+        // Pipeline update: `endedAt` depende de `startedAt` del propio doc,
+        // así que necesito el update aggregation (array), no el clásico.
+        {
+          $set: {
+            endedAt: {
+              $add: ['$startedAt', MAX_SESSION_HOURS * 3600 * 1000],
+            },
+            durationEstimated: true,
+          },
+        },
+      ],
+    )
+
+    res.json({
+      closed: result.modifiedCount,
+      cutoff,
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
 export async function deleteSession(req, res, next) {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ message: 'Sesión no encontrada' })
