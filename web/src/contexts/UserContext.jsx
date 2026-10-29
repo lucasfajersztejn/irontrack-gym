@@ -1,13 +1,55 @@
-import { createContext, useContext } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { api } from '../lib/api.js'
 
 /*
-  Context del usuario logueado (spec §2). Context y no Zustand porque cambia
-  poco: pasa del `null` inicial al perfil tras `/api/me`, y de ahí casi no se
-  toca. El contenido real se enganchará cuando codeemos el flujo de login.
-*/
-const UserContext = createContext({ user: null, loading: true })
+  Fuente de verdad del estado de autenticación en el frontend. Una sola
+  llamada a /api/me resuelve dos preguntas: ¿hay sesión? y ¿tiene username?
+  Usar también authClient.useSession() de Better Auth sería duplicar estado
+  y abrir carreras entre ambas respuestas. Mejor uno manda, el otro queda
+  para llamar signIn/signOut.
 
-export function UserProvider({ value, children }) {
+  Un 401 no es un error ruidoso: significa "no autenticado" y es el estado
+  habitual al abrir la Landing. Cualquier otro error sí se registra.
+*/
+const UserContext = createContext({
+  user: null,
+  loading: true,
+  isAuthed: false,
+  needsOnboarding: false,
+  refetch: () => {},
+})
+
+export function UserProvider({ children }) {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchMe = useCallback(async () => {
+    setLoading(true)
+    try {
+      const me = await api('/api/me')
+      setUser(me)
+    } catch (err) {
+      if (err.status !== 401) {
+        console.error('GET /api/me falló:', err)
+      }
+      setUser(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchMe()
+  }, [fetchMe])
+
+  const value = {
+    user,
+    loading,
+    isAuthed: !!user,
+    needsOnboarding: !!user?.needsOnboarding,
+    refetch: fetchMe,
+  }
+
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>
 }
 
