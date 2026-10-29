@@ -30,7 +30,12 @@ export default function OAuthButton({
         'border border-transparent',
         disabled
           ? 'cursor-not-allowed opacity-60'
-          : 'hover:border-border hover:bg-surface-3 active:scale-[0.99]',
+          // -translate-y-px es un empujón de 1 px al pasar el cursor: hace
+          // sentir el botón como un elemento físico. Combinado con el
+          // active:scale[0.99] genera una micro-respuesta "sube y hunde"
+          // sin pedir motion lib ni keyframes. prefers-reduced-motion
+          // (index.css) lo neutraliza llevando transition-duration a 0.
+          : 'hover:-translate-y-px hover:border-border hover:bg-surface-3 active:scale-[0.99]',
       ].join(' ')}
     >
       <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[6px] bg-bg">
