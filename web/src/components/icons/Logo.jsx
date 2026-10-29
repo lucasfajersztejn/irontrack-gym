@@ -22,10 +22,7 @@ export default function Logo({ className = '', showWordmark = true }) {
         <rect x="23" y="3" width="4" height="23" rx="1.5" fill={accent} />
       </svg>
       {showWordmark && (
-        <span
-          className="font-semibold tracking-tight text-[var(--color-text)]"
-          style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem' }}
-        >
+        <span className="font-display text-lg font-semibold tracking-tight text-text">
           IronTrack
         </span>
       )}
