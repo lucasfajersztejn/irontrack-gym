@@ -67,6 +67,18 @@ body {
 }
 
 /*
+  Focus visible global sobre acento verde. Solo aparece con navegación por
+  teclado (:focus-visible, no :focus), así que no ensucia el click con ratón.
+  outline-offset separa el halo del elemento para que no se confunda con el
+  borde en inputs y botones OAuth, que ya usan border-border en reposo.
+*/
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/*
   prefers-reduced-motion es un requisito explícito de la spec (§7 "Movimiento").
   Apagamos cualquier animación o transición decorativa; motion/Framer sigue
   respetando esta media query por su cuenta.
