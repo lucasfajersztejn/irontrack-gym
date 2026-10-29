@@ -102,7 +102,7 @@ export default function Landing() {
             <br />
             <span className="text-accent">Mide tu progreso.</span>
           </h1>
-          <p className="text-[15px] leading-relaxed text-text-muted">
+          <p className="text-[15px] leading-relaxed text-pretty text-text-muted">
             Series, récords y rachas en una app hecha para el gimnasio, no para
             una hoja de cálculo.
           </p>
@@ -140,7 +140,11 @@ export default function Landing() {
               <br />
               <span className="text-accent">Mide tu progreso.</span>
             </h1>
-            <p className="max-w-lg text-lg leading-relaxed text-text-muted">
+            {/* text-pretty redistribuye la última línea del párrafo para
+                evitar que "guarda." quede sola (straggler). Chrome y Safari
+                lo honran nativamente; en navegadores que lo ignoran el
+                texto cae al modo "normal" sin romper nada. */}
+            <p className="max-w-lg text-lg leading-relaxed text-pretty text-text-muted">
               Series, récords y rachas en una app hecha para el gimnasio, no para
               una hoja de cálculo. Abre, entrena, guarda.
             </p>
