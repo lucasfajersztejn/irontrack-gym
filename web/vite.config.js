@@ -16,10 +16,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // El backend de IronTrack corre en 3000. Proxy en dev para evitar CORS
-      // y para que las cookies de Better Auth se traten como mismo-origen.
+      // El backend de IronTrack corre en 5000 (api/src/index.js:100). Proxy en
+      // dev para evitar CORS y para que las cookies de Better Auth se traten
+      // como mismo-origen.
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       },
     },
