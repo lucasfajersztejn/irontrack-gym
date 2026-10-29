@@ -90,7 +90,7 @@ export default function Onboarding() {
           <button
             type="submit"
             disabled={busy || !value.trim()}
-            className="w-full rounded-[14px] bg-accent px-4 py-3 text-base font-semibold text-bg transition disabled:cursor-not-allowed disabled:opacity-50 hover:brightness-110 active:scale-[0.99]"
+            className="w-full rounded-[14px] bg-accent px-4 py-3 text-base font-semibold text-bg transition disabled:cursor-not-allowed disabled:opacity-50 hover:-translate-y-px hover:brightness-110 active:scale-[0.99]"
           >
             {busy ? 'Guardando…' : 'Entrar en IronTrack'}
           </button>

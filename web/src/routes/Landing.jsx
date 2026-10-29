@@ -79,14 +79,16 @@ export default function Landing() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Ambiente espacial: dos gradientes radiales difusos, sin decorado. */}
+      {/* Ambiente espacial: dos gradientes radiales difusos. Los colores
+          se derivan de los tokens --color-accent y --color-link vía
+          color-mix, así que si la paleta cambia los gradientes la siguen. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(900px circle at 15% 0%, rgba(57,211,83,0.12), transparent 55%),' +
-            'radial-gradient(700px circle at 100% 20%, rgba(88,166,255,0.07), transparent 60%)',
+            'radial-gradient(900px circle at 15% 0%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 55%),' +
+            'radial-gradient(700px circle at 100% 20%, color-mix(in srgb, var(--color-link) 7%, transparent), transparent 60%)',
         }}
       />
 
@@ -95,12 +97,12 @@ export default function Landing() {
         <Logo />
 
         <div className="space-y-3">
-          <h1 className="font-display text-[32px] leading-tight font-bold tracking-tight">
+          <h1 className="font-display text-hero font-bold">
             Registra tu entreno.
             <br />
             <span className="text-accent">Mide tu progreso.</span>
           </h1>
-          <p className="text-[15px] leading-relaxed text-text-muted">
+          <p className="text-[15px] leading-relaxed text-pretty text-text-muted">
             Series, récords y rachas en una app hecha para el gimnasio, no para
             una hoja de cálculo.
           </p>
@@ -124,7 +126,7 @@ export default function Landing() {
           <Logo />
           <a
             href="#"
-            className="text-sm text-text-muted hover:text-text"
+            className="-mx-2 rounded-card px-2 py-2 text-sm text-text-muted hover:text-text"
           >
             ¿Qué es IronTrack?
           </a>
@@ -133,12 +135,16 @@ export default function Landing() {
         <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-[1.3fr_1fr] items-center gap-16 px-10 py-12">
           {/* Hero */}
           <section className="space-y-8">
-            <h1 className="font-display text-[64px] leading-[1.05] font-bold tracking-tight">
+            <h1 className="font-display text-hero font-bold">
               Registra tu entreno.
               <br />
               <span className="text-accent">Mide tu progreso.</span>
             </h1>
-            <p className="max-w-lg text-lg leading-relaxed text-text-muted">
+            {/* text-pretty redistribuye la última línea del párrafo para
+                evitar que "guarda." quede sola (straggler). Chrome y Safari
+                lo honran nativamente; en navegadores que lo ignoran el
+                texto cae al modo "normal" sin romper nada. */}
+            <p className="max-w-lg text-lg leading-relaxed text-pretty text-text-muted">
               Series, récords y rachas en una app hecha para el gimnasio, no para
               una hoja de cálculo. Abre, entrena, guarda.
             </p>
@@ -160,7 +166,7 @@ export default function Landing() {
           </section>
 
           {/* Login card */}
-          <section className="rounded-container bg-surface p-8 shadow-[0_30px_80px_-40px_rgba(57,211,83,0.25)]">
+          <section className="rounded-container bg-surface p-8 shadow-glow-landing">
             <h2 className="font-display text-2xl font-semibold">
               Entra en IronTrack
             </h2>

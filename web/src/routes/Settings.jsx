@@ -27,7 +27,7 @@ export default function Settings() {
           <button
             type="button"
             onClick={handleSignOut}
-            className="mt-4 rounded-[14px] border border-border bg-surface-2 px-4 py-2 text-sm font-medium text-text hover:border-error hover:text-error"
+            className="mt-4 rounded-[14px] border border-border bg-surface-2 px-4 py-3 text-sm font-medium text-text transition-colors hover:border-error hover:text-error"
           >
             Cerrar sesión
           </button>
