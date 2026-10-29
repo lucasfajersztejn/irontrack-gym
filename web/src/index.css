@@ -48,6 +48,19 @@
     "Glow-Is-Earned Rule"). Se referencia como `shadow-glow-landing`.
   */
   --shadow-glow-landing: 0 30px 80px -40px color-mix(in srgb, var(--color-accent) 25%, transparent);
+
+  /*
+    Tamaño del h1 del hero: clamp fluido entre 32 px (mobile) y 64 px
+    (desktop). Antes había dos literales (text-[32px] y text-[64px]) con
+    un salto brusco en el breakpoint lg; con clamp el título crece de
+    forma continua con el ancho de la ventana. Line-height y
+    letter-spacing viajan con el token (Tailwind 4 los expone al
+    construir text-hero), así que un solo `text-hero` reemplaza
+    tres clases.
+  */
+  --text-hero: clamp(2rem, 4vw + 1rem, 4rem);
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.01em;
 }
 
 /*

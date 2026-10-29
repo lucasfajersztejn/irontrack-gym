@@ -97,7 +97,7 @@ export default function Landing() {
         <Logo />
 
         <div className="space-y-3">
-          <h1 className="font-display text-[32px] leading-tight font-bold tracking-tight">
+          <h1 className="font-display text-hero font-bold">
             Registra tu entreno.
             <br />
             <span className="text-accent">Mide tu progreso.</span>
@@ -135,7 +135,7 @@ export default function Landing() {
         <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-[1.3fr_1fr] items-center gap-16 px-10 py-12">
           {/* Hero */}
           <section className="space-y-8">
-            <h1 className="font-display text-[64px] leading-[1.05] font-bold tracking-tight">
+            <h1 className="font-display text-hero font-bold">
               Registra tu entreno.
               <br />
               <span className="text-accent">Mide tu progreso.</span>
