@@ -10,6 +10,12 @@
   --color-bg: #0d1117;
   --color-surface: #161b22;
   --color-surface-2: #1c2128;
+  /*
+    Grafito intermedio entre surface-2 y border. Única superficie
+    reservada al hover de los botones OAuth: la elevación en reposo son
+    los tres tokens anteriores, surface-3 solo entra como respuesta.
+  */
+  --color-surface-3: #232a33;
   --color-border: #30363d;
   --color-text: #c9d1d9;
   --color-text-muted: #8b949e;
@@ -35,6 +41,13 @@
 
   --radius-card: 12px;
   --radius-container: 16px;
+
+  /*
+    Shadow glow landing: halo verde difuso bajo la card de login en
+    desktop. Es la única sombra del sistema en Fase 1 (DESIGN.md,
+    "Glow-Is-Earned Rule"). Se referencia como `shadow-glow-landing`.
+  */
+  --shadow-glow-landing: 0 30px 80px -40px color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 /*

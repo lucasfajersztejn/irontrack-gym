@@ -79,14 +79,16 @@ export default function Landing() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Ambiente espacial: dos gradientes radiales difusos, sin decorado. */}
+      {/* Ambiente espacial: dos gradientes radiales difusos. Los colores
+          se derivan de los tokens --color-accent y --color-link vía
+          color-mix, así que si la paleta cambia los gradientes la siguen. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(900px circle at 15% 0%, rgba(57,211,83,0.12), transparent 55%),' +
-            'radial-gradient(700px circle at 100% 20%, rgba(88,166,255,0.07), transparent 60%)',
+            'radial-gradient(900px circle at 15% 0%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 55%),' +
+            'radial-gradient(700px circle at 100% 20%, color-mix(in srgb, var(--color-link) 7%, transparent), transparent 60%)',
         }}
       />
 
@@ -160,7 +162,7 @@ export default function Landing() {
           </section>
 
           {/* Login card */}
-          <section className="rounded-container bg-surface p-8 shadow-[0_30px_80px_-40px_rgba(57,211,83,0.25)]">
+          <section className="rounded-container bg-surface p-8 shadow-glow-landing">
             <h2 className="font-display text-2xl font-semibold">
               Entra en IronTrack
             </h2>

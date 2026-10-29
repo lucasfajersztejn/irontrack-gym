@@ -30,7 +30,7 @@ export default function OAuthButton({
         'border border-transparent',
         disabled
           ? 'cursor-not-allowed opacity-60'
-          : 'hover:border-border hover:bg-[#232a33] active:scale-[0.99]',
+          : 'hover:border-border hover:bg-surface-3 active:scale-[0.99]',
       ].join(' ')}
     >
       <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[6px] bg-bg">
