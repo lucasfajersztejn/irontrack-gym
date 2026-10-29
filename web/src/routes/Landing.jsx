@@ -126,7 +126,7 @@ export default function Landing() {
           <Logo />
           <a
             href="#"
-            className="text-sm text-text-muted hover:text-text"
+            className="-mx-2 rounded-card px-2 py-2 text-sm text-text-muted hover:text-text"
           >
             ¿Qué es IronTrack?
           </a>
