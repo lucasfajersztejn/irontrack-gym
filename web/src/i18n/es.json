@@ -2,5 +2,47 @@
   "app": {
     "name": "IronTrack",
     "tagline": "Registra tu entreno. Mide tu progreso."
+  },
+  "nav": {
+    "home": "Inicio",
+    "routines": "Rutinas",
+    "catalog": "Catálogo",
+    "history": "Historial",
+    "profile": "Perfil",
+    "connectedWith": "Conectado con {{provider}}"
+  },
+  "home": {
+    "greeting": "Hola, {{username}}",
+    "startTraining": "Empezar a entrenar",
+    "continueTraining": "Continuar sesión",
+    "followingToday": "Siguiendo hoy: {{routine}}",
+    "noRoutineYet": "Elige una rutina para empezar",
+    "streak": "Racha actual",
+    "days": "días",
+    "bestStreak": "Mejor racha: {{count}} días",
+    "thisWeek": "Esta semana",
+    "weeklyGoal": "Objetivo: {{count}} sesiones",
+    "oneRm": "1RM reciente",
+    "record": "Récord",
+    "recentSessions": "Últimas sesiones",
+    "viewAll": "Ver historial",
+    "noSessionsTitle": "Aún no hay sesiones",
+    "noSessionsSub": "Elige una rutina o un ejercicio y la primera entrará aquí.",
+    "quickAccessRoutines": "Rutinas",
+    "quickAccessRoutinesSub": "{{count}} rutinas guardadas",
+    "quickAccessCatalog": "Catálogo",
+    "quickAccessCatalogSub": "Busca entre todos los ejercicios",
+    "quickAccessHistory": "Historial",
+    "quickAccessHistorySub": "Todas tus sesiones",
+    "activity": "Actividad",
+    "last12Weeks": "Últimas 12 semanas",
+    "yearActivity": "Actividad {{year}}",
+    "range12Weeks": "12 semanas",
+    "sessionsTotal_one": "{{count}} sesión en este rango",
+    "sessionsTotal_other": "{{count}} sesiones en este rango",
+    "legendLess": "Menos",
+    "legendMore": "Más",
+    "exercisesCount_one": "{{count}} ejercicio",
+    "exercisesCount_other": "{{count}} ejercicios"
   }
 }

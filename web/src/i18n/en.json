@@ -2,5 +2,47 @@
   "app": {
     "name": "IronTrack",
     "tagline": "Log your workout. Track your progress."
+  },
+  "nav": {
+    "home": "Home",
+    "routines": "Routines",
+    "catalog": "Catalog",
+    "history": "History",
+    "profile": "Profile",
+    "connectedWith": "Signed in with {{provider}}"
+  },
+  "home": {
+    "greeting": "Hi, {{username}}",
+    "startTraining": "Start training",
+    "continueTraining": "Continue session",
+    "followingToday": "Today: {{routine}}",
+    "noRoutineYet": "Pick a routine to begin",
+    "streak": "Current streak",
+    "days": "days",
+    "bestStreak": "Best streak: {{count}} days",
+    "thisWeek": "This week",
+    "weeklyGoal": "Goal: {{count}} sessions",
+    "oneRm": "Recent 1RM",
+    "record": "Record",
+    "recentSessions": "Recent sessions",
+    "viewAll": "View history",
+    "noSessionsTitle": "No sessions yet",
+    "noSessionsSub": "Pick a routine or an exercise and your first session will appear here.",
+    "quickAccessRoutines": "Routines",
+    "quickAccessRoutinesSub": "{{count}} saved routines",
+    "quickAccessCatalog": "Catalog",
+    "quickAccessCatalogSub": "Browse every exercise",
+    "quickAccessHistory": "History",
+    "quickAccessHistorySub": "Every past session",
+    "activity": "Activity",
+    "last12Weeks": "Last 12 weeks",
+    "yearActivity": "{{year}} activity",
+    "range12Weeks": "12 weeks",
+    "sessionsTotal_one": "{{count}} session in this range",
+    "sessionsTotal_other": "{{count}} sessions in this range",
+    "legendLess": "Less",
+    "legendMore": "More",
+    "exercisesCount_one": "{{count}} exercise",
+    "exercisesCount_other": "{{count}} exercises"
   }
 }
