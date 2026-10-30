@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import Landing from './routes/Landing.jsx'
 import Home from './routes/Home.jsx'
 import Catalog from './routes/Catalog.jsx'
@@ -54,6 +54,12 @@ export default function App() {
         <Route path="/training" element={<Training />} />
         <Route path="/history" element={<History />} />
         <Route path="/settings" element={<Settings />} />
+        {/*
+          El tab Perfil de la bottom-nav apunta a /profile para no acoplarse a
+          /settings todavía. Hoy redirige: cuando el perfil tenga pantalla
+          propia, basta con cambiar el destino aquí.
+        */}
+        <Route path="/profile" element={<Navigate to="/settings" replace />} />
       </Route>
     </Routes>
   )
