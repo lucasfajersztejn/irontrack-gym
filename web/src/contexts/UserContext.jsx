@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import i18n from '../i18n/index.js'
 import { api } from '../lib/api.js'
 
 /*
@@ -41,6 +42,18 @@ export function UserProvider({ children }) {
   useEffect(() => {
     fetchMe()
   }, [fetchMe])
+
+  /*
+    El usuario eligió su idioma en el onboarding y vive en settings.locale.
+    Sin esto, i18next se queda con el idioma del navegador y la Home ignora
+    la preferencia del usuario tras un login desde otro equipo.
+  */
+  useEffect(() => {
+    const locale = user?.settings?.locale
+    if (locale && i18n.language !== locale) {
+      i18n.changeLanguage(locale)
+    }
+  }, [user?.settings?.locale])
 
   const value = {
     user,
