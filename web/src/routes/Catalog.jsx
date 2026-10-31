@@ -47,28 +47,32 @@ function Header({ count, loading }) {
           {loading ? t('catalog.loading') : t('catalog.resultCount', { count })}
         </p>
       </div>
-      <button
-        type="button"
-        disabled
-        aria-disabled
-        className="inline-flex cursor-not-allowed items-center gap-2 rounded-control bg-surface px-4 py-2.5 text-sm font-medium text-text-muted opacity-70"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
+      {/* Botón + chip como hermanos para que el chip tenga aire propio y no
+          quede metido a presión contra el borde del botón deshabilitado. */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled
+          aria-disabled
+          className="inline-flex cursor-not-allowed items-center gap-2 rounded-control bg-surface px-4 py-2.5 text-sm font-medium text-text-muted opacity-70"
         >
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-        {t('catalog.createCustom')}
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          {t('catalog.createCustom')}
+        </button>
         <ComingSoonChip />
-      </button>
+      </div>
     </header>
   )
 }
@@ -85,6 +89,30 @@ function EmptyState() {
   )
 }
 
+/*
+  ErrorState: fallback cuando el GET /api/exercises revienta (red, 500,
+  sesión caducada). Mensaje honesto + sugerencia de recarga. No muestra
+  stack traces: el detalle del error vive en consola para debugging.
+*/
+function ErrorState() {
+  const { t } = useTranslation()
+  return (
+    <div className="card-liquid flex flex-col items-center gap-3 rounded-container p-10 text-center">
+      <p className="font-display text-base font-semibold text-text">
+        {t('catalog.errorTitle')}
+      </p>
+      <p className="text-sm text-text-muted">{t('catalog.errorSub')}</p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="rounded-control border border-border bg-surface px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-surface-2"
+      >
+        {t('catalog.retry')}
+      </button>
+    </div>
+  )
+}
+
 const PAGE_SIZE = 16
 
 export default function Catalog() {
@@ -97,7 +125,7 @@ export default function Catalog() {
     mine: false,
   })
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const { loading, exercises } = useCatalog(filters)
+  const { loading, error, exercises } = useCatalog(filters)
 
   /*
     Paginación en cliente. El backend devuelve hasta 200 ejercicios por
@@ -152,6 +180,8 @@ export default function Catalog() {
             ))}
           </div>
         </>
+      ) : error ? (
+        <ErrorState />
       ) : exercises.length === 0 ? (
         <EmptyState />
       ) : (

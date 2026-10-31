@@ -25,6 +25,19 @@ const routineExerciseSchema = new mongoose.Schema({
   targetDurationSec: { type: Number, min: 0 },
   targetDistanceM:   { type: Number, min: 0 },
 
+  /**
+   * Peso de la barra que el usuario planea usar en esta rutina para este
+   * ejercicio. Solo aplica a ejercicios con barra olímpica (`equipment ===
+   * 'barbell'`): la olímpica varía por gimnasio (15, 20, 25 kg) y el
+   * usuario puede querer dejar constancia en la plantilla. Barra Z y Smith
+   * tienen peso físico fijo definido por su propio equipamiento, no se
+   * sobrescribe aquí.
+   *
+   * Null (default) = usa el peso baked del ejercicio (habitualmente 20 kg
+   * para olímpica). La UI muestra placeholder "20" para delatarlo.
+   */
+  barWeightKg: { type: Number, min: 0, max: 50, default: null },
+
   notes: { type: String, trim: true, maxlength: 500 },
 }, { _id: false });
 

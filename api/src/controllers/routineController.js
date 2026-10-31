@@ -28,6 +28,10 @@ const exerciseEntrySchema = z.object({
   targetWeightKg: z.number().min(0).optional(),
   targetDurationSec: z.number().int().min(0).optional(),
   targetDistanceM: z.number().min(0).optional(),
+  // Peso de la barra planificado para este ejercicio dentro de la rutina
+  // (solo tiene sentido para barra olímpica, que varía por gimnasio). El
+  // modelo lo acepta null = "usa el peso baked del ejercicio".
+  barWeightKg: z.number().min(0).max(50).optional(),
   notes: z.string().trim().max(500).optional(),
 })
 

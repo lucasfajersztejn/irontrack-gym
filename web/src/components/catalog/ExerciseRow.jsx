@@ -9,11 +9,14 @@ import { ChevronRightIcon } from '../icons/NavIcons.jsx'
   "¿cuál era este?" entre serie y serie — necesita escanear.
 */
 
+// Fallback a placeholder tanto cuando no hay src como cuando la red falla.
 function Thumb({ src }) {
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const showPlaceholder = !src || failed
   return (
     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-card bg-bg">
-      {src ? (
+      {!showPlaceholder && (
         <img
           src={src}
           alt=""
@@ -22,8 +25,10 @@ function Thumb({ src }) {
             loaded ? 'opacity-100' : 'opacity-0'
           }`}
           onLoad={() => setLoaded(true)}
+          onError={() => setFailed(true)}
         />
-      ) : (
+      )}
+      {showPlaceholder && (
         <div className="flex h-full w-full items-center justify-center text-text-muted">
           <svg
             width="18"
