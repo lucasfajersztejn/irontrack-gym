@@ -33,11 +33,20 @@ export default function StartTrainingCTA({ activeSession, suggestedRoutine }) {
     >
       <Link
         to="/training"
-        className="cta-liquid group relative flex items-center justify-between gap-4 overflow-hidden rounded-container px-5 py-5 text-text transition-[filter,transform] hover:brightness-[1.12] active:scale-[0.99] md:px-6 md:py-6"
+        className="cta-liquid group relative block overflow-hidden rounded-container px-5 py-5 text-text transition-[filter,transform] hover:brightness-[1.12] active:scale-[0.99] md:px-6 md:py-6"
       >
-        <div className="min-w-0">
+        {/*
+          Layout "absolute": el play vive anclado abajo-derecha con margen
+          interior; el texto ocupa su lado del card sin pelearse por el
+          espacio. pr-16 reserva un corredor para el play (48 px + margen)
+          y evita que el título entre en su zona cuando se envuelve. En
+          breakpoints estrechos (ej. iPhone Pro Max landscape 956×440) el
+          play ya no se solapa con el título, porque simplemente no comparte
+          la misma línea de flujo.
+        */}
+        <div className="min-w-0 pr-16">
           <div
-            className="font-display text-2xl font-semibold leading-[1.05] tracking-tight md:text-[28px]"
+            className="font-display text-2xl font-semibold leading-[1.05] tracking-tight lg:text-[28px]"
             style={{ textWrap: 'balance' }}
           >
             {title}
@@ -48,7 +57,7 @@ export default function StartTrainingCTA({ activeSession, suggestedRoutine }) {
             </div>
           )}
         </div>
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-bg shadow-[0_0_24px_-6px_color-mix(in_srgb,var(--color-accent)_70%,transparent)] transition-transform group-hover:translate-x-0.5">
+        <span className="absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-bg shadow-[0_0_24px_-6px_color-mix(in_srgb,var(--color-accent)_70%,transparent)] transition-transform group-hover:translate-x-0.5 md:bottom-5 md:right-5">
           <PlayIcon className="h-5 w-5" />
         </span>
       </Link>
