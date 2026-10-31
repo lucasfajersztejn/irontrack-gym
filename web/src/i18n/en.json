@@ -53,7 +53,6 @@
     "searchPlaceholder": "Search by name or muscle",
     "clearSearch": "Clear search",
     "createCustom": "New custom exercise",
-    "comingSoon": "Soon",
     "loadMore": "Show more",
     "custom": "Custom",
     "emptyTitle": "Nothing here",
@@ -134,6 +133,8 @@
     "pickerTitle": "Pick an exercise",
     "closePicker": "Close",
     "alreadyPicked": "Already added",
+    "pickerEmptyWithQuery": "Nothing matches \"{{query}}\"",
+    "pickerEmptyWithQuerySub": "Create your own exercise with that name.",
     "moveUp": "Move up",
     "moveDown": "Move down",
     "removeExercise": "Remove",
@@ -172,6 +173,49 @@
       "atLeastOne": "Add at least one exercise.",
       "notFound": "Couldn't find that routine.",
       "generic": "Saving failed. Try again."
+    }
+  },
+  "customExercise": {
+    "title": "New exercise",
+    "subtitle": "Only you'll see it in your catalog.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Create",
+    "saving": "Creating…",
+    "triggerShort": "New",
+    "triggerBlank": "Create exercise",
+    "triggerWithQuery": "Create \"{{query}}\"",
+    "emptyPickerHint": "Can't find yours? Create it and it'll be ready to add.",
+    "namePlaceholder": "e.g. Weird dumbbell press",
+    "selectMuscle": "Pick a muscle…",
+    "selectBodyPart": "Unspecified",
+    "fields": {
+      "name": "Name",
+      "muscle": "Primary muscle",
+      "bodyPart": "Group",
+      "equipment": "Equipment",
+      "tracking": "How you track it"
+    },
+    "tracking": {
+      "weight_reps": {
+        "label": "Weight + reps",
+        "hint": "Press, squat, curl…"
+      },
+      "reps": {
+        "label": "Reps only",
+        "hint": "Pull-ups, push-ups, dips."
+      },
+      "time": {
+        "label": "Time",
+        "hint": "Planks, isometrics."
+      },
+      "distance_time": {
+        "label": "Distance + time",
+        "hint": "Treadmill, bike, rowing."
+      }
+    },
+    "errors": {
+      "generic": "Couldn't create the exercise. Try again."
     }
   }
 }
