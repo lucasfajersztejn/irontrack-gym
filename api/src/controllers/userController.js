@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import User from '../models/user.model.js'
-import { RESERVED_USERNAMES } from '../models/constants.js'
+import {
+  RESERVED_USERNAMES,
+  LOCALES,
+  UNIT_SYSTEMS,
+  BAR_INPUT_MODES,
+} from '../models/constants.js'
 
 /**
  * GET /api/me
@@ -56,6 +61,59 @@ const usernameSchema = z.object({
     .max(20)
     .regex(/^[a-z0-9_-]+$/, 'Solo letras minúsculas, números, guion y guion bajo'),
 })
+
+/**
+ * PATCH /api/me/settings
+ *
+ * Actualiza un subset de preferencias del usuario. Todo opcional, pero al
+ * menos un campo. Validamos aquí (Zod) y confiamos en el schema de Mongoose
+ * para la cerrada en rango (el modelo ya tiene min/max). Si en el futuro
+ * añadimos settings más complejos (notificaciones, privacy avanzada), este
+ * endpoint se convierte en el único canal y evitamos n endpoints paralelos.
+ *
+ * Los campos no listados aquí quedan intactos: `$set` solo toca los que
+ * recibimos.
+ */
+const settingsSchema = z.object({
+  locale: z.enum(LOCALES).optional(),
+  units: z.enum(UNIT_SYSTEMS).optional(),
+  barInputMode: z.enum(BAR_INPUT_MODES).optional(),
+  defaultBarWeightKg: z.number().min(0).max(50).optional(),
+  restTimerSec: z.number().int().min(0).max(600).optional(),
+  weeklyGoal: z.number().int().min(1).max(14).optional(),
+}).refine((v) => Object.keys(v).length > 0, {
+  message: 'Al menos un campo',
+})
+
+export async function updateSettings(req, res, next) {
+  const parsed = settingsSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Payload inválido',
+      issues: parsed.error.issues,
+    })
+  }
+  try {
+    // $set con notación dot: evita pisar los otros campos de `settings` por
+    // mandarlo entero. Si pasamos { settings: { weeklyGoal: 5 } }, Mongo
+    // reemplaza TODO el subdoc y perderíamos locale, units, etc.
+    const update = {}
+    for (const [k, v] of Object.entries(parsed.data)) {
+      update[`settings.${k}`] = v
+    }
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: update },
+      { new: true, runValidators: true },
+    )
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' })
+    }
+    res.json({ settings: user.settings })
+  } catch (err) {
+    next(err)
+  }
+}
 
 export async function setUsername(req, res, next) {
   const parsed = usernameSchema.safeParse(req.body)

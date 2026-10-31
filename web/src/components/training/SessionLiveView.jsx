@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SessionExerciseCard from './SessionExerciseCard.jsx'
-import TrainedMusclesMap from './TrainedMusclesMap.jsx'
+import SessionStatsCard from './SessionStatsCard.jsx'
 import ExercisePickerSheet from '../routines/ExercisePickerSheet.jsx'
 import ConfirmModal from '../routines/ConfirmModal.jsx'
 import { useSessionLive } from '../../lib/useSessionLive.js'
@@ -33,15 +33,6 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
   const alreadyIds = entries.map((e) =>
     typeof e.exercise === 'string' ? e.exercise : e.exercise?._id,
   )
-
-  // Músculos únicos trabajados en la sesión = primario de cada entry. El
-  // modelo de session guarda `muscle` denormalizado, así que no dependemos
-  // de que exercise esté populado para iluminar el mapa.
-  const trainedMuscles = useMemo(() => {
-    const set = new Set()
-    for (const e of entries) if (e.muscle) set.add(e.muscle)
-    return Array.from(set)
-  }, [entries])
 
   return (
     <div className="flex flex-col gap-4">
@@ -90,9 +81,7 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
         {finishing ? t('training.finishing') : t('training.finish')}
       </button>
 
-      <section className="card-liquid rounded-container p-4 md:p-5">
-        <TrainedMusclesMap muscles={trainedMuscles} />
-      </section>
+      <SessionStatsCard entries={entries} startedAt={session.startedAt} />
 
       <ExercisePickerSheet
         open={pickerOpen}
@@ -121,35 +110,22 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
 }
 
 /*
-  Header: cronómetro en jerarquía primaria (grande, Space Grotesk, tabular)
-  porque el "¿cuánto llevo?" es la respuesta más consultada durante un
-  entreno — necesita leerse de un vistazo entre series. Nombre de la rutina
-  arriba como contexto; indicador tenue de estado de guardado abajo para
-  dar confianza sin competir con el reloj.
+  Header compacto: nombre de la rutina (o "libre") + indicador tenue del
+  estado de guardado. El tiempo transcurrido vive abajo en SessionStatsCard
+  (decisión de UX: durante el entreno el reloj no aporta cada vez que miras
+  — como información de contexto en el panel de stats sí).
 */
 function SessionHeader({ session, status }) {
   const { t } = useTranslation()
-  const elapsed = useElapsed(session.startedAt)
   const subtitle = session.routineName ?? t('training.resumeSubFree')
 
   return (
-    <header className="card-liquid flex items-center justify-between gap-4 rounded-container p-4 md:p-5">
+    <header className="card-liquid flex items-center justify-between gap-3 rounded-container p-4">
       <div className="min-w-0">
-        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
-          {t('training.headerKicker')}
-        </p>
-        <h2 className="mt-0.5 truncate font-display text-base font-semibold tracking-tight text-text md:text-lg">
+        <h2 className="truncate font-display text-base font-semibold tracking-tight text-text">
           {subtitle}
         </h2>
         <StatusDot status={status} />
-      </div>
-      <div className="shrink-0 text-right">
-        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
-          {t('training.headerElapsed')}
-        </p>
-        <p className="tabular mt-0.5 font-display text-3xl font-semibold leading-none text-text md:text-4xl">
-          {elapsed}
-        </p>
       </div>
     </header>
   )
@@ -172,17 +148,3 @@ function StatusDot({ status }) {
   )
 }
 
-function useElapsed(startedAtIso) {
-  const [, tick] = useState(0)
-  useEffect(() => {
-    const i = setInterval(() => tick((n) => n + 1), 1000)
-    return () => clearInterval(i)
-  }, [])
-  const started = new Date(startedAtIso).getTime()
-  const seconds = Math.max(0, Math.floor((Date.now() - started) / 1000))
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = seconds % 60
-  const pad = (n) => String(n).padStart(2, '0')
-  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
-}

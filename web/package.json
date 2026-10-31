@@ -24,7 +24,6 @@
     "i18next-browser-languagedetector": "^8.2.3",
     "motion": "^14.9.0",
     "react": "^19.2.6",
-    "react-body-highlighter": "^2.0.5",
     "react-dom": "^19.2.6",
     "react-i18next": "^17.1.9",
     "react-router-dom": "^7.18.5",

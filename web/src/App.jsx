@@ -7,6 +7,7 @@ import RoutineEditor from './routes/RoutineEditor.jsx'
 import Training from './routes/Training.jsx'
 import History from './routes/History.jsx'
 import Settings from './routes/Settings.jsx'
+import WeekStats from './routes/WeekStats.jsx'
 import Onboarding from './routes/Onboarding.jsx'
 import GuestRoute from './components/GuestRoute.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="/routines/:id" element={<RoutineEditor />} />
         <Route path="/training" element={<Training />} />
         <Route path="/history" element={<History />} />
+        <Route path="/stats/week" element={<WeekStats />} />
         <Route path="/settings" element={<Settings />} />
         {/*
           El tab Perfil de la bottom-nav apunta a /profile para no acoplarse a

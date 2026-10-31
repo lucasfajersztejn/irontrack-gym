@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import GreetingHeader from '../components/home/GreetingHeader.jsx'
 import StartTrainingCTA from '../components/home/StartTrainingCTA.jsx'
@@ -11,6 +12,7 @@ import {
   FlameIcon,
   TrophyIcon,
 } from '../components/icons/NavIcons.jsx'
+import { useUser } from '../contexts/UserContext.jsx'
 import { useHomeData } from '../lib/useHomeData.js'
 import { useAvailableHeatmapRanges, useHeatmap } from '../lib/useHeatmap.js'
 
@@ -32,7 +34,7 @@ import { useAvailableHeatmapRanges, useHeatmap } from '../lib/useHeatmap.js'
   como "—" (más honesto que un 0 que parece dato real).
 */
 
-const WEEKLY_GOAL = 4
+const DEFAULT_WEEKLY_GOAL = 4
 
 function kgFormat(kg, locale) {
   if (!kg) return '—'
@@ -48,10 +50,12 @@ function Skeleton({ className = '' }) {
 
 export default function Home() {
   const { t, i18n } = useTranslation()
+  const { user } = useUser()
   const data = useHomeData()
   const [heatmapRange, setHeatmapRange] = useState('12w')
   const heatmap = useHeatmap(heatmapRange)
   const availableRanges = useAvailableHeatmapRanges()
+  const weeklyGoal = user?.settings?.weeklyGoal ?? DEFAULT_WEEKLY_GOAL
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-5 md:gap-6">
@@ -91,22 +95,34 @@ export default function Home() {
               value={data.streak || '—'}
               suffix={data.streak ? t('home.days') : null}
             />
-            <StatTile
-              index={1}
-              icon={<CalendarIcon className="h-4 w-4" />}
-              label={t('home.thisWeek')}
-              value={`${data.weekly}/${WEEKLY_GOAL}`}
-              footer={
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-bg">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{
-                      width: `${Math.min(100, (data.weekly / WEEKLY_GOAL) * 100)}%`,
-                    }}
-                  />
-                </div>
-              }
-            />
+            {/*
+              Tile semanal clicable: lleva al desglose /stats/week con
+              series por grupo muscular + edición del objetivo. Lo envolvemos
+              por fuera para que StatTile siga siendo un presentador puro;
+              el focus-visible global pinta el halo sobre el borde del card.
+            */}
+            <Link
+              to="/stats/week"
+              aria-label={t('home.thisWeekLinkAria')}
+              className="press rounded-container transition-[filter,transform]"
+            >
+              <StatTile
+                index={1}
+                icon={<CalendarIcon className="h-4 w-4" />}
+                label={t('home.thisWeek')}
+                value={`${data.weekly}/${weeklyGoal}`}
+                footer={
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-bg">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{
+                        width: `${Math.min(100, (data.weekly / weeklyGoal) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                }
+              />
+            </Link>
             <StatTile
               index={2}
               icon={<TrophyIcon className="h-4 w-4" />}
