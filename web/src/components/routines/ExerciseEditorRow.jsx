@@ -69,6 +69,14 @@ function NumberField({
   )
 }
 
+/*
+  WeightField renderiza SOLO los inputs (peso total o perSide + barra). El
+  hint "Total: X kg (barra Y + 2 × Z)" se renderiza fuera, en PrimaryFields,
+  para que no infle la altura de la celda del grid exterior y rompa el
+  alineado con "Series". Conocer esa restricción desde aquí sería acoplarse
+  al layout del padre: mejor que WeightField cuente lo que hay y PrimaryFields
+  decida dónde colocar cada pieza.
+*/
 function WeightField({ entry, onChange, barMode, userBarKg }) {
   const { t } = useTranslation()
   const perSide = shouldShowPerSide(entry.exercise, barMode)
@@ -109,39 +117,53 @@ function WeightField({ entry, onChange, barMode, userBarKg }) {
   const showBarInput = shouldShowBarWeightInput(entry.exercise)
 
   return (
-    <div className="flex flex-col gap-1">
-      <div
-        className={`grid gap-2 ${showBarInput ? 'grid-cols-[1fr_auto]' : 'grid-cols-1'}`}
-      >
-        <NumberField
-          label={t('routines.fields.perSide')}
-          suffix="kg"
-          step={0.5}
-          value={visible}
-          onChange={handlePlatesChange}
-        />
-        {showBarInput && (
-          <div className="w-20">
-            <NumberField
-              label={t('routines.fields.barWeight')}
-              suffix="kg"
-              step={0.5}
-              value={entry.barWeightKg}
-              onChange={handleBarChange}
-            />
-          </div>
-        )}
-      </div>
-      {entry.targetWeightKg != null && (
-        <span className="text-[10px] leading-tight text-text-muted">
-          {t('routines.fields.totalHint', {
-            total: entry.targetWeightKg,
-            bar: barKg,
-            perSide: visible,
-          })}
-        </span>
+    // items-end alinea los dos inputs internos por su base si "Discos por
+    // lado" rompe en 2 líneas y "Barra" cabe en 1.
+    <div
+      className={`grid gap-2 ${showBarInput ? 'grid-cols-[1fr_auto] items-end' : 'grid-cols-1'}`}
+    >
+      <NumberField
+        label={t('routines.fields.perSide')}
+        suffix="kg"
+        step={0.5}
+        value={visible}
+        onChange={handlePlatesChange}
+      />
+      {showBarInput && (
+        <div className="w-20">
+          <NumberField
+            label={t('routines.fields.barWeight')}
+            suffix="kg"
+            step={0.5}
+            value={entry.barWeightKg}
+            onChange={handleBarChange}
+          />
+        </div>
       )}
     </div>
+  )
+}
+
+/*
+  Hint "Total: X kg (barra Y + 2 × Z)" para los ejercicios con barra en modo
+  plates. Se renderiza aparte del WeightField para no inflar la celda del
+  grid exterior (ver comentario arriba). Devuelve null cuando no aplica, así
+  el padre puede soltarlo tal cual sin condicionales.
+*/
+function WeightTotalHint({ entry, barMode, userBarKg }) {
+  const { t } = useTranslation()
+  if (!shouldShowPerSide(entry.exercise, barMode)) return null
+  if (entry.targetWeightKg == null) return null
+  const barKg = barWeightFor(entry.exercise, entry.barWeightKg, userBarKg)
+  const visible = perSideFromTotal(entry.targetWeightKg, barKg)
+  return (
+    <span className="text-[10px] leading-tight text-text-muted">
+      {t('routines.fields.totalHint', {
+        total: entry.targetWeightKg,
+        bar: barKg,
+        perSide: visible,
+      })}
+    </span>
   )
 }
 
@@ -156,14 +178,30 @@ function PrimaryFields({ entry, onChange, barMode, userBarKg }) {
     />
   )
 
+  // items-end alinea los inputs por su base aunque uno de los labels del
+  // par se envuelva a dos líneas (p. ej. "Discos por lado" vs "Series"). Lo
+  // aplicamos a todos los grids del switch para que un cambio de copy o
+  // una traducción más larga no vuelva a desnivelar la fila.
   switch (entry.exercise.tracking) {
     case 'weight_reps':
+      // Grid de 2 columnas × 2 filas:
+      //   fila 1 = inputs (Series | Peso), alineados por la base.
+      //   fila 2 = hint "Total: ..." bajo la columna del peso. El spacer
+      //            vacío en la primera celda de fila 2 preserva la rejilla.
+      // Así el hint ya no infla la celda del peso en la fila 1 y Series
+      // queda al mismo nivel que los otros inputs.
       return (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 items-end gap-x-2 gap-y-1">
           {sets}
           <WeightField
             entry={entry}
             onChange={onChange}
+            barMode={barMode}
+            userBarKg={userBarKg}
+          />
+          <div aria-hidden />
+          <WeightTotalHint
+            entry={entry}
             barMode={barMode}
             userBarKg={userBarKg}
           />
@@ -173,7 +211,7 @@ function PrimaryFields({ entry, onChange, barMode, userBarKg }) {
       return <div className="grid grid-cols-1 gap-2">{sets}</div>
     case 'time':
       return (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 items-end gap-2">
           {sets}
           <NumberField
             label={t('routines.fields.duration')}
@@ -185,7 +223,7 @@ function PrimaryFields({ entry, onChange, barMode, userBarKg }) {
       )
     case 'distance_time':
       return (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 items-end gap-2">
           <NumberField
             label={t('routines.fields.distance')}
             suffix="m"
