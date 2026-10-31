@@ -12,10 +12,37 @@ import { useTranslation } from 'react-i18next'
   cuadrados ~600×600).
 */
 
-function GifThumb({ src, loaded, onLoad }) {
+function PlaceholderIcon({ size }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <circle cx="8.5" cy="9" r="1.5" />
+      <path d="m21 15-5-5-11 11" />
+    </svg>
+  )
+}
+
+/*
+  GIF con fallback a placeholder. Dos razones para fallar: el ejercicio no
+  trae gifUrl (custom del usuario) o el CDN cae/404 (red o versión del
+  dataset). En los dos casos pintamos el icono por defecto — nunca una
+  <img> rota.
+*/
+function GifThumb({ src, loaded, failed, onLoad, onError }) {
+  const showPlaceholder = !src || failed
   return (
     <div className="relative aspect-square overflow-hidden rounded-card bg-bg">
-      {src ? (
+      {!showPlaceholder && (
         <img
           src={src}
           alt=""
@@ -24,24 +51,12 @@ function GifThumb({ src, loaded, onLoad }) {
             loaded ? 'opacity-100' : 'opacity-0'
           }`}
           onLoad={onLoad}
+          onError={onError}
         />
-      ) : (
+      )}
+      {showPlaceholder && (
         <div className="flex h-full w-full items-center justify-center text-text-muted">
-          <svg
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <rect x="3" y="3" width="18" height="18" rx="3" />
-            <circle cx="8.5" cy="9" r="1.5" />
-            <path d="m21 15-5-5-11 11" />
-          </svg>
+          <PlaceholderIcon size={32} />
         </div>
       )}
     </div>
@@ -66,6 +81,7 @@ function Chip({ children, tone = 'default' }) {
 export default function ExerciseCard({ exercise }) {
   const { t, i18n } = useTranslation()
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   const name =
     exercise.name?.[i18n.language] ?? exercise.name?.es ?? exercise.name?.en ?? '—'
@@ -73,7 +89,13 @@ export default function ExerciseCard({ exercise }) {
 
   return (
     <article className="card-liquid group flex flex-col gap-3 rounded-container p-3 transition-[filter] hover:brightness-[1.08]">
-      <GifThumb src={exercise.gifUrl} loaded={loaded} onLoad={() => setLoaded(true)} />
+      <GifThumb
+        src={exercise.gifUrl}
+        loaded={loaded}
+        failed={failed}
+        onLoad={() => setLoaded(true)}
+        onError={() => setFailed(true)}
+      />
       {/*
         min-h de 2 líneas en el nombre bloquea la posición del chip y del
         equipamiento: aunque el nombre sea de una sola línea, reserva el
