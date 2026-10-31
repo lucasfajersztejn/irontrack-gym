@@ -3,6 +3,7 @@ import Landing from './routes/Landing.jsx'
 import Home from './routes/Home.jsx'
 import Catalog from './routes/Catalog.jsx'
 import Routines from './routes/Routines.jsx'
+import RoutineEditor from './routes/RoutineEditor.jsx'
 import Training from './routes/Training.jsx'
 import History from './routes/History.jsx'
 import Settings from './routes/Settings.jsx'
@@ -51,6 +52,8 @@ export default function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/routines" element={<Routines />} />
+        <Route path="/routines/new" element={<RoutineEditor />} />
+        <Route path="/routines/:id" element={<RoutineEditor />} />
         <Route path="/training" element={<Training />} />
         <Route path="/history" element={<History />} />
         <Route path="/settings" element={<Settings />} />
