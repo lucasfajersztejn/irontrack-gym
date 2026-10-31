@@ -62,7 +62,7 @@ export default function LastSessionsCard({ sessions }) {
               <li key={s._id ?? s.id}>
                 <Link
                   to={`/history`}
-                  className="group flex items-center gap-3 rounded-card bg-surface-2 p-3 transition-colors hover:bg-surface-3"
+                  className="press group flex items-center gap-3 rounded-card bg-surface-2 p-3 transition-[background-color,transform] hover:bg-surface-3"
                 >
                   <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-control bg-bg text-center">
                     <span className="tabular font-display text-base font-semibold leading-none text-text">
