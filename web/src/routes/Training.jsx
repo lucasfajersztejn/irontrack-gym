@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import StartRoutineCard from '../components/training/StartRoutineCard.jsx'
-import ResumeSessionCard from '../components/training/ResumeSessionCard.jsx'
-import ConfirmModal from '../components/routines/ConfirmModal.jsx'
+import SessionLiveView from '../components/training/SessionLiveView.jsx'
 import { api } from '../lib/api.js'
 import { useActiveSession } from '../lib/useActiveSession.js'
 import { useRoutines } from '../lib/useRoutines.js'
@@ -10,10 +9,8 @@ import { useRoutines } from '../lib/useRoutines.js'
 /*
   Pantalla /training. Dos modos, mismo URL:
 
-  - Si hay sesión activa → ResumeSessionCard arriba + un pre-aviso de que la
-    vista "live" se construye en el siguiente commit. Mientras tanto ofrezco
-    un botón "Terminar sesión" para no dejar al usuario atascado si creó una
-    por error.
+  - Si hay sesión activa → SessionLiveView (header, lista de ejercicios con
+    series editables, añadir/quitar, terminar).
   - Si no hay activa → lista de rutinas para arrancar + sesión libre.
 
   La detección vive en `useActiveSession`, un GET único al /active del backend
@@ -92,39 +89,12 @@ function Picker({ routines, loadingRoutines, onStart, starting }) {
   )
 }
 
-function LivePlaceholder({ session, onFinish, finishing }) {
-  const { t } = useTranslation()
-  return (
-    <section className="card-liquid flex flex-col gap-3 rounded-container p-5">
-      <div>
-        <h2 className="font-display text-lg font-semibold tracking-tight text-text">
-          {t('training.livePlaceholderTitle')}
-        </h2>
-        <p className="mt-1 text-sm text-text-muted">
-          {t('training.livePlaceholderSub', {
-            count: session.entries?.length ?? 0,
-          })}
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onFinish}
-        disabled={finishing}
-        className="press self-start rounded-control border border-border bg-surface px-4 py-2 text-sm font-medium text-text transition-[filter,transform] hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {finishing ? t('training.finishing') : t('training.finish')}
-      </button>
-    </section>
-  )
-}
-
 export default function Training() {
   const { t } = useTranslation()
   const { loading, session, setSession } = useActiveSession()
   const { loading: loadingRoutines, routines } = useRoutines()
   const [starting, setStarting] = useState(false)
   const [finishing, setFinishing] = useState(false)
-  const [confirmFinishOpen, setConfirmFinishOpen] = useState(false)
   const [error, setError] = useState(null)
 
   async function startSession(routineId) {
@@ -172,7 +142,6 @@ export default function Training() {
       setError(err)
     } finally {
       setFinishing(false)
-      setConfirmFinishOpen(false)
     }
   }
 
@@ -192,24 +161,11 @@ export default function Training() {
       {loading ? (
         <Skeleton />
       ) : session ? (
-        <>
-          <ResumeSessionCard
-            session={session}
-            onResume={() => {
-              /*
-                No-op mientras la vista live no existe. El picker ya está
-                oculto y el placeholder cuenta qué pasa: la card resume es la
-                CTA visualmente, pero el acto de "entrar" vive dentro de este
-                mismo screen todavía.
-              */
-            }}
-          />
-          <LivePlaceholder
-            session={session}
-            onFinish={() => setConfirmFinishOpen(true)}
-            finishing={finishing}
-          />
-        </>
+        <SessionLiveView
+          session={session}
+          onFinish={finishSession}
+          finishing={finishing}
+        />
       ) : (
         <Picker
           routines={routines}
@@ -224,16 +180,6 @@ export default function Training() {
           {error.payload?.message ?? error.message ?? t('training.errors.generic')}
         </p>
       )}
-
-      <ConfirmModal
-        open={confirmFinishOpen}
-        title={t('training.confirmFinishTitle')}
-        description={t('training.confirmFinishSub')}
-        confirmLabel={t('training.finish')}
-        onConfirm={finishSession}
-        onCancel={() => setConfirmFinishOpen(false)}
-        destructive={false}
-      />
     </div>
   )
 }

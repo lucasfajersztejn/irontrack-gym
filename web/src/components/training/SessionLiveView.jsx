@@ -1,0 +1,188 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import SessionExerciseCard from './SessionExerciseCard.jsx'
+import TrainedMusclesMap from './TrainedMusclesMap.jsx'
+import ExercisePickerSheet from '../routines/ExercisePickerSheet.jsx'
+import ConfirmModal from '../routines/ConfirmModal.jsx'
+import { useSessionLive } from '../../lib/useSessionLive.js'
+
+/*
+  Vista "live" de la sesión activa. Compone el header (nombre + cronómetro
+  vivo + status de guardado) con la lista de SessionExerciseCard y las dos
+  acciones del flujo: añadir ejercicio (sheet reusada del editor de rutinas)
+  y terminar sesión (confirm modal → POST /finish desde el parent).
+
+  La vista NO conoce la red directamente: useSessionLive hace el debounced
+  PATCH, y el prop `onFinish` dispara el cierre arriba (Training.jsx) para
+  que la navegación vuelva al picker con un solo setSession(null).
+*/
+export default function SessionLiveView({ session, onFinish, finishing }) {
+  const { t } = useTranslation()
+  const {
+    entries,
+    status,
+    updateSet,
+    removeSet,
+    addSet,
+    addEntry,
+    removeEntry,
+  } = useSessionLive(session)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [confirmFinishOpen, setConfirmFinishOpen] = useState(false)
+
+  const alreadyIds = entries.map((e) =>
+    typeof e.exercise === 'string' ? e.exercise : e.exercise?._id,
+  )
+
+  // Músculos únicos trabajados en la sesión = primario de cada entry. El
+  // modelo de session guarda `muscle` denormalizado, así que no dependemos
+  // de que exercise esté populado para iluminar el mapa.
+  const trainedMuscles = useMemo(() => {
+    const set = new Set()
+    for (const e of entries) if (e.muscle) set.add(e.muscle)
+    return Array.from(set)
+  }, [entries])
+
+  return (
+    <div className="flex flex-col gap-4">
+      <SessionHeader session={session} status={status} />
+
+      <div className="flex flex-col gap-3">
+        {entries.length === 0 && (
+          <div className="card-liquid flex flex-col items-center gap-2 rounded-container p-8 text-center">
+            <p className="font-display text-sm font-semibold text-text">
+              {t('training.liveEmptyTitle')}
+            </p>
+            <p className="text-xs text-text-muted">
+              {t('training.liveEmptySub')}
+            </p>
+          </div>
+        )}
+        {entries.map((entry, i) => (
+          <SessionExerciseCard
+            key={`${typeof entry.exercise === 'string' ? entry.exercise : entry.exercise?._id}-${i}`}
+            entry={entry}
+            onAddSet={() => addSet(i)}
+            onUpdateSet={(setIndex, patch) => updateSet(i, setIndex, patch)}
+            onToggleSetComplete={(setIndex, completed) =>
+              updateSet(i, setIndex, { completed })
+            }
+            onRemoveSet={(setIndex) => removeSet(i, setIndex)}
+            onRemoveEntry={() => removeEntry(i)}
+          />
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setPickerOpen(true)}
+        className="press self-stretch rounded-container border border-dashed border-border bg-surface/40 px-4 py-3 text-sm font-medium text-text-muted transition-[filter,transform,color,background-color] hover:bg-surface hover:text-text"
+      >
+        + {t('training.addExercise')}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setConfirmFinishOpen(true)}
+        disabled={finishing}
+        className="press rounded-control bg-accent px-5 py-3 text-sm font-semibold text-bg transition-[filter,transform] hover:brightness-[1.08] disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {finishing ? t('training.finishing') : t('training.finish')}
+      </button>
+
+      <section className="card-liquid rounded-container p-4 md:p-5">
+        <TrainedMusclesMap muscles={trainedMuscles} />
+      </section>
+
+      <ExercisePickerSheet
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={(exercise) => {
+          addEntry(exercise)
+          setPickerOpen(false)
+        }}
+        alreadyPickedIds={alreadyIds}
+      />
+
+      <ConfirmModal
+        open={confirmFinishOpen}
+        title={t('training.confirmFinishTitle')}
+        description={t('training.confirmFinishSub')}
+        confirmLabel={t('training.finish')}
+        onConfirm={() => {
+          setConfirmFinishOpen(false)
+          onFinish()
+        }}
+        onCancel={() => setConfirmFinishOpen(false)}
+        destructive={false}
+      />
+    </div>
+  )
+}
+
+/*
+  Header: cronómetro en jerarquía primaria (grande, Space Grotesk, tabular)
+  porque el "¿cuánto llevo?" es la respuesta más consultada durante un
+  entreno — necesita leerse de un vistazo entre series. Nombre de la rutina
+  arriba como contexto; indicador tenue de estado de guardado abajo para
+  dar confianza sin competir con el reloj.
+*/
+function SessionHeader({ session, status }) {
+  const { t } = useTranslation()
+  const elapsed = useElapsed(session.startedAt)
+  const subtitle = session.routineName ?? t('training.resumeSubFree')
+
+  return (
+    <header className="card-liquid flex items-center justify-between gap-4 rounded-container p-4 md:p-5">
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
+          {t('training.headerKicker')}
+        </p>
+        <h2 className="mt-0.5 truncate font-display text-base font-semibold tracking-tight text-text md:text-lg">
+          {subtitle}
+        </h2>
+        <StatusDot status={status} />
+      </div>
+      <div className="shrink-0 text-right">
+        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
+          {t('training.headerElapsed')}
+        </p>
+        <p className="tabular mt-0.5 font-display text-3xl font-semibold leading-none text-text md:text-4xl">
+          {elapsed}
+        </p>
+      </div>
+    </header>
+  )
+}
+
+function StatusDot({ status }) {
+  const { t } = useTranslation()
+  if (status === 'idle') return null
+  const map = {
+    saving: { label: t('training.saving'), color: 'bg-text-muted' },
+    saved: { label: t('training.saved'), color: 'bg-accent' },
+    error: { label: t('training.saveError'), color: 'bg-error' },
+  }
+  const { label, color } = map[status] ?? map.saving
+  return (
+    <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] text-text-muted">
+      <span aria-hidden className={`inline-block h-1.5 w-1.5 rounded-full ${color}`} />
+      {label}
+    </span>
+  )
+}
+
+function useElapsed(startedAtIso) {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const i = setInterval(() => tick((n) => n + 1), 1000)
+    return () => clearInterval(i)
+  }, [])
+  const started = new Date(startedAtIso).getTime()
+  const seconds = Math.max(0, Math.floor((Date.now() - started) / 1000))
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  const pad = (n) => String(n).padStart(2, '0')
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+}

@@ -162,10 +162,17 @@ export async function listSessions(req, res, next) {
  */
 export async function getActiveSession(req, res, next) {
   try {
+    // populate solo en /active: la vista "live" necesita gifUrl, instructions,
+    // usesBar y defaultBarWeightKg del catálogo para pintar el GIF del help,
+    // el hint de peso total con barra, y los chips. La denormalización del
+    // modelo (exerciseName, muscle, tracking) basta para historial, pero el
+    // training en vivo lee más. No tocamos listSessions/getSession porque
+    // esas rutas se consumen desde cards densas donde el payload extra sería
+    // ruido.
     const session = await Session.findOne({
       user: req.user.id,
       endedAt: null,
-    })
+    }).populate('entries.exercise')
     // 200 con null (no 404): "no hay activa" es una respuesta normal, no un
     // error. El frontend tiene que distinguir "ruta rota" de "nada abierto".
     res.json(session || null)
