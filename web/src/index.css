@@ -116,6 +116,24 @@ body {
 }
 
 /*
+  Flechitas nativas de los <input type="number">: las pinta el navegador con
+  su propio estilo (blancas, inhabilitadas al tema), que choca con la paleta
+  oscura. Ocultarlas es la práctica canónica cuando el input ya tiene su
+  propio diseño: el usuario sigue escribiendo con el teclado y en mobile el
+  inputMode="decimal" dispara el teclado numérico. Si en el futuro queremos
+  controles +/- se añaden como botones custom con los tokens del sistema.
+*/
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/*
   Utility card-liquid: superficie base de los paneles del dashboard.
   Combina un gradient vertical muy sutil (surface + 5% de luz arriba, surface
   limpio abajo) con el shadow-card de 4 capas. El gradient es casi invisible
