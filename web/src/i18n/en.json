@@ -44,5 +44,69 @@
     "legendMore": "More",
     "exercisesCount_one": "{{count}} exercise",
     "exercisesCount_other": "{{count}} exercises"
+  },
+  "catalog": {
+    "title": "Catalog",
+    "loading": "Loading exercises…",
+    "resultCount_one": "{{count}} exercise",
+    "resultCount_other": "{{count}} exercises",
+    "searchPlaceholder": "Search by name or muscle",
+    "clearSearch": "Clear search",
+    "createCustom": "New custom exercise",
+    "comingSoon": "Soon",
+    "loadMore": "Show more",
+    "custom": "Custom",
+    "emptyTitle": "Nothing here",
+    "emptySub": "Try other filters or change your search.",
+    "filters": {
+      "all": "All",
+      "equipment": "Equipment",
+      "equipmentAny": "Any equipment",
+      "mine": "My custom"
+    },
+    "bodyParts": {
+      "chest": "Chest",
+      "back": "Back",
+      "legs": "Legs",
+      "shoulders": "Shoulders",
+      "arms": "Arms",
+      "core": "Core",
+      "cardio": "Cardio"
+    },
+    "muscles": {
+      "abductors": "Abductors",
+      "abs": "Abs",
+      "adductors": "Adductors",
+      "biceps": "Biceps",
+      "calves": "Calves",
+      "cardio": "Cardio",
+      "delts": "Delts",
+      "forearms": "Forearms",
+      "glutes": "Glutes",
+      "hamstrings": "Hamstrings",
+      "lats": "Lats",
+      "levator-scapulae": "Levator scapulae",
+      "pectorals": "Pectorals",
+      "quads": "Quads",
+      "serratus-anterior": "Serratus",
+      "spine": "Spine",
+      "traps": "Traps",
+      "triceps": "Triceps",
+      "upper-back": "Upper back"
+    },
+    "equipment": {
+      "barbell": "Barbell",
+      "dumbbell": "Dumbbell",
+      "cable": "Cable",
+      "machine": "Machine",
+      "bodyweight": "Bodyweight",
+      "band": "Band",
+      "kettlebell": "Kettlebell",
+      "smith": "Smith",
+      "ez-bar": "EZ bar",
+      "lever": "Lever",
+      "sled": "Sled",
+      "other": "Other"
+    }
   }
 }
