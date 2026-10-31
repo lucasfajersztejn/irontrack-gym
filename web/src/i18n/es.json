@@ -6,6 +6,7 @@
   "nav": {
     "home": "Inicio",
     "routines": "Rutinas",
+    "training": "Entrenar",
     "catalog": "Catálogo",
     "history": "Historial",
     "profile": "Perfil",
@@ -173,6 +174,31 @@
       "atLeastOne": "Añade al menos un ejercicio.",
       "notFound": "No encontramos esta rutina.",
       "generic": "Algo falló al guardar. Vuelve a intentarlo."
+    }
+  },
+  "training": {
+    "title": "Entrenar",
+    "subtitleIdle": "Elige una rutina para empezar o entra en modo libre.",
+    "subtitleActive": "Tienes una sesión en marcha.",
+    "pickerRoutinesTitle": "Tus rutinas",
+    "noRoutinesTitle": "Aún no tienes rutinas",
+    "noRoutinesSub": "Crea una en la pestaña Rutinas o entra como sesión libre.",
+    "or": "o",
+    "startFreeSession": "Empezar sesión libre",
+    "startRoutineAria": "Empezar {{name}}",
+    "resumeTitle": "Volver a tu sesión",
+    "resumeSubWithRoutine": "Siguiendo: {{routine}}",
+    "resumeSubFree": "Sesión libre",
+    "resumeElapsed": "Lleva {{time}}",
+    "livePlaceholderTitle": "Pantalla en construcción",
+    "livePlaceholderSub_one": "La vista para registrar series llega en el próximo commit. Mientras tanto, tu sesión tiene {{count}} ejercicio preparado.",
+    "livePlaceholderSub_other": "La vista para registrar series llega en el próximo commit. Mientras tanto, tu sesión tiene {{count}} ejercicios preparados.",
+    "finish": "Terminar sesión",
+    "finishing": "Cerrando…",
+    "confirmFinishTitle": "¿Terminar la sesión?",
+    "confirmFinishSub": "Se cerrará y entrará en tu historial. No podrás reabrirla.",
+    "errors": {
+      "generic": "No pudimos continuar. Vuelve a intentarlo."
     }
   },
   "customExercise": {

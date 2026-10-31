@@ -6,6 +6,7 @@ import {
   CatalogIcon,
   HistoryIcon,
   HomeIcon,
+  KettlebellIcon,
   ProfileIcon,
   RoutinesIcon,
 } from './icons/NavIcons.jsx'
@@ -35,9 +36,18 @@ import {
   /profile sigue existiendo (redirige) para que un enlace externo o un
   bookmark antiguo no caiga en 404.
 */
+/*
+  Entrenar es la actividad central de IronTrack: va en el nav. Lo colocamos
+  tras "Rutinas" porque el flujo mental es "ver mis rutinas → entrenar una";
+  mantenerlos adyacentes evita viajes del pulgar entre los dos destinos más
+  relacionados. Sumamos un sexto tab asumiendo que 6 cabe en móvil estándar
+  (320 px+) con `text-[11px]`; si en pruebas el bottom-nav aprieta demasiado
+  reorganizaremos (p. ej. moviendo Perfil a avatar en header).
+*/
 const TABS = [
   { to: '/home', labelKey: 'nav.home', Icon: HomeIcon },
   { to: '/routines', labelKey: 'nav.routines', Icon: RoutinesIcon },
+  { to: '/training', labelKey: 'nav.training', Icon: KettlebellIcon },
   { to: '/catalog', labelKey: 'nav.catalog', Icon: CatalogIcon },
   { to: '/history', labelKey: 'nav.history', Icon: HistoryIcon },
   { to: '/settings', labelKey: 'nav.profile', Icon: ProfileIcon },

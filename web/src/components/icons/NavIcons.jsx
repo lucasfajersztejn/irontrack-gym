@@ -60,6 +60,26 @@ export function ProfileIcon({ className = '' }) {
   )
 }
 
+/*
+  KettlebellIcon: el icono de entrenar. Descartamos la mancuerna porque su
+  silueta (dos barras verticales + barra horizontal) coincide con la del
+  CatalogIcon y en el nav bar las dos leían como el mismo tab. La kettlebell
+  tiene silueta propia: asa de arco arriba + cuello corto + cuerpo redondo
+  abajo. Trazo 1.8 round como el resto para que se mantenga en familia.
+*/
+export function KettlebellIcon({ className = '' }) {
+  return (
+    <svg {...baseProps} className={className}>
+      {/* Asa (arco superior) */}
+      <path d="M9 7.5a3 3 0 0 1 6 0" />
+      {/* Cuello: dos trazos cortos del asa al cuerpo */}
+      <path d="M9 7.5v1.2M15 7.5v1.2" />
+      {/* Cuerpo (círculo) */}
+      <circle cx="12" cy="14.5" r="5" />
+    </svg>
+  )
+}
+
 export function PlayIcon({ className = '' }) {
   return (
     <svg

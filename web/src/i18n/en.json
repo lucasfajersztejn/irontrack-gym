@@ -6,6 +6,7 @@
   "nav": {
     "home": "Home",
     "routines": "Routines",
+    "training": "Train",
     "catalog": "Catalog",
     "history": "History",
     "profile": "Profile",
@@ -173,6 +174,31 @@
       "atLeastOne": "Add at least one exercise.",
       "notFound": "Couldn't find that routine.",
       "generic": "Saving failed. Try again."
+    }
+  },
+  "training": {
+    "title": "Train",
+    "subtitleIdle": "Pick a routine to begin or start a free session.",
+    "subtitleActive": "You have an active session.",
+    "pickerRoutinesTitle": "Your routines",
+    "noRoutinesTitle": "No routines yet",
+    "noRoutinesSub": "Create one in the Routines tab or start a free session.",
+    "or": "or",
+    "startFreeSession": "Start a free session",
+    "startRoutineAria": "Start {{name}}",
+    "resumeTitle": "Resume your session",
+    "resumeSubWithRoutine": "Following: {{routine}}",
+    "resumeSubFree": "Free session",
+    "resumeElapsed": "{{time}} elapsed",
+    "livePlaceholderTitle": "Screen under construction",
+    "livePlaceholderSub_one": "The set-logging view ships in the next commit. Meanwhile your session has {{count}} exercise lined up.",
+    "livePlaceholderSub_other": "The set-logging view ships in the next commit. Meanwhile your session has {{count}} exercises lined up.",
+    "finish": "Finish session",
+    "finishing": "Finishing…",
+    "confirmFinishTitle": "Finish the session?",
+    "confirmFinishSub": "It will close and enter your history. You can't reopen it.",
+    "errors": {
+      "generic": "Something went wrong. Try again."
     }
   },
   "customExercise": {
