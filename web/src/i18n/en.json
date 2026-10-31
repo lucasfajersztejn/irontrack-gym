@@ -182,7 +182,7 @@
     "cancel": "Cancel",
     "save": "Create",
     "saving": "Creating…",
-    "triggerShort": "New",
+    "triggerShort": "Create exercise",
     "triggerBlank": "Create exercise",
     "triggerWithQuery": "Create \"{{query}}\"",
     "emptyPickerHint": "Can't find yours? Create it and it'll be ready to add.",
