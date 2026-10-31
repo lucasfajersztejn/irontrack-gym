@@ -44,5 +44,69 @@
     "legendMore": "Más",
     "exercisesCount_one": "{{count}} ejercicio",
     "exercisesCount_other": "{{count}} ejercicios"
+  },
+  "catalog": {
+    "title": "Catálogo",
+    "loading": "Cargando ejercicios…",
+    "resultCount_one": "{{count}} ejercicio",
+    "resultCount_other": "{{count}} ejercicios",
+    "searchPlaceholder": "Buscar por nombre o músculo",
+    "clearSearch": "Borrar búsqueda",
+    "createCustom": "Crear ejercicio custom",
+    "comingSoon": "Pronto",
+    "loadMore": "Ver más",
+    "custom": "Custom",
+    "emptyTitle": "Nada por aquí",
+    "emptySub": "Prueba con otros filtros o cambia la búsqueda.",
+    "filters": {
+      "all": "Todos",
+      "equipment": "Equipamiento",
+      "equipmentAny": "Cualquier equipamiento",
+      "mine": "Mis custom"
+    },
+    "bodyParts": {
+      "chest": "Pecho",
+      "back": "Espalda",
+      "legs": "Piernas",
+      "shoulders": "Hombros",
+      "arms": "Brazos",
+      "core": "Core",
+      "cardio": "Cardio"
+    },
+    "muscles": {
+      "abductors": "Abductores",
+      "abs": "Abdominales",
+      "adductors": "Aductores",
+      "biceps": "Bíceps",
+      "calves": "Gemelos",
+      "cardio": "Cardio",
+      "delts": "Deltoides",
+      "forearms": "Antebrazos",
+      "glutes": "Glúteos",
+      "hamstrings": "Isquios",
+      "lats": "Dorsales",
+      "levator-scapulae": "Elevador escapular",
+      "pectorals": "Pecho",
+      "quads": "Cuádriceps",
+      "serratus-anterior": "Serrato",
+      "spine": "Columna",
+      "traps": "Trapecios",
+      "triceps": "Tríceps",
+      "upper-back": "Espalda alta"
+    },
+    "equipment": {
+      "barbell": "Barra",
+      "dumbbell": "Mancuernas",
+      "cable": "Polea",
+      "machine": "Máquina",
+      "bodyweight": "Peso corporal",
+      "band": "Banda",
+      "kettlebell": "Kettlebell",
+      "smith": "Multipower",
+      "ez-bar": "Barra Z",
+      "lever": "Palanca",
+      "sled": "Trineo",
+      "other": "Otro"
+    }
   }
 }
