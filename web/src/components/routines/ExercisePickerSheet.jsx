@@ -172,7 +172,7 @@ export default function ExercisePickerSheet({
                       ? `${ex.name?.es ?? ex.name?.en} · ${t('routines.alreadyPicked')}`
                       : ex.name?.es ?? ex.name?.en
                   }
-                  className={`relative block w-full rounded-container text-left transition-[filter] hover:brightness-[1.08] ${
+                  className={`press relative block w-full rounded-container text-left transition-[filter,transform] hover:brightness-[1.08] ${
                     picked ? 'ring-1 ring-accent/40' : ''
                   }`}
                 >

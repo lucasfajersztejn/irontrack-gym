@@ -29,7 +29,7 @@ export default function RoutineCard({ routine }) {
   return (
     <Link
       to={`/routines/${routine._id}`}
-      className="card-liquid group flex flex-col gap-3 rounded-container p-4 transition-[filter] hover:brightness-[1.08] md:p-5"
+      className="card-liquid press group flex flex-col gap-3 rounded-container p-4 transition-[filter,transform] hover:brightness-[1.08] md:p-5"
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="line-clamp-2 font-display text-lg font-semibold tracking-tight text-text">

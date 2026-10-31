@@ -48,7 +48,7 @@ export default function QuickAccessList({ variant = 'list', routinesCount = 0 })
           <Link
             key={to}
             to={to}
-            className="card-liquid flex flex-col items-start gap-3 rounded-container p-4 text-sm text-text transition-[filter] hover:brightness-[1.1]"
+            className="card-liquid press flex flex-col items-start gap-3 rounded-container p-4 text-sm text-text transition-[filter,transform] hover:brightness-[1.1]"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-control bg-bg text-accent">
               <Icon className="h-5 w-5" />
@@ -72,7 +72,7 @@ export default function QuickAccessList({ variant = 'list', routinesCount = 0 })
         <Link
           key={to}
           to={to}
-          className="group flex flex-1 items-center gap-3 rounded-card px-3 py-3 transition-colors hover:bg-surface-2"
+          className="press group flex flex-1 items-center gap-3 rounded-card px-3 py-3 transition-[background-color,transform] hover:bg-surface-2"
         >
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control bg-bg text-accent">
             <Icon className="h-5 w-5" />

@@ -84,6 +84,14 @@
   --text-hero: clamp(2rem, 4vw + 1rem, 4rem);
   --text-hero--line-height: 1.05;
   --text-hero--letter-spacing: -0.01em;
+
+  /*
+    Curva estándar de IronTrack para press/hover/entrada de UI. Más fuerte que
+    la ease-out nativa del navegador, siguiendo el token recomendado por la
+    skill `animate` (Emil Kowalski): `cubic-bezier(0.23, 1, 0.32, 1)`. Define
+    un solo token para que no proliferen variantes manuales.
+  */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /*
@@ -105,6 +113,35 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/*
+  Capa de plataforma móvil (skill `mobile-native`): sin esto la app se delata
+  como "una web dentro del navegador" en el gimnasio.
+
+  - tap-highlight-color: transparent → desactiva el flash gris/azul que iOS
+    y Android pintan sobre cualquier elemento con onclick. Lo reemplaza el
+    :active de cada botón (abajo), que es feedback diseñado, no ambient.
+  - touch-action: manipulation en tappables → le dice al navegador que el
+    elemento no va a hacer doble-tap-zoom, así `click` se dispara al instante
+    en vez de con los ~300 ms de espera históricos.
+  - user-select: none solo en controles → evita que un long-press en una card
+    seleccione su texto como si fuera contenido. El texto corrido sigue
+    siendo seleccionable (nunca aplicar user-select: none a <body>).
+  - Tailwind 4 ya envuelve `hover:` en `@media (hover: hover)` por defecto,
+    así que no hace falta gatear hovers a mano; los :active funcionan en
+    cualquier tipo de puntero.
+*/
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /*
@@ -167,6 +204,28 @@ input[type="number"] {
     inset 0 -1px 0 rgba(0, 0, 0, 0.4),
     0 4px 10px -4px rgba(0, 0, 0, 0.55),
     var(--shadow-glow-landing);
+}
+
+/*
+  Utility press: feedback táctil al pulsar una card. Combina dos señales
+  que llegan al mismo frame para que el "sí te he leído" sea inequívoco:
+    - transform: scale(0.96) — la card se hunde un 4%, suficiente para ver
+      que no es un hover accidental.
+    - filter: brightness(0.9) — oscurece la superficie como si recibiera
+      presión física. En las cards oscuras el scale solo es casi invisible;
+      el brightness lo delata.
+  Transform + filter son composite-only (skill `animation-performance`):
+  sin layout ni paint, un solo frame en GPU. La transición de ambos la
+  pone el elemento (p. ej. `transition-[filter,transform]`): un único
+  shorthand de transition por elemento evita conflictos de cascada.
+  prefers-reduced-motion vive abajo y lleva la transition-duration a 0,
+  así el :active sigue disparándose (feedback semántico) pero sin movimiento.
+*/
+@utility press {
+  &:active {
+    transform: scale(0.96);
+    filter: brightness(0.9);
+  }
 }
 
 /*
