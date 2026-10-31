@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import SearchInput from '../catalog/SearchInput.jsx'
 import FilterPills from '../catalog/FilterPills.jsx'
 import ExerciseRow from '../catalog/ExerciseRow.jsx'
+import CustomExerciseSheet from '../catalog/CustomExerciseSheet.jsx'
 import { useCatalog } from '../../lib/useCatalog.js'
 
 /*
@@ -17,6 +18,11 @@ import { useCatalog } from '../../lib/useCatalog.js'
 
   El click sobre una row dispara onPick y cierra la hoja desde fuera; esta
   pieza no decide la navegación.
+
+  "+ Crear" vive en dos sitios: el header (siempre visible) y el empty state
+  cuando una búsqueda no devuelve nada. El segundo cubre el flujo "no lo
+  encuentro, lo creo con este nombre": pasamos el texto buscado como
+  initialName para que llegue prefilled a la hoja.
 */
 export default function ExercisePickerSheet({
   open,
@@ -32,8 +38,9 @@ export default function ExercisePickerSheet({
     muscle: null,
     mine: false,
   })
-  const { loading, exercises } = useCatalog(filters)
+  const { loading, exercises, refetch } = useCatalog(filters)
   const alreadySet = new Set(alreadyPickedIds)
+  const [createOpen, setCreateOpen] = useState(false)
 
   // Resetear filtros al cerrar para que la próxima apertura arranque limpia.
   useEffect(() => {
@@ -45,6 +52,7 @@ export default function ExercisePickerSheet({
         muscle: null,
         mine: false,
       })
+      setCreateOpen(false)
     }
   }, [open])
 
@@ -59,6 +67,15 @@ export default function ExercisePickerSheet({
   }, [open])
 
   if (!open) return null
+
+  function handleCreated(created) {
+    // Refrescar el catálogo en segundo plano por si el usuario cancela la
+    // auto-selección y busca el nuevo ejercicio a mano. onPick cierra el
+    // picker completo desde fuera, así que no toca cerrar aquí.
+    refetch()
+    setCreateOpen(false)
+    onPick(created)
+  }
 
   return (
     <div
@@ -78,26 +95,48 @@ export default function ExercisePickerSheet({
           <h2 className="font-display text-lg font-semibold tracking-tight text-text">
             {t('routines.pickerTitle')}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1.5 text-text-muted hover:bg-surface-2 hover:text-text"
-            aria-label={t('routines.closePicker')}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-control bg-accent px-3.5 py-2 text-sm font-semibold text-bg transition-[filter] hover:brightness-[1.08]"
             >
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </button>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              {t('customExercise.triggerShort')}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1.5 text-text-muted hover:bg-surface-2 hover:text-text"
+              aria-label={t('routines.closePicker')}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </header>
 
         <SearchInput
@@ -115,9 +154,10 @@ export default function ExercisePickerSheet({
               {t('catalog.loading')}
             </div>
           ) : exercises.length === 0 ? (
-            <div className="py-8 text-center text-sm text-text-muted">
-              {t('catalog.emptyTitle')}
-            </div>
+            <EmptyState
+              searchTerm={filters.search}
+              onCreate={() => setCreateOpen(true)}
+            />
           ) : (
             exercises.map((ex) => {
               const picked = alreadySet.has(ex._id)
@@ -162,6 +202,61 @@ export default function ExercisePickerSheet({
           )}
         </div>
       </div>
+
+      <CustomExerciseSheet
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={handleCreated}
+        initialName={filters.search}
+      />
+    </div>
+  )
+}
+
+/*
+  Empty state con doble intención: si el usuario estaba buscando algo, el CTA
+  principal es "crear 'X'" con su término prellenado; si no, invita a crear
+  uno sin asumir nombre. El mensaje secundario cambia también para no decir
+  "prueba otros filtros" cuando acabamos de ofrecer crearlo.
+*/
+function EmptyState({ searchTerm, onCreate }) {
+  const { t } = useTranslation()
+  const trimmed = searchTerm?.trim() ?? ''
+  const hasQuery = trimmed.length > 0
+  return (
+    <div className="flex flex-col items-center gap-3 py-8 text-center">
+      <p className="font-display text-sm font-semibold text-text">
+        {hasQuery
+          ? t('routines.pickerEmptyWithQuery', { query: trimmed })
+          : t('catalog.emptyTitle')}
+      </p>
+      <p className="max-w-xs text-xs text-text-muted">
+        {hasQuery
+          ? t('routines.pickerEmptyWithQuerySub')
+          : t('customExercise.emptyPickerHint')}
+      </p>
+      <button
+        type="button"
+        onClick={onCreate}
+        className="inline-flex items-center gap-1.5 rounded-control bg-accent px-4 py-2 text-sm font-semibold text-bg transition-[filter] hover:brightness-[1.08]"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        {hasQuery
+          ? t('customExercise.triggerWithQuery', { query: trimmed })
+          : t('customExercise.triggerBlank')}
+      </button>
     </div>
   )
 }

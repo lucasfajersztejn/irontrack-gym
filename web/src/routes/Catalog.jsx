@@ -5,6 +5,7 @@ import ExerciseRow from '../components/catalog/ExerciseRow.jsx'
 import FilterPills from '../components/catalog/FilterPills.jsx'
 import FiltersBar from '../components/catalog/FiltersBar.jsx'
 import SearchInput from '../components/catalog/SearchInput.jsx'
+import CustomExerciseSheet from '../components/catalog/CustomExerciseSheet.jsx'
 import { useCatalog } from '../lib/useCatalog.js'
 
 /*
@@ -18,24 +19,15 @@ import { useCatalog } from '../lib/useCatalog.js'
   tienen ritmos diferentes (grid 4 col, lista 1 col densa) y mezclar lógica
   acababa en un montón de ifs anidados.
 
-  Crear ejercicio custom queda deshabilitado con un chip "Pronto" hasta la
-  próxima PR: el flujo tiene su propia pantalla y no quiero meterlo mal.
+  Crear ejercicio custom se dispara desde el header y comparte la hoja con
+  el picker del editor de rutinas (CustomExerciseSheet).
 */
 
 function Skeleton({ className }) {
   return <div className={`animate-pulse rounded-container bg-surface-2 ${className}`} />
 }
 
-function ComingSoonChip() {
-  const { t } = useTranslation()
-  return (
-    <span className="inline-flex items-center rounded-pill border border-border bg-surface px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-text-muted">
-      {t('catalog.comingSoon')}
-    </span>
-  )
-}
-
-function Header({ count, loading }) {
+function Header({ count, loading, onCreate }) {
   const { t } = useTranslation()
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
@@ -47,32 +39,26 @@ function Header({ count, loading }) {
           {loading ? t('catalog.loading') : t('catalog.resultCount', { count })}
         </p>
       </div>
-      {/* Botón + chip como hermanos para que el chip tenga aire propio y no
-          quede metido a presión contra el borde del botón deshabilitado. */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          disabled
-          aria-disabled
-          className="inline-flex cursor-not-allowed items-center gap-2 rounded-control bg-surface px-4 py-2.5 text-sm font-medium text-text-muted opacity-70"
+      <button
+        type="button"
+        onClick={onCreate}
+        className="inline-flex items-center gap-2 rounded-control border border-border bg-surface px-4 py-2.5 text-sm font-medium text-text transition-colors hover:bg-surface-2"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          {t('catalog.createCustom')}
-        </button>
-        <ComingSoonChip />
-      </div>
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        {t('catalog.createCustom')}
+      </button>
     </header>
   )
 }
@@ -125,7 +111,8 @@ export default function Catalog() {
     mine: false,
   })
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const { loading, error, exercises } = useCatalog(filters)
+  const [createOpen, setCreateOpen] = useState(false)
+  const { loading, error, exercises, refetch } = useCatalog(filters)
 
   /*
     Paginación en cliente. El backend devuelve hasta 200 ejercicios por
@@ -148,7 +135,11 @@ export default function Catalog() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-5 md:gap-6">
-      <Header count={exercises.length} loading={loading} />
+      <Header
+        count={exercises.length}
+        loading={loading}
+        onCreate={() => setCreateOpen(true)}
+      />
 
       <div className="flex flex-col gap-3">
         <SearchInput
@@ -214,6 +205,21 @@ export default function Catalog() {
           )}
         </>
       )}
+
+      <CustomExerciseSheet
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => {
+          setCreateOpen(false)
+          // Si el usuario tiene filtros activos que no casan con el nuevo
+          // ejercicio, mostrarlo igualmente obligaría a inventar visibilidad
+          // extra. Refetch respeta los filtros actuales: si el ejercicio
+          // encaja aparece arriba (orden alfabético); si no, el usuario
+          // relaja filtros y lo encuentra.
+          refetch()
+        }}
+        initialName={filters.search}
+      />
     </div>
   )
 }

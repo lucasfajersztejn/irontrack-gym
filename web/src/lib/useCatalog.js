@@ -47,6 +47,10 @@ export function useCatalog(filters) {
   // aplica el resultado si sigue siendo el token activo.
   const tokenRef = useRef(0)
 
+  // Nonce para refetch manual (crear un custom): subir el contador reactiva
+  // el effect sin forzar al caller a mutar filtros reales.
+  const [refetchNonce, setRefetchNonce] = useState(0)
+
   useEffect(() => {
     const myToken = ++tokenRef.current
     setState((s) => ({ ...s, loading: true, error: null }))
@@ -63,7 +67,9 @@ export function useCatalog(filters) {
     // Dependemos explícitamente de cada filtro (y del search debounced) para
     // que un cambio no amortiguado dispare el fetch sin esperar al timeout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, filters.bodyPart, filters.equipment, filters.muscle, filters.mine])
+  }, [debouncedSearch, filters.bodyPart, filters.equipment, filters.muscle, filters.mine, refetchNonce])
 
-  return state
+  const refetch = () => setRefetchNonce((n) => n + 1)
+
+  return { ...state, refetch }
 }

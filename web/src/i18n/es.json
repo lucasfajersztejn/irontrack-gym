@@ -53,7 +53,6 @@
     "searchPlaceholder": "Buscar por nombre o músculo",
     "clearSearch": "Borrar búsqueda",
     "createCustom": "Crear ejercicio custom",
-    "comingSoon": "Pronto",
     "loadMore": "Ver más",
     "custom": "Custom",
     "emptyTitle": "Nada por aquí",
@@ -134,6 +133,8 @@
     "pickerTitle": "Elegir ejercicio",
     "closePicker": "Cerrar",
     "alreadyPicked": "Ya en la rutina",
+    "pickerEmptyWithQuery": "Nada con «{{query}}»",
+    "pickerEmptyWithQuerySub": "Crea tu propio ejercicio con este nombre.",
     "moveUp": "Mover arriba",
     "moveDown": "Mover abajo",
     "removeExercise": "Quitar",
@@ -172,6 +173,49 @@
       "atLeastOne": "Añade al menos un ejercicio.",
       "notFound": "No encontramos esta rutina.",
       "generic": "Algo falló al guardar. Vuelve a intentarlo."
+    }
+  },
+  "customExercise": {
+    "title": "Nuevo ejercicio",
+    "subtitle": "Solo tú lo verás en tu catálogo.",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "save": "Crear",
+    "saving": "Creando…",
+    "triggerShort": "Crear ejercicio",
+    "triggerBlank": "Crear ejercicio",
+    "triggerWithQuery": "Crear «{{query}}»",
+    "emptyPickerHint": "¿No encuentras el tuyo? Créalo y lo tendrás listo para añadir.",
+    "namePlaceholder": "Ej. Press loco con mancuernas",
+    "selectMuscle": "Elegir músculo…",
+    "selectBodyPart": "Sin especificar",
+    "fields": {
+      "name": "Nombre",
+      "muscle": "Músculo principal",
+      "bodyPart": "Grupo",
+      "equipment": "Equipamiento",
+      "tracking": "Cómo lo registras"
+    },
+    "tracking": {
+      "weight_reps": {
+        "label": "Peso + reps",
+        "hint": "Press, sentadilla, curl…"
+      },
+      "reps": {
+        "label": "Solo reps",
+        "hint": "Dominadas, flexiones, fondos."
+      },
+      "time": {
+        "label": "Tiempo",
+        "hint": "Plancha, isométricos."
+      },
+      "distance_time": {
+        "label": "Distancia + tiempo",
+        "hint": "Cinta, bici, remo."
+      }
+    },
+    "errors": {
+      "generic": "No pudimos crear el ejercicio. Vuelve a intentarlo."
     }
   }
 }
