@@ -396,33 +396,43 @@ export default function RoutineEditor() {
                   )}
                   {canLinkToNext && (
                     /*
-                      Conector entre dos bloques. Lo subo de 11 px a 12 px con
-                      texto en acento verde para que el usuario entienda que es
-                      la forma de crear una superserie — antes era un pill
-                      "dashed" discreto y los usuarios no lo veían. "Agrupar en
-                      superserie con el siguiente" deja claro qué hace sin
-                      ocupar más de una línea.
+                      Conector a todo ancho entre dos bloques: dos líneas
+                      acento + chip central con el texto. Imposible de pasar
+                      por alto — el usuario tenía razón de que el pill
+                      centrado anterior quedaba casi invisible entre dos
+                      cards grandes. Click en toda la fila, incluidas las
+                      líneas, dispara el agrupamiento.
                     */
                     <button
                       type="button"
                       onClick={() => groupWithNext(lastEntryIndex)}
-                      className="press mx-auto inline-flex items-center gap-1.5 rounded-pill border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-[filter,transform,background-color,border-color] hover:bg-accent/20"
+                      className="press group flex w-full items-center gap-2 py-1 transition-[filter,transform]"
                     >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                      <span
                         aria-hidden
-                      >
-                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                      </svg>
-                      {t('routines.linkSuperset')}
+                        className="h-px flex-1 bg-accent/40 transition-colors group-hover:bg-accent/70"
+                      />
+                      <span className="inline-flex items-center gap-1.5 rounded-pill border border-accent/50 bg-accent/15 px-3 py-1 text-xs font-semibold text-accent transition-colors group-hover:bg-accent/25">
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden
+                        >
+                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                        </svg>
+                        {t('routines.linkSuperset')}
+                      </span>
+                      <span
+                        aria-hidden
+                        className="h-px flex-1 bg-accent/40 transition-colors group-hover:bg-accent/70"
+                      />
                     </button>
                   )}
                 </div>
