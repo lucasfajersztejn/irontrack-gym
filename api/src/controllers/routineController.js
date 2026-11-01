@@ -32,6 +32,10 @@ const exerciseEntrySchema = z.object({
   // (solo tiene sentido para barra olímpica, que varía por gimnasio). El
   // modelo lo acepta null = "usa el peso baked del ejercicio".
   barWeightKg: z.number().min(0).max(50).optional(),
+  // groupId del superset: cliente lo genera (crypto.randomUUID()). Validamos
+  // forma (string <=64) para que no se cuele basura ni se pase un ObjectId
+  // confundido con una referencia real.
+  groupId: z.string().trim().max(64).nullable().optional(),
   notes: z.string().trim().max(500).optional(),
 })
 

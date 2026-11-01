@@ -38,6 +38,23 @@ const routineExerciseSchema = new mongoose.Schema({
    */
   barWeightKg: { type: Number, min: 0, max: 50, default: null },
 
+  /**
+   * groupId: identificador compartido por los ejercicios que forman un
+   * SUPERSERIE. Dos o más entradas con el mismo groupId se ejecutan como un
+   * bloque — una serie de cada, luego la siguiente ronda, sin descanso
+   * entre ejercicios dentro del bloque. null = ejercicio solo.
+   *
+   * El valor lo genera el cliente (crypto.randomUUID()); el servidor no
+   * reparte IDs. Validamos SOLO que sea un string razonable: ni formato ni
+   * longitud estricta, para no acoplarnos a una implementación concreta.
+   * Si en el futuro queremos obligar UUID v4 o similar lo apretamos aquí.
+   *
+   * No es un ObjectId porque no referencia nada: es solo un identificador
+   * de agrupación lógica. Entrevista: "sería una fk hacia una colección
+   * Group que no tiene datos propios, no vale la pena crearla".
+   */
+  groupId: { type: String, default: null, trim: true, maxlength: 64 },
+
   notes: { type: String, trim: true, maxlength: 500 },
 }, { _id: false });
 

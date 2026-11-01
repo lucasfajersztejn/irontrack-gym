@@ -38,6 +38,9 @@ const entrySchema = z.object({
   muscle: z.enum(MUSCLES),
   tracking: z.enum(TRACKING_TYPES),
   order: z.number().int().min(0),
+  // Superset: ver routine.model.js — cliente lo genera, servidor solo valida
+  // forma. nullable para "ejercicio solo".
+  groupId: z.string().trim().max(64).nullable().optional(),
   notes: z.string().trim().max(500).optional(),
   sets: z.array(setSchema).default([]),
 })
@@ -286,6 +289,10 @@ export async function createSession(req, res, next) {
         muscle: re.exercise.muscle,
         tracking: re.exercise.tracking,
         order: re.order,
+        // Copia del superset: la sesión arranca con los bloques tal cual
+        // los dejó la rutina; el usuario puede modificarlos durante el
+        // entreno sin tocar la plantilla.
+        groupId: re.groupId ?? null,
         notes: re.notes,
         sets: [], // vacíos: se van rellenando durante el entrenamiento.
       }))

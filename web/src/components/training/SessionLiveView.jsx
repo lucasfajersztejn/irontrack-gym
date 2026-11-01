@@ -4,7 +4,9 @@ import SessionExerciseCard from './SessionExerciseCard.jsx'
 import SessionStatsCard from './SessionStatsCard.jsx'
 import ExercisePickerSheet from '../routines/ExercisePickerSheet.jsx'
 import ConfirmModal from '../routines/ConfirmModal.jsx'
+import SupersetBlock from '../routines/SupersetBlock.jsx'
 import { useSessionLive } from '../../lib/useSessionLive.js'
+import { groupEntries } from '../../lib/supersets.js'
 
 /*
   Vista "live" de la sesión activa. Compone el header (nombre + cronómetro
@@ -26,6 +28,7 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
     addSet,
     addEntry,
     removeEntry,
+    setEntries,
   } = useSessionLive(session)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [confirmFinishOpen, setConfirmFinishOpen] = useState(false)
@@ -33,6 +36,19 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
   const alreadyIds = entries.map((e) =>
     typeof e.exercise === 'string' ? e.exercise : e.exercise?._id,
   )
+
+  // Durante el entreno el usuario NO reagrupa supersets a mano (fricción
+  // alta en gym); solo puede DESHACER un bloque si prefiere ejecutarlos
+  // por separado. Separar borra el groupId de todos los miembros del
+  // bloque — se escribe en el PATCH debounced igual que cualquier otro
+  // cambio de entries.
+  const ungroupBlock = (firstIndex) => {
+    setEntries((es) => {
+      const gid = es[firstIndex]?.groupId
+      if (!gid) return es
+      return es.map((e) => (e.groupId === gid ? { ...e, groupId: null } : e))
+    })
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -49,19 +65,45 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
             </p>
           </div>
         )}
-        {entries.map((entry, i) => (
-          <SessionExerciseCard
-            key={`${typeof entry.exercise === 'string' ? entry.exercise : entry.exercise?._id}-${i}`}
-            entry={entry}
-            onAddSet={() => addSet(i)}
-            onUpdateSet={(setIndex, patch) => updateSet(i, setIndex, patch)}
-            onToggleSetComplete={(setIndex, completed) =>
-              updateSet(i, setIndex, { completed })
-            }
-            onRemoveSet={(setIndex) => removeSet(i, setIndex)}
-            onRemoveEntry={() => removeEntry(i)}
-          />
-        ))}
+        {/*
+          Igual que el editor de rutinas: agrupamos entries contiguos del
+          mismo groupId en SupersetBlock. Durante el entreno el usuario puede
+          separar un bloque (para hacer los ejercicios con descanso) pero no
+          crear nuevos — crear bloques es flujo de planificación, no de
+          ejecución, y añadir un botón "agrupar" en vivo invita a errores
+          mientras suda.
+        */}
+        {groupEntries(entries).map((block, bi) => {
+          const isSuperset = block.items.length > 1
+          const rows = block.items.map(({ entry, index }) => (
+            <SessionExerciseCard
+              key={`${typeof entry.exercise === 'string' ? entry.exercise : entry.exercise?._id}-${index}`}
+              entry={entry}
+              onAddSet={() => addSet(index)}
+              onUpdateSet={(setIndex, patch) => updateSet(index, setIndex, patch)}
+              onToggleSetComplete={(setIndex, completed) =>
+                updateSet(index, setIndex, { completed })
+              }
+              onRemoveSet={(setIndex) => removeSet(index, setIndex)}
+              onRemoveEntry={() => removeEntry(index)}
+            />
+          ))
+          if (isSuperset) {
+            return (
+              <SupersetBlock
+                key={block.groupId}
+                onUngroup={() => ungroupBlock(block.items[0].index)}
+              >
+                {rows}
+              </SupersetBlock>
+            )
+          }
+          return (
+            <div key={`solo-${bi}`} className="flex flex-col gap-2">
+              {rows}
+            </div>
+          )
+        })}
       </div>
 
       <button

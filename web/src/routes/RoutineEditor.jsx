@@ -5,8 +5,10 @@ import ExerciseEditorRow from '../components/routines/ExerciseEditorRow.jsx'
 import ExercisePickerSheet from '../components/routines/ExercisePickerSheet.jsx'
 import ConfirmModal from '../components/routines/ConfirmModal.jsx'
 import MuscleChips from '../components/MuscleChips.jsx'
+import SupersetBlock from '../components/routines/SupersetBlock.jsx'
 import { useRoutine } from '../lib/useRoutine.js'
 import { api } from '../lib/api.js'
+import { groupEntries, mergeWithNext, unmergeAt } from '../lib/supersets.js'
 
 /*
   Deriva los grupos trabajados por una rutina a partir del array populado de
@@ -69,6 +71,7 @@ function normalize(routine) {
       targetDurationSec: e.targetDurationSec ?? null,
       targetDistanceM: e.targetDistanceM ?? null,
       barWeightKg: e.barWeightKg ?? null,
+      groupId: e.groupId ?? null,
       notes: e.notes ?? '',
     })),
   }
@@ -87,6 +90,7 @@ function toApiPayload(state) {
       targetDurationSec: e.targetDurationSec ?? undefined,
       targetDistanceM: e.targetDistanceM ?? undefined,
       barWeightKg: e.barWeightKg ?? undefined,
+      groupId: e.groupId ?? undefined,
       notes: e.notes?.trim() || undefined,
     })),
   }
@@ -169,6 +173,16 @@ export default function RoutineEditor() {
     setState((s) => ({ ...s, entries: s.entries.filter((_, idx) => idx !== i) }))
   }
 
+  // Merge/unmerge para la UI de supersets. mergeWithNext toma el entry en
+  // `index` y lo agrupa con el siguiente; unmergeAt saca el entry de su
+  // grupo (si queda solo un miembro, también se saca por consistencia).
+  function groupWithNext(i) {
+    setState((s) => ({ ...s, entries: mergeWithNext(s.entries, i) }))
+  }
+  function ungroup(i) {
+    setState((s) => ({ ...s, entries: unmergeAt(s.entries, i) }))
+  }
+
   function addExercise(exercise) {
     const defaults = TRACKING_DEFAULTS[exercise.tracking] ?? {}
     setState((s) => ({
@@ -183,6 +197,7 @@ export default function RoutineEditor() {
           targetDurationSec: defaults.targetDurationSec ?? null,
           targetDistanceM: defaults.targetDistanceM ?? null,
           barWeightKg: null,
+          groupId: null,
           notes: '',
         },
       ],
@@ -341,19 +356,70 @@ export default function RoutineEditor() {
             <p className="text-sm text-text-muted">{t('routines.emptySub')}</p>
           </div>
         ) : (
+          /*
+            Renderizamos agrupando por bloques: cada bloque es un run de
+            entries CONSECUTIVOS con el mismo groupId. Los bloques con más
+            de 1 miembro se envuelven en SupersetBlock (borde acento + chip
+            "SUPERSET"); los de 1 miembro renderizan la fila sin wrapper. El
+            botón "Agrupar con el siguiente" aparece entre bloques consecutivos
+            cuando no están ya enlazados; "Separar" aparece a nivel de bloque.
+          */
           <div className="flex flex-col gap-2">
-            {state.entries.map((entry, i) => (
-              <ExerciseEditorRow
-                key={`${entry.exercise._id}-${i}`}
-                entry={entry}
-                onChange={(patch) => updateEntry(i, patch)}
-                onMoveUp={() => move(i, -1)}
-                onMoveDown={() => move(i, 1)}
-                onRemove={() => remove(i)}
-                canMoveUp={i > 0}
-                canMoveDown={i < state.entries.length - 1}
-              />
-            ))}
+            {groupEntries(state.entries).map((block, bi, blocks) => {
+              const isSuperset = block.items.length > 1
+              const lastEntryIndex = block.items[block.items.length - 1].index
+              const nextBlock = blocks[bi + 1]
+              const canLinkToNext = Boolean(nextBlock)
+              const rows = block.items.map(({ entry, index }) => (
+                <ExerciseEditorRow
+                  key={`${entry.exercise._id}-${index}`}
+                  entry={entry}
+                  onChange={(patch) => updateEntry(index, patch)}
+                  onMoveUp={() => move(index, -1)}
+                  onMoveDown={() => move(index, 1)}
+                  onRemove={() => remove(index)}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < state.entries.length - 1}
+                />
+              ))
+              return (
+                <div
+                  key={block.groupId ?? `solo-${bi}`}
+                  className="flex flex-col gap-2"
+                >
+                  {isSuperset ? (
+                    <SupersetBlock onUngroup={() => ungroup(block.items[0].index)}>
+                      {rows}
+                    </SupersetBlock>
+                  ) : (
+                    rows
+                  )}
+                  {canLinkToNext && (
+                    <button
+                      type="button"
+                      onClick={() => groupWithNext(lastEntryIndex)}
+                      className="press mx-auto inline-flex items-center gap-1.5 rounded-pill border border-dashed border-border bg-surface px-3 py-1 text-[11px] font-medium text-text-muted transition-[filter,transform,color,background-color] hover:bg-surface-2 hover:text-text"
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      {t('routines.linkSuperset')}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </section>

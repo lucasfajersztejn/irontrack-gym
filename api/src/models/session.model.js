@@ -55,6 +55,15 @@ const entrySchema = new mongoose.Schema({
   order: { type: Number, required: true, min: 0 },
   notes: { type: String, trim: true, maxlength: 500 },
 
+  /**
+   * groupId del superset (ver routine.model.js). Se copia al crear la sesión
+   * desde una rutina y el usuario puede modificarlo durante el entreno al
+   * reorganizar bloques. Es información puramente visual + de comportamiento
+   * del rest timer: dos entries en el mismo bloque no deberían arrancar
+   * descanso automático entre ellos.
+   */
+  groupId: { type: String, default: null, trim: true, maxlength: 64 },
+
   sets: { type: [setSchema], default: [] },
 }, { _id: false });
 

@@ -180,6 +180,9 @@ export function useSessionLive(initialSession) {
       }),
     )
 
+  // setEntries plano para transformaciones de bloque (p. ej. agrupar /
+  // desagrupar superserie con las utilidades de lib/supersets.js). Es la
+  // misma API que un useState, así que el caller puede pasar un reducer.
   return {
     entries,
     status,
@@ -189,5 +192,6 @@ export function useSessionLive(initialSession) {
     addSet,
     updateSet,
     removeSet,
+    setEntries,
   }
 }
