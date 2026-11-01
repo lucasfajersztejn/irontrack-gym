@@ -103,14 +103,25 @@ export default function ExerciseRow({ exercise, onClick }) {
   )
 
   if (onClick) {
+    // Mismo motivo que en ExerciseCard: no podemos ser <button> porque la row
+    // contiene FavoriteButton (otro <button>). role="button" + onKeyDown
+    // mantiene la accesibilidad.
+    const handleKey = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onClick(exercise)
+      }
+    }
     return (
-      <button
-        type="button"
+      <article
+        role="button"
+        tabIndex={0}
         onClick={() => onClick(exercise)}
-        className="card-liquid press group flex w-full items-center gap-3 rounded-container p-3 text-left transition-[filter,transform] hover:brightness-[1.08]"
+        onKeyDown={handleKey}
+        className="card-liquid press group flex w-full cursor-pointer items-center gap-3 rounded-container p-3 text-left transition-[filter,transform] hover:brightness-[1.08]"
       >
         {content}
-      </button>
+      </article>
     )
   }
 

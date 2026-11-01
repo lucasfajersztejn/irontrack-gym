@@ -135,14 +135,28 @@ export default function ExerciseCard({ exercise, onClick }) {
   )
 
   if (onClick) {
+    /*
+      role="button" sobre <article> en lugar de <button>: la card contiene
+      un FavoriteButton real y <button><button/></button> es HTML inválido
+      (React chilla en dev y causa warnings en SSR). Esta forma pasa la
+      a11y mientras mantiene el FavoriteButton como botón real.
+    */
+    const handleKey = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onClick(exercise)
+      }
+    }
     return (
-      <button
-        type="button"
+      <article
+        role="button"
+        tabIndex={0}
         onClick={() => onClick(exercise)}
-        className="card-liquid press group flex flex-col gap-3 rounded-container p-3 text-left transition-[filter,transform] hover:brightness-[1.08]"
+        onKeyDown={handleKey}
+        className="card-liquid press group flex cursor-pointer flex-col gap-3 rounded-container p-3 text-left transition-[filter,transform] hover:brightness-[1.08]"
       >
         {content}
-      </button>
+      </article>
     )
   }
 
