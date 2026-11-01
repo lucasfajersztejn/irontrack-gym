@@ -13,8 +13,10 @@ import { api } from '../../lib/api.js'
   - Un solo idioma en el nombre: el que esté activo en i18n. Pedir ES+EN para
     "press loco de Juan" es fricción injustificada; el backend acepta uno de
     los dos (localizedNameSchema).
-  - Sin instructions ni secondaryMuscles: campos de power-user que llegarán
-    cuando exista una vista de edición dedicada.
+  - Músculos secundarios (opcional, hasta 5): chips togglables para que el
+    usuario pueda marcar varios sin desplegar un menú. Los secundarios no
+    pueden coincidir con el primario (lo deseleccionamos si se activó antes).
+    `instructions` sigue sin UI: cuando exista una vista de edición dedicada.
   - Tracking como radio en lugar de select: son 4 opciones con significados
     muy distintos y el radio los pone todos a la vista; un select los
     esconde detrás de un click y obliga a leer el label activo para saber
@@ -39,10 +41,13 @@ const EQUIPMENT = [
 
 const TRACKING_TYPES = ['weight_reps', 'reps', 'time', 'distance_time']
 
+const MAX_SECONDARY = 5
+
 const EMPTY = {
   name: '',
   bodyPart: '',
   muscle: '',
+  secondaryMuscles: [],
   equipment: 'other',
   tracking: 'weight_reps',
 }
@@ -94,6 +99,9 @@ export default function CustomExerciseSheet({ open, onClose, onCreated, initialN
         equipment: form.equipment,
       }
       if (form.bodyPart) payload.bodyPart = form.bodyPart
+      if (form.secondaryMuscles.length > 0) {
+        payload.secondaryMuscles = form.secondaryMuscles
+      }
       const created = await api('/api/exercises', {
         method: 'POST',
         body: payload,
@@ -169,7 +177,15 @@ export default function CustomExerciseSheet({ open, onClose, onCreated, initialN
           <Field label={t('customExercise.fields.muscle')} required>
             <Select
               value={form.muscle}
-              onChange={(muscle) => setForm((f) => ({ ...f, muscle }))}
+              onChange={(muscle) =>
+                setForm((f) => ({
+                  ...f,
+                  muscle,
+                  // Si el nuevo primario estaba como secundario, lo sacamos:
+                  // un músculo no puede ser las dos cosas a la vez.
+                  secondaryMuscles: f.secondaryMuscles.filter((m) => m !== muscle),
+                }))
+              }
               options={MUSCLES.map((m) => ({
                 value: m,
                 label: t(`catalog.muscles.${m}`, { defaultValue: m }),
@@ -202,6 +218,55 @@ export default function CustomExerciseSheet({ open, onClose, onCreated, initialN
             />
           </Field>
         </div>
+
+        <Field
+          label={t('customExercise.fields.secondary', {
+            count: form.secondaryMuscles.length,
+            max: MAX_SECONDARY,
+          })}
+          hint={t('customExercise.fields.secondaryHint')}
+        >
+          {/*
+            Chips togglables para los secundarios. Más digerible que un
+            multi-select nativo en móvil y da feedback inmediato de cuántos
+            llevas (contador en el label). Tope en 5 para alinear con la
+            validación del backend (createSchema.secondaryMuscles.max(5)):
+            cuando se alcanza, los chips no seleccionados quedan atenuados
+            y no responden, para explicar visualmente por qué.
+          */}
+          <div className="flex flex-wrap gap-1.5">
+            {MUSCLES.filter((m) => m !== form.muscle).map((m) => {
+              const picked = form.secondaryMuscles.includes(m)
+              const atLimit =
+                !picked && form.secondaryMuscles.length >= MAX_SECONDARY
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  disabled={atLimit}
+                  aria-pressed={picked}
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      secondaryMuscles: picked
+                        ? f.secondaryMuscles.filter((x) => x !== m)
+                        : [...f.secondaryMuscles, m],
+                    }))
+                  }
+                  className={`press rounded-pill border px-2.5 py-1 text-[11px] transition-[filter,transform,background-color,border-color,color] ${
+                    picked
+                      ? 'border-accent bg-accent/15 font-semibold text-accent'
+                      : atLimit
+                        ? 'cursor-not-allowed border-border/40 bg-surface/50 text-text-muted/60'
+                        : 'border-border/60 bg-surface text-text-muted hover:text-text'
+                  }`}
+                >
+                  {t(`catalog.muscles.${m}`, { defaultValue: m })}
+                </button>
+              )
+            })}
+          </div>
+        </Field>
 
         <Field label={t('customExercise.fields.tracking')}>
           {/*
@@ -250,13 +315,16 @@ export default function CustomExerciseSheet({ open, onClose, onCreated, initialN
   )
 }
 
-function Field({ label, required, children }) {
+function Field({ label, required, hint, children }) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
         {label}
         {required && <span className="ml-1 text-accent">*</span>}
       </span>
+      {hint && (
+        <span className="text-[11px] normal-case text-text-muted">{hint}</span>
+      )}
       {children}
     </label>
   )

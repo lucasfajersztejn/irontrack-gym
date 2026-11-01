@@ -72,7 +72,8 @@
       "all": "All",
       "equipment": "Equipment",
       "equipmentAny": "Any equipment",
-      "mine": "My custom"
+      "mine": "My custom",
+      "favorites": "Favorites"
     },
     "bodyParts": {
       "chest": "Chest",
@@ -143,6 +144,7 @@
     "alreadyPicked": "Already added",
     "pickerEmptyWithQuery": "Nothing matches \"{{query}}\"",
     "pickerEmptyWithQuerySub": "Create your own exercise with that name.",
+    "infoExercise": "View details for \"{{name}}\"",
     "moveUp": "Move up",
     "moveDown": "Move down",
     "removeExercise": "Remove",
@@ -282,6 +284,10 @@
     "emptyTitle": "Empty week",
     "emptySub": "No completed sets this week yet. Finish your first session and it'll appear here."
   },
+  "favorites": {
+    "add": "Add to favorites",
+    "remove": "Remove from favorites"
+  },
   "customExercise": {
     "title": "New exercise",
     "subtitle": "Only you'll see it in your catalog.",
@@ -299,6 +305,8 @@
     "fields": {
       "name": "Name",
       "muscle": "Primary muscle",
+      "secondary": "Secondary muscles ({{count}}/{{max}})",
+      "secondaryHint": "Optional. Mark the assisting muscles.",
       "bodyPart": "Group",
       "equipment": "Equipment",
       "tracking": "How you track it"

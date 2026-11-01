@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRightIcon } from '../icons/NavIcons.jsx'
+import FavoriteButton from './FavoriteButton.jsx'
 
 /*
   Fila compacta del catálogo (mobile). Thumbnail cuadrado pequeño a la
@@ -66,21 +67,20 @@ function Chip({ children, tone = 'default' }) {
   )
 }
 
-export default function ExerciseRow({ exercise }) {
+/*
+  Como ExerciseCard, acepta onClick para convertirse en button; sin él
+  mantiene semántica article para usos decorativos (p. ej. dentro del picker
+  donde el click lo gestiona el parent).
+*/
+export default function ExerciseRow({ exercise, onClick }) {
   const { t, i18n } = useTranslation()
   const name =
     exercise.name?.[i18n.language] ?? exercise.name?.es ?? exercise.name?.en ?? '—'
   const isCustom = Boolean(exercise.createdBy)
 
-  return (
-    <article className="card-liquid group flex items-center gap-3 rounded-container p-3 transition-[filter] hover:brightness-[1.08]">
+  const content = (
+    <>
       <Thumb src={exercise.gifUrl} />
-      {/*
-        Mismo patrón que en ExerciseCard: alto mínimo de 2 líneas en el
-        nombre fija la posición vertical de chip y equipamiento en toda la
-        lista. En mobile es más cantoso porque las filas se escanean una
-        detrás de otra y cualquier salto desalinea el ojo.
-      */}
       <div className="min-w-0 flex-1">
         <h3 className="line-clamp-2 min-h-[2.1rem] font-display text-sm font-semibold leading-tight text-text">
           {name}
@@ -97,7 +97,26 @@ export default function ExerciseRow({ exercise }) {
           })}
         </span>
       </div>
+      <FavoriteButton exerciseId={exercise._id} size="sm" />
       <ChevronRightIcon className="h-4 w-4 text-text-muted" />
+    </>
+  )
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={() => onClick(exercise)}
+        className="card-liquid press group flex w-full items-center gap-3 rounded-container p-3 text-left transition-[filter,transform] hover:brightness-[1.08]"
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return (
+    <article className="card-liquid group flex items-center gap-3 rounded-container p-3 transition-[filter] hover:brightness-[1.08]">
+      {content}
     </article>
   )
 }

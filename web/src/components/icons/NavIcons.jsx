@@ -61,6 +61,21 @@ export function ProfileIcon({ className = '' }) {
 }
 
 /*
+  DumbbellIcon: mancuerna usada como icono de favorito ("estrella" pero con
+  identidad propia de IronTrack). Se pinta `text-warn` cuando el ejercicio
+  está marcado (amarillo), `text-text-muted` en reposo. Trazo 1.8 como el
+  resto para que se mantenga en familia. En el nav bar NO se usa (allí la
+  mancuerna chocaría con CatalogIcon por silueta).
+*/
+export function DumbbellIcon({ className = '' }) {
+  return (
+    <svg {...baseProps} className={className}>
+      <path d="M3 10v4M21 10v4M6.5 7v10M17.5 7v10M6.5 12h11" />
+    </svg>
+  )
+}
+
+/*
   KettlebellIcon: el icono de entrenar. Descartamos la mancuerna porque su
   silueta (dos barras verticales + barra horizontal) coincide con la del
   CatalogIcon y en el nav bar las dos leían como el mismo tab. La kettlebell

@@ -119,6 +119,21 @@ const userSchema = new mongoose.Schema({
    */
   privacy: { type: String, enum: PRIVACY_LEVELS, default: 'private' },
 
+  /**
+   * Ejercicios marcados como favoritos por este usuario. Un simple array de
+   * ObjectIds al catálogo (global o custom del propio usuario), sin colección
+   * aparte: la cardinalidad real es pequeña (<100 por usuario) y nos ahorramos
+   * un join en cada lectura del catálogo.
+   *
+   * `addToSet` en el controller garantiza que no haya duplicados; el frontend
+   * puede llamar al endpoint repetido sin tener que leer el estado antes.
+   */
+  favoriteExercises: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Exercise',
+    default: [],
+  }],
+
 }, {
   // Añade createdAt y updatedAt automáticamente y los mantiene al día.
   timestamps: true,

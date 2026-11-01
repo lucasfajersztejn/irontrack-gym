@@ -1,5 +1,7 @@
+import mongoose from 'mongoose'
 import { z } from 'zod'
 import User from '../models/user.model.js'
+import Exercise from '../models/exercise.model.js'
 import {
   RESERVED_USERNAMES,
   LOCALES,
@@ -31,6 +33,7 @@ export async function getMe(req, res, next) {
       username: user.username ?? null,
       privacy: user.privacy ?? 'private',
       settings: user.settings ?? null,
+      favoriteExercises: user.favoriteExercises ?? [],
 
       // La única señal "derivada" del endpoint: el frontend NO calcula esto
       // (no sabe si vamos a añadir más condiciones de onboarding mañana).
@@ -110,6 +113,54 @@ export async function updateSettings(req, res, next) {
       return res.status(404).json({ message: 'Usuario no encontrado' })
     }
     res.json({ settings: user.settings })
+  } catch (err) {
+    next(err)
+  }
+}
+
+/**
+ * PUT /api/me/favorites/:exerciseId
+ * DELETE /api/me/favorites/:exerciseId
+ *
+ * Toggle de favoritos atómico: $addToSet / $pull sobre `favoriteExercises`.
+ * Antes de añadir validamos que el ejercicio es VISIBLE para el usuario (del
+ * catálogo global o propio custom); si no, 404 — así no se puede favoritear
+ * un custom ajeno guessing el ObjectId.
+ */
+export async function addFavorite(req, res, next) {
+  if (!mongoose.isValidObjectId(req.params.exerciseId)) {
+    return res.status(404).json({ message: 'Ejercicio no encontrado' })
+  }
+  try {
+    const exercise = await Exercise.findOne({
+      _id: req.params.exerciseId,
+      $or: [{ createdBy: null }, { createdBy: req.user.id }],
+    }).select('_id')
+    if (!exercise) {
+      return res.status(404).json({ message: 'Ejercicio no encontrado' })
+    }
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $addToSet: { favoriteExercises: exercise._id } },
+      { new: true },
+    ).select('favoriteExercises')
+    res.json({ favoriteExercises: user.favoriteExercises })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function removeFavorite(req, res, next) {
+  if (!mongoose.isValidObjectId(req.params.exerciseId)) {
+    return res.status(404).json({ message: 'Ejercicio no encontrado' })
+  }
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $pull: { favoriteExercises: req.params.exerciseId } },
+      { new: true },
+    ).select('favoriteExercises')
+    res.json({ favoriteExercises: user.favoriteExercises })
   } catch (err) {
     next(err)
   }

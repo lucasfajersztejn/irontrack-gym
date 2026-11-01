@@ -72,7 +72,8 @@
       "all": "Todos",
       "equipment": "Equipamiento",
       "equipmentAny": "Cualquier equipamiento",
-      "mine": "Mis custom"
+      "mine": "Mis custom",
+      "favorites": "Favoritos"
     },
     "bodyParts": {
       "chest": "Pecho",
@@ -143,6 +144,7 @@
     "alreadyPicked": "Ya en la rutina",
     "pickerEmptyWithQuery": "Nada con «{{query}}»",
     "pickerEmptyWithQuerySub": "Crea tu propio ejercicio con este nombre.",
+    "infoExercise": "Ver detalles de «{{name}}»",
     "moveUp": "Mover arriba",
     "moveDown": "Mover abajo",
     "removeExercise": "Quitar",
@@ -282,6 +284,10 @@
     "emptyTitle": "Semana en blanco",
     "emptySub": "Ninguna serie marcada esta semana. Haz tu primera sesión y aparecerá aquí."
   },
+  "favorites": {
+    "add": "Añadir a favoritos",
+    "remove": "Quitar de favoritos"
+  },
   "customExercise": {
     "title": "Nuevo ejercicio",
     "subtitle": "Solo tú lo verás en tu catálogo.",
@@ -299,6 +305,8 @@
     "fields": {
       "name": "Nombre",
       "muscle": "Músculo principal",
+      "secondary": "Músculos secundarios ({{count}}/{{max}})",
+      "secondaryHint": "Opcional. Marca los músculos asistentes.",
       "bodyPart": "Grupo",
       "equipment": "Equipamiento",
       "tracking": "Cómo lo registras"

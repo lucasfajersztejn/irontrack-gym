@@ -4,6 +4,7 @@ import SearchInput from '../catalog/SearchInput.jsx'
 import FilterPills from '../catalog/FilterPills.jsx'
 import ExerciseRow from '../catalog/ExerciseRow.jsx'
 import CustomExerciseSheet from '../catalog/CustomExerciseSheet.jsx'
+import ExerciseHelpSheet from '../training/ExerciseHelpSheet.jsx'
 import { useCatalog } from '../../lib/useCatalog.js'
 
 /*
@@ -41,6 +42,7 @@ export default function ExercisePickerSheet({
   const { loading, exercises, refetch } = useCatalog(filters)
   const alreadySet = new Set(alreadyPickedIds)
   const [createOpen, setCreateOpen] = useState(false)
+  const [infoExercise, setInfoExercise] = useState(null)
 
   // Resetear filtros al cerrar para que la próxima apertura arranque limpia.
   useEffect(() => {
@@ -162,41 +164,74 @@ export default function ExercisePickerSheet({
             exercises.map((ex) => {
               const picked = alreadySet.has(ex._id)
               return (
-                <button
+                /*
+                  Dos botones hermanos: el grande cubre el 90% del área y
+                  dispara onPick; el (i) a la derecha abre el modal de info
+                  sin añadir el ejercicio. Separados a nivel DOM para no caer
+                  en el anti-patrón <button><button/></button>.
+                */
+                <div
                   key={ex._id}
-                  type="button"
-                  onClick={() => onPick(ex)}
-                  aria-pressed={picked}
-                  aria-label={
-                    picked
-                      ? `${ex.name?.es ?? ex.name?.en} · ${t('routines.alreadyPicked')}`
-                      : ex.name?.es ?? ex.name?.en
-                  }
-                  className={`press relative block w-full rounded-container text-left transition-[filter,transform] hover:brightness-[1.08] ${
+                  className={`relative flex items-stretch gap-1 rounded-container ${
                     picked ? 'ring-1 ring-accent/40' : ''
                   }`}
                 >
-                  <ExerciseRow exercise={ex} />
-                  {picked && (
-                    <span
-                      aria-hidden
-                      className="absolute left-10 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-bg shadow-[0_0_12px_-2px_color-mix(in_srgb,var(--color-accent)_70%,transparent)]"
-                    >
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                  <button
+                    type="button"
+                    onClick={() => onPick(ex)}
+                    aria-pressed={picked}
+                    aria-label={
+                      picked
+                        ? `${ex.name?.es ?? ex.name?.en} · ${t('routines.alreadyPicked')}`
+                        : ex.name?.es ?? ex.name?.en
+                    }
+                    className="press relative block flex-1 rounded-container text-left transition-[filter,transform] hover:brightness-[1.08]"
+                  >
+                    <ExerciseRow exercise={ex} />
+                    {picked && (
+                      <span
+                        aria-hidden
+                        className="absolute left-10 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-bg shadow-[0_0_12px_-2px_color-mix(in_srgb,var(--color-accent)_70%,transparent)]"
                       >
-                        <path d="m5 12 5 5L20 7" />
-                      </svg>
-                    </span>
-                  )}
-                </button>
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="m5 12 5 5L20 7" />
+                        </svg>
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInfoExercise(ex)}
+                    aria-label={t('routines.infoExercise', {
+                      name: ex.name?.es ?? ex.name?.en,
+                    })}
+                    className="press flex w-10 shrink-0 items-center justify-center rounded-container border border-border/60 bg-surface text-text-muted transition-[filter,transform,color,background-color] hover:bg-surface-2 hover:text-text"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 8h.01M11 12h1v4h1" />
+                    </svg>
+                  </button>
+                </div>
               )
             })
           )}
@@ -208,6 +243,12 @@ export default function ExercisePickerSheet({
         onClose={() => setCreateOpen(false)}
         onCreated={handleCreated}
         initialName={filters.search}
+      />
+
+      <ExerciseHelpSheet
+        open={Boolean(infoExercise)}
+        onClose={() => setInfoExercise(null)}
+        exercise={infoExercise}
       />
     </div>
   )
