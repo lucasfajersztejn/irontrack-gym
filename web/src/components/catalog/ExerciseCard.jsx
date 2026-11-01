@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import FavoriteButton from './FavoriteButton.jsx'
 
 /*
   Card del catálogo (desktop). GIF cuadrado grande arriba, nombre debajo,
@@ -78,7 +79,13 @@ function Chip({ children, tone = 'default' }) {
   )
 }
 
-export default function ExerciseCard({ exercise }) {
+/*
+  Si recibimos onClick la card se convierte en button para abrir el modal de
+  info (GIF grande + instrucciones). Si no, mantiene semántica de article
+  (uso decorativo). Mantenemos el patrón "same component, two renders"
+  antes de crear dos archivos paralelos.
+*/
+export default function ExerciseCard({ exercise, onClick }) {
   const { t, i18n } = useTranslation()
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -87,22 +94,26 @@ export default function ExerciseCard({ exercise }) {
     exercise.name?.[i18n.language] ?? exercise.name?.es ?? exercise.name?.en ?? '—'
   const isCustom = Boolean(exercise.createdBy)
 
-  return (
-    <article className="card-liquid group flex flex-col gap-3 rounded-container p-3 transition-[filter] hover:brightness-[1.08]">
-      <GifThumb
-        src={exercise.gifUrl}
-        loaded={loaded}
-        failed={failed}
-        onLoad={() => setLoaded(true)}
-        onError={() => setFailed(true)}
-      />
+  const content = (
+    <>
+      <div className="relative">
+        <GifThumb
+          src={exercise.gifUrl}
+          loaded={loaded}
+          failed={failed}
+          onLoad={() => setLoaded(true)}
+          onError={() => setFailed(true)}
+        />
+        <div className="absolute right-1.5 top-1.5">
+          <FavoriteButton exerciseId={exercise._id} />
+        </div>
+      </div>
       {/*
         min-h de 2 líneas en el nombre bloquea la posición del chip y del
         equipamiento: aunque el nombre sea de una sola línea, reserva el
         espacio de dos, así todos los cards presentan el chip a la misma
         altura y el equipamiento también. line-clamp-2 corta por arriba si
-        el nombre fuera más largo. Fija el ritmo vertical sin fijar la
-        altura del card: la rejilla sigue decidiendo cuánto mide cada fila.
+        el nombre fuera más largo.
       */}
       <div className="flex flex-col gap-1.5">
         <h3 className="line-clamp-2 min-h-[2.1rem] font-display text-sm font-semibold leading-tight text-text">
@@ -120,6 +131,38 @@ export default function ExerciseCard({ exercise }) {
           })}
         </span>
       </div>
+    </>
+  )
+
+  if (onClick) {
+    /*
+      role="button" sobre <article> en lugar de <button>: la card contiene
+      un FavoriteButton real y <button><button/></button> es HTML inválido
+      (React chilla en dev y causa warnings en SSR). Esta forma pasa la
+      a11y mientras mantiene el FavoriteButton como botón real.
+    */
+    const handleKey = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onClick(exercise)
+      }
+    }
+    return (
+      <article
+        role="button"
+        tabIndex={0}
+        onClick={() => onClick(exercise)}
+        onKeyDown={handleKey}
+        className="card-liquid press group flex cursor-pointer flex-col gap-3 rounded-container p-3 text-left transition-[filter,transform] hover:brightness-[1.08]"
+      >
+        {content}
+      </article>
+    )
+  }
+
+  return (
+    <article className="card-liquid group flex flex-col gap-3 rounded-container p-3 transition-[filter] hover:brightness-[1.08]">
+      {content}
     </article>
   )
 }

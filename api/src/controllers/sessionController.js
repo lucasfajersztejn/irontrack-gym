@@ -38,6 +38,9 @@ const entrySchema = z.object({
   muscle: z.enum(MUSCLES),
   tracking: z.enum(TRACKING_TYPES),
   order: z.number().int().min(0),
+  // Superset: ver routine.model.js — cliente lo genera, servidor solo valida
+  // forma. nullable para "ejercicio solo".
+  groupId: z.string().trim().max(64).nullable().optional(),
   notes: z.string().trim().max(500).optional(),
   sets: z.array(setSchema).default([]),
 })
@@ -162,10 +165,17 @@ export async function listSessions(req, res, next) {
  */
 export async function getActiveSession(req, res, next) {
   try {
+    // populate solo en /active: la vista "live" necesita gifUrl, instructions,
+    // usesBar y defaultBarWeightKg del catálogo para pintar el GIF del help,
+    // el hint de peso total con barra, y los chips. La denormalización del
+    // modelo (exerciseName, muscle, tracking) basta para historial, pero el
+    // training en vivo lee más. No tocamos listSessions/getSession porque
+    // esas rutas se consumen desde cards densas donde el payload extra sería
+    // ruido.
     const session = await Session.findOne({
       user: req.user.id,
       endedAt: null,
-    })
+    }).populate('entries.exercise')
     // 200 con null (no 404): "no hay activa" es una respuesta normal, no un
     // error. El frontend tiene que distinguir "ruta rota" de "nada abierto".
     res.json(session || null)
@@ -183,10 +193,16 @@ export async function getSession(req, res, next) {
     return res.status(404).json({ message: 'Sesión no encontrada' })
   }
   try {
+    // populate igual que en /active: /stats/week y useHomeData leen entries
+    // para desglosar por grupo muscular (incluidos los secundarios) y
+    // calcular 1RM; sin populate perderíamos `secondaryMuscles` que solo
+    // vive en el catálogo. La denormalización del modelo (exerciseName,
+    // muscle, tracking) sigue siendo el ancla para historial — populate
+    // añade capacidad analítica sin romperla.
     const session = await Session.findOne({
       _id: req.params.id,
       user: req.user.id,
-    })
+    }).populate('entries.exercise')
     if (!session) {
       return res.status(404).json({ message: 'Sesión no encontrada' })
     }
@@ -273,6 +289,10 @@ export async function createSession(req, res, next) {
         muscle: re.exercise.muscle,
         tracking: re.exercise.tracking,
         order: re.order,
+        // Copia del superset: la sesión arranca con los bloques tal cual
+        // los dejó la rutina; el usuario puede modificarlos durante el
+        // entreno sin tocar la plantilla.
+        groupId: re.groupId ?? null,
         notes: re.notes,
         sets: [], // vacíos: se van rellenando durante el entrenamiento.
       }))

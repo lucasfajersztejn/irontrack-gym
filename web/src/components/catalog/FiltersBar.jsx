@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next'
+import { DumbbellIcon } from '../icons/NavIcons.jsx'
 
 /*
-  Fila secundaria de filtros: dropdown de equipamiento + toggle "Mis custom".
+  Fila secundaria de filtros: dropdown de equipamiento + toggle "Favoritos"
+  (mancuerna amarilla cuando está activo) + toggle "Mis custom".
   El native select va bien aquí: cumple con teclado, con el screen reader de
   gimnasio (si existe) y evita montarnos un combobox a mano.
 */
@@ -24,8 +26,10 @@ const EQUIPMENT_VALUES = [
 export default function FiltersBar({
   equipment,
   mine,
+  favorites,
   onEquipmentChange,
   onMineChange,
+  onFavoritesChange,
 }) {
   const { t } = useTranslation()
   return (
@@ -60,6 +64,20 @@ export default function FiltersBar({
           </svg>
         </span>
       </label>
+
+      <button
+        type="button"
+        onClick={() => onFavoritesChange(!favorites)}
+        aria-pressed={favorites}
+        className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-sm font-medium transition-colors ${
+          favorites
+            ? 'border-transparent bg-warn/15 text-warn'
+            : 'border-border bg-surface text-text-muted hover:text-text'
+        }`}
+      >
+        <DumbbellIcon className="h-4 w-4" />
+        {t('catalog.filters.favorites')}
+      </button>
 
       <button
         type="button"

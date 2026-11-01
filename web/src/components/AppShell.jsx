@@ -3,9 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { useUser } from '../contexts/UserContext.jsx'
 import Logo from './icons/Logo.jsx'
 import {
+  CalendarIcon,
   CatalogIcon,
   HistoryIcon,
   HomeIcon,
+  KettlebellIcon,
   ProfileIcon,
   RoutinesIcon,
 } from './icons/NavIcons.jsx'
@@ -35,9 +37,19 @@ import {
   /profile sigue existiendo (redirige) para que un enlace externo o un
   bookmark antiguo no caiga en 404.
 */
+/*
+  Siete destinos en el nav: Home / Rutinas / Entrenar / Semana / Catálogo /
+  Historial / Perfil. Rutinas → Entrenar → Semana queda como "cadena del
+  entreno": preparar, hacer, revisar; viven juntos para que el pulgar
+  recorra el flujo sin saltos. En móvil con `text-[11px]` cabe en pantallas
+  de 360 px+; si en pruebas apretamos, el candidato a mover es Perfil
+  (hacia un avatar en el header).
+*/
 const TABS = [
   { to: '/home', labelKey: 'nav.home', Icon: HomeIcon },
   { to: '/routines', labelKey: 'nav.routines', Icon: RoutinesIcon },
+  { to: '/training', labelKey: 'nav.training', Icon: KettlebellIcon },
+  { to: '/stats/week', labelKey: 'nav.week', Icon: CalendarIcon },
   { to: '/catalog', labelKey: 'nav.catalog', Icon: CatalogIcon },
   { to: '/history', labelKey: 'nav.history', Icon: HistoryIcon },
   { to: '/settings', labelKey: 'nav.profile', Icon: ProfileIcon },

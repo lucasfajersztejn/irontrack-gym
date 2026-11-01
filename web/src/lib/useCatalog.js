@@ -24,6 +24,7 @@ function buildQuery(filters) {
   if (filters.equipment) params.set('equipment', filters.equipment)
   if (filters.muscle) params.set('muscle', filters.muscle)
   if (filters.mine) params.set('mine', '1')
+  if (filters.favorites) params.set('favorites', '1')
   const qs = params.toString()
   return qs ? `/api/exercises?${qs}` : '/api/exercises'
 }
@@ -67,7 +68,7 @@ export function useCatalog(filters) {
     // Dependemos explícitamente de cada filtro (y del search debounced) para
     // que un cambio no amortiguado dispare el fetch sin esperar al timeout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, filters.bodyPart, filters.equipment, filters.muscle, filters.mine, refetchNonce])
+  }, [debouncedSearch, filters.bodyPart, filters.equipment, filters.muscle, filters.mine, filters.favorites, refetchNonce])
 
   const refetch = () => setRefetchNonce((n) => n + 1)
 

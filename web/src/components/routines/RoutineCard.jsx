@@ -25,6 +25,12 @@ function relativeDate(dateIso, locale) {
 export default function RoutineCard({ routine }) {
   const { t, i18n } = useTranslation()
   const lastUsed = relativeDate(routine.lastUsedAt, i18n.language)
+  // listRoutines ya hace $lookup + $setUnion, así que llega único y ordenable;
+  // cortamos a 4 chips para que el ancho de la card no explote con rutinas
+  // "full body" y el resto queda contado con "+N".
+  const muscles = Array.isArray(routine.muscles) ? routine.muscles : []
+  const visibleMuscles = muscles.slice(0, 4)
+  const extraMuscles = muscles.length - visibleMuscles.length
 
   return (
     <Link
@@ -42,24 +48,43 @@ export default function RoutineCard({ routine }) {
           {routine.description}
         </p>
       )}
-      <div className="mt-auto flex flex-wrap items-center gap-3 text-xs text-text-muted">
-        <span className="tabular">
-          {t('routines.exerciseCount', { count: routine.exerciseCount })}
-        </span>
-        {routine.timesUsed > 0 && (
-          <>
-            <span>·</span>
-            <span className="tabular">
-              {t('routines.timesUsed', { count: routine.timesUsed })}
-            </span>
-          </>
+      <div className="mt-auto flex flex-col gap-2">
+        {visibleMuscles.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {visibleMuscles.map((m) => (
+              <span
+                key={m}
+                className="inline-flex items-center rounded-pill bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent"
+              >
+                {t(`catalog.muscles.${m}`, { defaultValue: m })}
+              </span>
+            ))}
+            {extraMuscles > 0 && (
+              <span className="inline-flex items-center rounded-pill border border-border bg-surface px-2 py-0.5 text-[11px] text-text-muted">
+                +{extraMuscles}
+              </span>
+            )}
+          </div>
         )}
-        {lastUsed && (
-          <>
-            <span>·</span>
-            <span>{t('routines.lastUsed', { when: lastUsed })}</span>
-          </>
-        )}
+        <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted">
+          <span className="tabular">
+            {t('routines.exerciseCount', { count: routine.exerciseCount })}
+          </span>
+          {routine.timesUsed > 0 && (
+            <>
+              <span>·</span>
+              <span className="tabular">
+                {t('routines.timesUsed', { count: routine.timesUsed })}
+              </span>
+            </>
+          )}
+          {lastUsed && (
+            <>
+              <span>·</span>
+              <span>{t('routines.lastUsed', { when: lastUsed })}</span>
+            </>
+          )}
+        </div>
       </div>
     </Link>
   )

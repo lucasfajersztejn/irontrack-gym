@@ -26,6 +26,15 @@ const settingsSchema = new mongoose.Schema({
   defaultBarWeightKg: { type: Number, default: 20, min: 0, max: 50 },
 
   restTimerSec: { type: Number, default: 90, min: 0, max: 600 },
+
+  /**
+   * Objetivo semanal de sesiones. Es una preferencia personal, no una regla
+   * del sistema; se usa como denominador en el stat tile "7/4" del Home y
+   * como barra de progreso en la vista /stats/week.
+   * Rango 1–14: una vez al día como mínimo "serio", dos al día como techo
+   * ambicioso. Fuera de eso probablemente es error del dedo.
+   */
+  weeklyGoal: { type: Number, default: 4, min: 1, max: 14 },
 }, { _id: false });
 
 const userSchema = new mongoose.Schema({
@@ -109,6 +118,21 @@ const userSchema = new mongoose.Schema({
    * (Además de ser lo correcto, es lo que pide el RGPD.)
    */
   privacy: { type: String, enum: PRIVACY_LEVELS, default: 'private' },
+
+  /**
+   * Ejercicios marcados como favoritos por este usuario. Un simple array de
+   * ObjectIds al catálogo (global o custom del propio usuario), sin colección
+   * aparte: la cardinalidad real es pequeña (<100 por usuario) y nos ahorramos
+   * un join en cada lectura del catálogo.
+   *
+   * `addToSet` en el controller garantiza que no haya duplicados; el frontend
+   * puede llamar al endpoint repetido sin tener que leer el estado antes.
+   */
+  favoriteExercises: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Exercise',
+    default: [],
+  }],
 
 }, {
   // Añade createdAt y updatedAt automáticamente y los mantiene al día.

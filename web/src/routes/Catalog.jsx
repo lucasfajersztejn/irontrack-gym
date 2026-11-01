@@ -6,6 +6,7 @@ import FilterPills from '../components/catalog/FilterPills.jsx'
 import FiltersBar from '../components/catalog/FiltersBar.jsx'
 import SearchInput from '../components/catalog/SearchInput.jsx'
 import CustomExerciseSheet from '../components/catalog/CustomExerciseSheet.jsx'
+import ExerciseHelpSheet from '../components/training/ExerciseHelpSheet.jsx'
 import { useCatalog } from '../lib/useCatalog.js'
 
 /*
@@ -109,9 +110,11 @@ export default function Catalog() {
     equipment: null,
     muscle: null,
     mine: false,
+    favorites: false,
   })
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [createOpen, setCreateOpen] = useState(false)
+  const [infoExercise, setInfoExercise] = useState(null)
   const { loading, error, exercises, refetch } = useCatalog(filters)
 
   /*
@@ -153,8 +156,10 @@ export default function Catalog() {
         <FiltersBar
           equipment={filters.equipment}
           mine={filters.mine}
+          favorites={filters.favorites}
           onEquipmentChange={(equipment) => update({ equipment })}
           onMineChange={(mine) => update({ mine })}
+          onFavoritesChange={(favorites) => update({ favorites })}
         />
       </div>
 
@@ -177,16 +182,24 @@ export default function Catalog() {
         <EmptyState />
       ) : (
         <>
-          {/* Desktop: grid de cards */}
+          {/* Desktop: grid de cards. onClick dispara el modal de info. */}
           <div className="hidden grid-cols-2 gap-3 md:grid md:grid-cols-3 lg:grid-cols-4">
             {visible.map((ex) => (
-              <ExerciseCard key={ex._id} exercise={ex} />
+              <ExerciseCard
+                key={ex._id}
+                exercise={ex}
+                onClick={setInfoExercise}
+              />
             ))}
           </div>
           {/* Mobile: lista de filas */}
           <div className="flex flex-col gap-2 md:hidden">
             {visible.map((ex) => (
-              <ExerciseRow key={ex._id} exercise={ex} />
+              <ExerciseRow
+                key={ex._id}
+                exercise={ex}
+                onClick={setInfoExercise}
+              />
             ))}
           </div>
 
@@ -219,6 +232,12 @@ export default function Catalog() {
           refetch()
         }}
         initialName={filters.search}
+      />
+
+      <ExerciseHelpSheet
+        open={Boolean(infoExercise)}
+        onClose={() => setInfoExercise(null)}
+        exercise={infoExercise}
       />
     </div>
   )

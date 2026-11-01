@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import { z } from 'zod'
 import Exercise from '../models/exercise.model.js'
+import User from '../models/user.model.js'
 import {
   MUSCLES,
   BODY_PARTS,
@@ -33,6 +34,7 @@ const listQuerySchema = z.object({
   // "1" lo manda el frontend como string; z.coerce.boolean no sirve bien aquí
   // porque "0" también se castea a true. Comparo explícito.
   mine: z.enum(['0', '1']).optional(),
+  favorites: z.enum(['0', '1']).optional(),
 })
 
 export const getExercises = async (req, res, next) => {
@@ -44,7 +46,7 @@ export const getExercises = async (req, res, next) => {
     })
   }
 
-  const { muscle, bodyPart, equipment, search, mine } = parsed.data
+  const { muscle, bodyPart, equipment, search, mine, favorites } = parsed.data
   const filter = visibilityFilter(req.user.id, mine === '1')
   if (muscle) filter.muscle = muscle
   if (bodyPart) filter.bodyPart = bodyPart
@@ -53,6 +55,21 @@ export const getExercises = async (req, res, next) => {
   if (search) filter.$text = { $search: search }
 
   try {
+    /*
+      favorites=1: filtra a los que están en user.favoriteExercises. Lo
+      resolvemos leyendo el array de ids una vez y pasándolo como $in — es
+      más barato que un $lookup y mantiene el filter plano. Si no hay
+      favoritos, devolvemos [] directo sin tocar la colección.
+    */
+    if (favorites === '1') {
+      const user = await User.findById(req.user.id).select('favoriteExercises').lean()
+      const ids = user?.favoriteExercises ?? []
+      if (ids.length === 0) {
+        return res.json([])
+      }
+      filter._id = { $in: ids }
+    }
+
     const exercises = await Exercise.find(filter)
       .sort({ 'name.es': 1 })
       .limit(200)
