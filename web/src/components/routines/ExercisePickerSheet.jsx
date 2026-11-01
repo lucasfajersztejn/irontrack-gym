@@ -5,6 +5,7 @@ import FilterPills from '../catalog/FilterPills.jsx'
 import ExerciseRow from '../catalog/ExerciseRow.jsx'
 import CustomExerciseSheet from '../catalog/CustomExerciseSheet.jsx'
 import ExerciseHelpSheet from '../training/ExerciseHelpSheet.jsx'
+import { DumbbellIcon } from '../icons/NavIcons.jsx'
 import { useCatalog } from '../../lib/useCatalog.js'
 
 /*
@@ -38,6 +39,7 @@ export default function ExercisePickerSheet({
     equipment: null,
     muscle: null,
     mine: false,
+    favorites: false,
   })
   const { loading, exercises, refetch } = useCatalog(filters)
   const alreadySet = new Set(alreadyPickedIds)
@@ -53,6 +55,7 @@ export default function ExercisePickerSheet({
         equipment: null,
         muscle: null,
         mine: false,
+        favorites: false,
       })
       setCreateOpen(false)
     }
@@ -145,10 +148,34 @@ export default function ExercisePickerSheet({
           value={filters.search}
           onChange={(search) => setFilters((f) => ({ ...f, search }))}
         />
-        <FilterPills
-          value={filters.bodyPart}
-          onChange={(bodyPart) => setFilters((f) => ({ ...f, bodyPart }))}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterPills
+            value={filters.bodyPart}
+            onChange={(bodyPart) => setFilters((f) => ({ ...f, bodyPart }))}
+          />
+          {/*
+            Toggle de favoritos en la misma fila que los grupos: comparte
+            vocabulario con el pill de "Favoritos" del catálogo para que el
+            usuario reconozca el patrón. Mancuerna + fondo warn/15 cuando
+            está activo. Se posiciona después del wrap de bodyPart para que
+            no estorbe al escaneo de grupos corporales.
+          */}
+          <button
+            type="button"
+            onClick={() =>
+              setFilters((f) => ({ ...f, favorites: !f.favorites }))
+            }
+            aria-pressed={filters.favorites}
+            className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-sm font-medium transition-colors ${
+              filters.favorites
+                ? 'border-transparent bg-warn/15 text-warn'
+                : 'border-border bg-surface text-text-muted hover:text-text'
+            }`}
+          >
+            <DumbbellIcon className="h-4 w-4" />
+            {t('catalog.filters.favorites')}
+          </button>
+        </div>
 
         <div className="scrollbar-hidden -mx-2 flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
           {loading ? (
