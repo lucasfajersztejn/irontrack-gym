@@ -2,25 +2,23 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../contexts/UserContext.jsx'
-import { useWeeklyStats } from '../lib/useWeeklyStats.js'
+import { useWeeklyStats, breakdownForSession } from '../lib/useWeeklyStats.js'
 import { api } from '../lib/api.js'
 import ConfirmModal from '../components/routines/ConfirmModal.jsx'
 
 /*
   /stats/week — vista detalle de la semana actual.
 
-  Secciones:
-  - Progreso vs. objetivo (editable in-line con PATCH /api/me/settings).
-  - Tres KPIs: sesiones, tiempo total, volumen total.
-  - Desglose por grupo muscular (expandible single-select: abrir uno cierra
-    el otro, para no empapar la pantalla). Cada expansión muestra los
-    ejercicios que tocaron ese músculo con sus series completadas y pesos.
-  - Lista de sesiones de la semana con botón borrar (recuperación si creas
-    sesión por accidente). Delete pasa por confirm porque es irreversible.
+  Composición (iteración actual, pedida por el usuario):
+    1. Progress card (objetivo editable).
+    2. Lista de sesiones. Cada sesión es colapsable; al desplegar muestra:
+       - Chips de grupos trabajados (primarios con verde, secundarios en
+         gris para que la jerarquía se lea de un vistazo).
+       - Lista de ejercicios con sus series completadas (pills peso×reps).
+       - Botón borrar sesión.
 
-  Los secundarios cuentan en "series" pero no en volumen ni máx (ver
-  useWeeklyStats). El rótulo "secundario" lo infiere la UI cuando el músculo
-  tiene series pero volumen=0.
+  La agregación por-músculo (ex-sección "By muscle group") se eliminó: la
+  misma información vive ahora dentro de cada sesión expandida.
 */
 
 const DEFAULT_GOAL = 4
@@ -29,14 +27,14 @@ function Skeleton() {
   return (
     <div className="flex flex-col gap-4">
       <div className="h-24 animate-pulse rounded-container bg-surface-2" />
-      <div className="h-32 animate-pulse rounded-container bg-surface-2" />
-      <div className="h-48 animate-pulse rounded-container bg-surface-2" />
+      <div className="h-20 animate-pulse rounded-container bg-surface-2" />
+      <div className="h-20 animate-pulse rounded-container bg-surface-2" />
     </div>
   )
 }
 
 function fmtDuration(seconds, t) {
-  if (!seconds) return '—'
+  if (!seconds) return t('weekStats.inProgress')
   const h = Math.floor(seconds / 3600)
   const m = Math.round((seconds % 3600) / 60)
   if (h > 0) return t('weekStats.hoursMinutes', { h, m })
@@ -52,12 +50,9 @@ export default function WeekStats() {
   const [goalDraft, setGoalDraft] = useState(goal)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(null)
-  const [openMuscle, setOpenMuscle] = useState(null)
+  const [openSession, setOpenSession] = useState(null)
   const [sessionToDelete, setSessionToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
-
-  const fmtNumber = (n) =>
-    new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 0 }).format(n)
 
   const progressPct = Math.min(100, (weekly.sessionCount / goal) * 100)
 
@@ -138,22 +133,7 @@ export default function WeekStats() {
             saveError={saveError}
           />
 
-          <section className="grid grid-cols-3 gap-3">
-            <Kpi label={t('weekStats.sessions')} value={weekly.sessionCount} />
-            <Kpi
-              label={t('weekStats.time')}
-              value={fmtDuration(weekly.totalDurationSec, t)}
-              small
-            />
-            <Kpi
-              label={t('weekStats.volume')}
-              value={weekly.totalVolume > 0 ? fmtNumber(weekly.totalVolume) : '—'}
-              suffix={weekly.totalVolume > 0 ? 'kg' : null}
-              small
-            />
-          </section>
-
-          {weekly.byMuscle.length === 0 ? (
+          {weekly.sessions.length === 0 ? (
             <div className="card-liquid flex flex-col items-center gap-2 rounded-container p-8 text-center">
               <p className="font-display text-sm font-semibold text-text">
                 {t('weekStats.emptyTitle')}
@@ -161,39 +141,24 @@ export default function WeekStats() {
               <p className="text-xs text-text-muted">{t('weekStats.emptySub')}</p>
             </div>
           ) : (
-            <section className="flex flex-col gap-2">
-              <h2 className="px-1 font-display text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">
-                {t('weekStats.byMuscleTitle')}
-              </h2>
-              <ul className="flex flex-col gap-2">
-                {weekly.byMuscle.map((m) => (
-                  <MuscleRow
-                    key={m.muscle}
-                    muscle={m}
-                    isOpen={openMuscle === m.muscle}
-                    onToggle={() =>
-                      setOpenMuscle((cur) => (cur === m.muscle ? null : m.muscle))
-                    }
-                    fmtNumber={fmtNumber}
-                  />
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {weekly.summaries.length > 0 && (
-            <section className="flex flex-col gap-2">
+            <section className="flex flex-col gap-3">
               <h2 className="px-1 font-display text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">
                 {t('weekStats.sessionsTitle')}
               </h2>
-              <ul className="flex flex-col gap-2">
-                {weekly.summaries.map((s) => (
-                  <SessionRow
-                    key={s._id}
-                    session={s}
-                    onDelete={() => setSessionToDelete(s)}
+              <ul className="flex flex-col gap-3">
+                {weekly.sessions.map(({ summary, detail }) => (
+                  <SessionCard
+                    key={summary._id}
+                    summary={summary}
+                    detail={detail}
+                    isOpen={openSession === summary._id}
+                    onToggle={() =>
+                      setOpenSession((cur) =>
+                        cur === summary._id ? null : summary._id,
+                      )
+                    }
+                    onDelete={() => setSessionToDelete(summary)}
                     locale={i18n.language}
-                    t={t}
                   />
                 ))}
               </ul>
@@ -304,95 +269,167 @@ function ProgressCard({
 }
 
 /*
-  Fila de músculo expandible. En reposo es una card autónoma (card-liquid)
-  con cabecera clicable; al expandir despliega los ejercicios asociados en
-  una zona interna con bg más oscuro para delimitar visualmente la
-  separación entre "resumen" y "detalle". Separación generosa entre filas
-  (gap-2) + sombra propia por card las aísla sin recurrir a bordes de 1 px.
+  Card de sesión. Cabecera siempre visible (fecha, rutina, duración, borrar);
+  al expandir aparece una zona interna con bg más oscuro (bg-bg/50) que
+  marca "detalle" sin añadir border. Dentro: chips de músculos + lista de
+  ejercicios con pills de series completadas.
 */
-function MuscleRow({ muscle, isOpen, onToggle, fmtNumber }) {
+function SessionCard({ summary, detail, isOpen, onToggle, onDelete, locale }) {
   const { t } = useTranslation()
-  const isSecondaryOnly = muscle.volume === 0
+  const date = new Date(summary.startedAt)
+  const breakdown = breakdownForSession(detail)
+  const title = summary.routineName ?? t('training.resumeSubFree')
+  const dateLabel = new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  }).format(date)
+  const timeLabel = new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 
   return (
     <li className="card-liquid overflow-hidden rounded-container">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        className="press flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-[filter,transform,background-color] hover:bg-surface-2 md:px-5"
-      >
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-text">
-            {t(`catalog.muscles.${muscle.muscle}`, { defaultValue: muscle.muscle })}
-            {isSecondaryOnly && (
-              <span className="ml-2 text-[10px] font-normal uppercase tracking-wider text-text-muted">
-                {t('weekStats.secondaryTag')}
-              </span>
-            )}
-          </p>
-          <p className="tabular mt-0.5 flex flex-wrap items-baseline gap-3 text-xs text-text-muted">
-            <span>{t('training.stats.setsCount', { count: muscle.sets })}</span>
-            {muscle.volume > 0 && (
-              <span className="text-text">{fmtNumber(muscle.volume)} kg</span>
-            )}
-            {muscle.maxWeight > 0 && (
-              <span>{t('weekStats.maxShort', { kg: muscle.maxWeight })}</span>
-            )}
-          </p>
-        </div>
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-          className={`shrink-0 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
+      <div className="flex items-center gap-3 px-3 py-3 md:px-4">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={isOpen}
+          className="press flex min-w-0 flex-1 items-center gap-3 text-left transition-[filter,transform]"
         >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </button>
+          <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-control bg-bg text-center">
+            <span className="tabular font-display text-sm font-semibold leading-none text-text">
+              {String(date.getDate()).padStart(2, '0')}
+            </span>
+            <span className="mt-0.5 text-[9px] uppercase tracking-wide text-text-muted">
+              {new Intl.DateTimeFormat(locale, { month: 'short' })
+                .format(date)
+                .replace('.', '')}
+            </span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-text">{title}</p>
+            <p className="tabular mt-0.5 text-xs text-text-muted">
+              {dateLabel} · {timeLabel} · {fmtDuration(summary.durationSec, t)}
+            </p>
+          </div>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+            className={`shrink-0 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={t('weekStats.deleteAria')}
+          className="press rounded-full p-1.5 text-text-muted transition-[filter,transform,color] hover:text-error"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" />
+          </svg>
+        </button>
+      </div>
 
       {isOpen && (
-        <div className="flex flex-col gap-2 bg-bg/50 px-4 pb-4 pt-1 md:px-5">
-          {muscle.exercises.map((ex) => (
-            <ExerciseBreakdown key={ex.name} exercise={ex} fmtNumber={fmtNumber} />
-          ))}
+        <div className="flex flex-col gap-4 bg-bg/50 px-3 pb-4 pt-3 md:px-4">
+          {breakdown.exercises.length === 0 ? (
+            <p className="text-xs text-text-muted">
+              {t('weekStats.sessionEmpty')}
+            </p>
+          ) : (
+            <>
+              <MuscleChips
+                primary={breakdown.primaryMuscles}
+                secondary={breakdown.secondaryMuscles}
+              />
+              <ul className="flex flex-col gap-2">
+                {breakdown.exercises.map((ex, i) => (
+                  <li
+                    key={`${ex.name}-${i}`}
+                    className="rounded-card bg-surface-2 px-3 py-2.5"
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="truncate text-sm font-medium text-text">
+                        {ex.name}
+                      </p>
+                      <p className="tabular shrink-0 text-xs text-text-muted">
+                        {t('training.stats.setsCount', { count: ex.sets.length })}
+                      </p>
+                    </div>
+                    {ex.sets.length > 0 && (
+                      <ul className="tabular mt-1.5 flex flex-wrap gap-1.5 text-[11px] text-text-muted">
+                        {ex.sets.map((s, j) => (
+                          <li
+                            key={j}
+                            className="rounded-pill border border-border bg-bg px-2 py-0.5"
+                          >
+                            {formatDetail(s, ex.tracking)}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
     </li>
   )
 }
 
-function ExerciseBreakdown({ exercise, fmtNumber }) {
+function MuscleChips({ primary, secondary }) {
   const { t } = useTranslation()
+  if (primary.length === 0 && secondary.length === 0) return null
   return (
-    <div className="rounded-card bg-surface-2 px-3 py-2.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="truncate text-sm font-medium text-text">{exercise.name}</p>
-        <p className="tabular shrink-0 text-xs text-text-muted">
-          {t('training.stats.setsCount', { count: exercise.sets })}
-          {exercise.volume > 0 && (
-            <span className="ml-2 text-text">{fmtNumber(exercise.volume)} kg</span>
-          )}
-        </p>
+    <div className="flex flex-col gap-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
+        {t('weekStats.musclesTitle')}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {primary.map((m) => (
+          <span
+            key={`p-${m}`}
+            className="inline-flex items-center rounded-pill bg-accent/15 px-2.5 py-0.5 text-[11px] font-semibold text-accent"
+          >
+            {t(`catalog.muscles.${m}`, { defaultValue: m })}
+          </span>
+        ))}
+        {secondary.map((m) => (
+          <span
+            key={`s-${m}`}
+            className="inline-flex items-center gap-1 rounded-pill border border-border/60 bg-surface px-2.5 py-0.5 text-[11px] text-text-muted"
+            title={t('weekStats.secondaryTitle')}
+          >
+            {t(`catalog.muscles.${m}`, { defaultValue: m })}
+            <span className="text-[9px] uppercase tracking-wider">
+              {t('weekStats.secondaryTag')}
+            </span>
+          </span>
+        ))}
       </div>
-      {exercise.details.length > 0 && (
-        <ul className="tabular mt-1.5 flex flex-wrap gap-1.5 text-[11px] text-text-muted">
-          {exercise.details.map((d, i) => (
-            <li
-              key={i}
-              className="rounded-pill border border-border bg-bg px-2 py-0.5"
-            >
-              {formatDetail(d, exercise.tracking)}
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   )
 }
@@ -413,85 +450,4 @@ function formatDetail(d, tracking) {
     default:
       return '—'
   }
-}
-
-function SessionRow({ session, onDelete, locale, t }) {
-  const date = new Date(session.startedAt)
-  const dateLabel = new Intl.DateTimeFormat(locale, {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-  }).format(date)
-  const timeLabel = new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
-  const subtitle = session.routineName ?? t('training.resumeSubFree')
-  const duration = session.durationSec
-    ? session.durationSec >= 3600
-      ? t('weekStats.hoursMinutes', {
-          h: Math.floor(session.durationSec / 3600),
-          m: Math.round((session.durationSec % 3600) / 60),
-        })
-      : t('weekStats.minutes', { m: Math.round(session.durationSec / 60) })
-    : t('weekStats.inProgress')
-
-  return (
-    <li className="card-liquid flex items-center gap-3 rounded-container px-4 py-3">
-      <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-control bg-bg text-center">
-        <span className="tabular font-display text-sm font-semibold leading-none text-text">
-          {String(date.getDate()).padStart(2, '0')}
-        </span>
-        <span className="mt-0.5 text-[9px] uppercase tracking-wide text-text-muted">
-          {new Intl.DateTimeFormat(locale, { month: 'short' })
-            .format(date)
-            .replace('.', '')}
-        </span>
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-text">{subtitle}</p>
-        <p className="tabular mt-0.5 text-xs text-text-muted">
-          {dateLabel} · {timeLabel} · {duration}
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onDelete}
-        aria-label={t('weekStats.deleteAria')}
-        className="press rounded-full p-1.5 text-text-muted transition-[filter,transform,color] hover:text-error"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" />
-        </svg>
-      </button>
-    </li>
-  )
-}
-
-function Kpi({ label, value, suffix, small = false }) {
-  return (
-    <div className="card-liquid flex flex-col gap-1 rounded-container p-4">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
-        {label}
-      </span>
-      <span className="flex items-baseline gap-1">
-        <span
-          className={`tabular font-display font-semibold leading-none text-text ${small ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl'}`}
-        >
-          {value}
-        </span>
-        {suffix && <span className="text-xs text-text-muted">{suffix}</span>}
-      </span>
-    </div>
-  )
 }
