@@ -238,6 +238,18 @@
     "aliasCancel": "Cancelar",
     "aliasRestore": "Restaurar nombre original",
     "aliasOriginal": "Original: {{name}}",
+    "rest": {
+      "region": "Cronómetro de descanso",
+      "label": "Descanso",
+      "done": "Descanso terminado",
+      "start": "Descansar",
+      "minusStep": "−{{n}} s",
+      "plusStep": "+{{n}} s",
+      "minusAria": "Quitar {{n}} segundos al descanso",
+      "plusAria": "Añadir {{n}} segundos al descanso",
+      "stop": "Parar",
+      "dismiss": "Listo"
+    },
     "stats": {
       "title": "Resumen de la sesión",
       "elapsed": "Tiempo",

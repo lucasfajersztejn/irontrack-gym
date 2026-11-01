@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SessionExerciseCard from './SessionExerciseCard.jsx'
 import SessionStatsCard from './SessionStatsCard.jsx'
+import RestTimerBar from './RestTimerBar.jsx'
 import ExercisePickerSheet from '../routines/ExercisePickerSheet.jsx'
 import ConfirmModal from '../routines/ConfirmModal.jsx'
 import SupersetBlock from '../routines/SupersetBlock.jsx'
 import { useSessionLive } from '../../lib/useSessionLive.js'
 import { groupEntries } from '../../lib/supersets.js'
+import { useSessionStore } from '../../stores/sessionStore.js'
 
 /*
   Vista "live" de la sesión activa. Compone el header (nombre + cronómetro
@@ -32,6 +34,11 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
   } = useSessionLive(session)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [confirmFinishOpen, setConfirmFinishOpen] = useState(false)
+  const stopRest = useSessionStore((s) => s.stopRest)
+
+  // Al salir de la vista (terminar sesión, navegar fuera) no queremos que el
+  // store se quede con un descanso a medias que reaparezca en la próxima.
+  useEffect(() => stopRest, [stopRest])
 
   const alreadyIds = entries.map((e) =>
     typeof e.exercise === 'string' ? e.exercise : e.exercise?._id,
@@ -147,6 +154,16 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
         onCancel={() => setConfirmFinishOpen(false)}
         destructive={false}
       />
+
+      {/*
+        La barra es fija, así que no ocupa sitio en el flujo: este hueco
+        evita que el panel de stats quede tapado al final del scroll.
+        Vive aquí y no en el padding de AppShell porque la barra solo
+        existe durante una sesión activa.
+      */}
+      <div aria-hidden className="h-16 md:h-20" />
+
+      <RestTimerBar />
     </div>
   )
 }

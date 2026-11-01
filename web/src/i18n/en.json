@@ -238,6 +238,18 @@
     "aliasCancel": "Cancel",
     "aliasRestore": "Restore original name",
     "aliasOriginal": "Original: {{name}}",
+    "rest": {
+      "region": "Rest timer",
+      "label": "Rest",
+      "done": "Rest over",
+      "start": "Rest",
+      "minusStep": "−{{n}}s",
+      "plusStep": "+{{n}}s",
+      "minusAria": "Take {{n}} seconds off the rest",
+      "plusAria": "Add {{n}} seconds to the rest",
+      "stop": "Stop",
+      "dismiss": "Done"
+    },
     "stats": {
       "title": "Session summary",
       "elapsed": "Elapsed",
