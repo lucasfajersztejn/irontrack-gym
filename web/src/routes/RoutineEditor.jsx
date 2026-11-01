@@ -4,8 +4,29 @@ import { useTranslation } from 'react-i18next'
 import ExerciseEditorRow from '../components/routines/ExerciseEditorRow.jsx'
 import ExercisePickerSheet from '../components/routines/ExercisePickerSheet.jsx'
 import ConfirmModal from '../components/routines/ConfirmModal.jsx'
+import MuscleChips from '../components/MuscleChips.jsx'
 import { useRoutine } from '../lib/useRoutine.js'
 import { api } from '../lib/api.js'
+
+/*
+  Deriva los grupos trabajados por una rutina a partir del array populado de
+  ejercicios: primarios únicos + secundarios únicos (quitando los que ya son
+  primarios para no duplicar el chip bajo las dos variantes). Vive aquí
+  (y no en MuscleChips) para no acoplar la pieza visual a esta estructura
+  concreta — en /stats/week el equivalente lo calcula breakdownForSession.
+*/
+function routineMuscles(entries) {
+  const primary = new Set()
+  const secondary = new Set()
+  for (const e of entries) {
+    const ex = e.exercise
+    if (!ex || typeof ex !== 'object') continue
+    if (ex.muscle) primary.add(ex.muscle)
+    for (const sec of ex.secondaryMuscles ?? []) secondary.add(sec)
+  }
+  for (const p of primary) secondary.delete(p)
+  return { primary: Array.from(primary), secondary: Array.from(secondary) }
+}
 
 /*
   Editor único para crear y editar rutinas. La ruta /routines/new monta sin
@@ -279,6 +300,24 @@ export default function RoutineEditor() {
           />
         </label>
       </section>
+
+      {/*
+        Chips de grupos trabajados: primarios en verde, secundarios en gris
+        con etiqueta "sec.". Solo aparecen cuando la rutina tiene ejercicios
+        ya elegidos (si no, el bloque quedaría vacío y añadiría ruido). Se
+        pintan como un bloque autónomo entre el formulario de nombre y la
+        lista de ejercicios: así el usuario ve, de un vistazo, el perfil
+        muscular total de la plantilla antes de bajar a editar series.
+      */}
+      {state.entries.length > 0 && (() => {
+        const { primary, secondary } = routineMuscles(state.entries)
+        if (primary.length === 0 && secondary.length === 0) return null
+        return (
+          <section className="card-liquid rounded-container p-4 md:p-5">
+            <MuscleChips primary={primary} secondary={secondary} />
+          </section>
+        )
+      })()}
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">

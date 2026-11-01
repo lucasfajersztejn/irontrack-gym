@@ -3,6 +3,11 @@
     "name": "IronTrack",
     "tagline": "Log your workout. Track your progress."
   },
+  "muscleChips": {
+    "title": "Muscle groups",
+    "secondaryTag": "sec.",
+    "secondaryTitle": "Secondary muscle"
+  },
   "nav": {
     "home": "Home",
     "routines": "Routines",

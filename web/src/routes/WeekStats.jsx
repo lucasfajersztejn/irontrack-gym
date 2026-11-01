@@ -5,6 +5,7 @@ import { useUser } from '../contexts/UserContext.jsx'
 import { useWeeklyStats, breakdownForSession } from '../lib/useWeeklyStats.js'
 import { api } from '../lib/api.js'
 import ConfirmModal from '../components/routines/ConfirmModal.jsx'
+import MuscleChips from '../components/MuscleChips.jsx'
 
 /*
   /stats/week — vista detalle de la semana actual.
@@ -362,6 +363,7 @@ function SessionCard({ summary, detail, isOpen, onToggle, onDelete, locale }) {
               <MuscleChips
                 primary={breakdown.primaryMuscles}
                 secondary={breakdown.secondaryMuscles}
+                title={t('weekStats.musclesTitle')}
               />
               <ul className="flex flex-col gap-2">
                 {breakdown.exercises.map((ex, i) => (
@@ -397,40 +399,6 @@ function SessionCard({ summary, detail, isOpen, onToggle, onDelete, locale }) {
         </div>
       )}
     </li>
-  )
-}
-
-function MuscleChips({ primary, secondary }) {
-  const { t } = useTranslation()
-  if (primary.length === 0 && secondary.length === 0) return null
-  return (
-    <div className="flex flex-col gap-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
-        {t('weekStats.musclesTitle')}
-      </p>
-      <div className="flex flex-wrap gap-1.5">
-        {primary.map((m) => (
-          <span
-            key={`p-${m}`}
-            className="inline-flex items-center rounded-pill bg-accent/15 px-2.5 py-0.5 text-[11px] font-semibold text-accent"
-          >
-            {t(`catalog.muscles.${m}`, { defaultValue: m })}
-          </span>
-        ))}
-        {secondary.map((m) => (
-          <span
-            key={`s-${m}`}
-            className="inline-flex items-center gap-1 rounded-pill border border-border/60 bg-surface px-2.5 py-0.5 text-[11px] text-text-muted"
-            title={t('weekStats.secondaryTitle')}
-          >
-            {t(`catalog.muscles.${m}`, { defaultValue: m })}
-            <span className="text-[9px] uppercase tracking-wider">
-              {t('weekStats.secondaryTag')}
-            </span>
-          </span>
-        ))}
-      </div>
-    </div>
   )
 }
 

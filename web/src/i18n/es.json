@@ -3,6 +3,11 @@
     "name": "IronTrack",
     "tagline": "Registra tu entreno. Mide tu progreso."
   },
+  "muscleChips": {
+    "title": "Grupos trabajados",
+    "secondaryTag": "sec.",
+    "secondaryTitle": "Músculo secundario"
+  },
   "nav": {
     "home": "Inicio",
     "routines": "Rutinas",
