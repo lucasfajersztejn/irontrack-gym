@@ -40,6 +40,11 @@ function normalize(session) {
     muscle: e.muscle,
     tracking: e.tracking,
     order: e.order,
+    // El backend copia groupId de la rutina al crear la sesión y lo acepta
+    // en el PATCH. Si no lo leemos aquí (y no lo reenviamos en
+    // toApiEntries), el primer PATCH lo borra en DB y los bloques de
+    // superserie se deshacen solos al recargar.
+    groupId: e.groupId ?? null,
     notes: e.notes ?? '',
     sets: (e.sets ?? []).map((s) => ({ ...s })),
   }))
@@ -57,6 +62,7 @@ function toApiEntries(entries) {
       muscle: e.muscle,
       tracking: e.tracking,
       order: i,
+      groupId: e.groupId ?? null,
       notes: e.notes?.trim() || undefined,
       sets: e.sets
         .filter((s) => isSetComplete(s, e.tracking))
@@ -130,6 +136,9 @@ export function useSessionLive(initialSession) {
         muscle: exercise.muscle,
         tracking: exercise.tracking,
         order: es.length,
+        // Un ejercicio añadido a mitad de sesión entra siempre solo: agrupar
+        // es flujo de planificación, no de ejecución.
+        groupId: null,
         notes: '',
         sets: [],
       },
