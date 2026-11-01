@@ -139,7 +139,7 @@
     "exercisesTitle_one": "{{count}} exercise",
     "exercisesTitle_other": "{{count}} exercises",
     "addExercise": "Add exercise",
-    "linkSuperset": "Link with next",
+    "linkSuperset": "+ Superset with next",
     "unlinkSuperset": "Unlink",
     "supersetTag": "Superset",
     "pickerTitle": "Pick an exercise",

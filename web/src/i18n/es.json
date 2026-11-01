@@ -139,7 +139,7 @@
     "exercisesTitle_one": "{{count}} ejercicio",
     "exercisesTitle_other": "{{count}} ejercicios",
     "addExercise": "Añadir ejercicio",
-    "linkSuperset": "Agrupar con el siguiente",
+    "linkSuperset": "+ Superserie con el siguiente",
     "unlinkSuperset": "Separar",
     "supersetTag": "Superserie",
     "pickerTitle": "Elegir ejercicio",
