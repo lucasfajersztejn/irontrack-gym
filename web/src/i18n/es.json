@@ -232,6 +232,12 @@
     "helpInstructions": "Instrucciones",
     "helpNoGif": "Este ejercicio no tiene GIF demostrativo.",
     "helpNoInstructions": "Sin instrucciones registradas para este ejercicio.",
+    "aliasEdit": "Renombrar ejercicio",
+    "aliasInputLabel": "Nombre personalizado",
+    "aliasSave": "Guardar",
+    "aliasCancel": "Cancelar",
+    "aliasRestore": "Restaurar nombre original",
+    "aliasOriginal": "Original: {{name}}",
     "stats": {
       "title": "Resumen de la sesión",
       "elapsed": "Tiempo",

@@ -6,6 +6,7 @@ import { useWeeklyStats, breakdownForSession } from '../lib/useWeeklyStats.js'
 import { api } from '../lib/api.js'
 import ConfirmModal from '../components/routines/ConfirmModal.jsx'
 import MuscleChips from '../components/MuscleChips.jsx'
+import { resolveExerciseName } from '../lib/exerciseName.js'
 
 /*
   /stats/week — vista detalle de la semana actual.
@@ -276,7 +277,10 @@ function ProgressCard({
   ejercicios con pills de series completadas.
 */
 function SessionCard({ summary, detail, isOpen, onToggle, onDelete, locale }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { user } = useUser()
+  const aliases = user?.exerciseAliases ?? null
+  const aliasLang = i18n.language?.startsWith('en') ? 'en' : 'es'
   const date = new Date(summary.startedAt)
   const breakdown = breakdownForSession(detail)
   const title = summary.routineName ?? t('training.resumeSubFree')
@@ -373,7 +377,7 @@ function SessionCard({ summary, detail, isOpen, onToggle, onDelete, locale }) {
                   >
                     <div className="flex items-baseline justify-between gap-3">
                       <p className="truncate text-sm font-medium text-text">
-                        {ex.name}
+                        {resolveExerciseName(ex, aliases, aliasLang)}
                       </p>
                       <p className="tabular shrink-0 text-xs text-text-muted">
                         {t('training.stats.setsCount', { count: ex.sets.length })}

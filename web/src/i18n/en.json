@@ -232,6 +232,12 @@
     "helpInstructions": "Instructions",
     "helpNoGif": "This exercise has no demo GIF.",
     "helpNoInstructions": "No instructions recorded for this exercise.",
+    "aliasEdit": "Rename exercise",
+    "aliasInputLabel": "Custom name",
+    "aliasSave": "Save",
+    "aliasCancel": "Cancel",
+    "aliasRestore": "Restore original name",
+    "aliasOriginal": "Original: {{name}}",
     "stats": {
       "title": "Session summary",
       "elapsed": "Elapsed",

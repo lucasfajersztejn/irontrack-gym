@@ -34,6 +34,9 @@ export async function getMe(req, res, next) {
       privacy: user.privacy ?? 'private',
       settings: user.settings ?? null,
       favoriteExercises: user.favoriteExercises ?? [],
+      // `.lean()` ya devuelve el Map como objeto plano {exerciseId: name};
+      // el `?? {}` cubre documentos antiguos que no tienen el campo.
+      exerciseAliases: user.exerciseAliases ?? {},
 
       // La única señal "derivada" del endpoint: el frontend NO calcula esto
       // (no sabe si vamos a añadir más condiciones de onboarding mañana).
@@ -161,6 +164,75 @@ export async function removeFavorite(req, res, next) {
       { new: true },
     ).select('favoriteExercises')
     res.json({ favoriteExercises: user.favoriteExercises })
+  } catch (err) {
+    next(err)
+  }
+}
+
+/**
+ * PUT /api/me/aliases/:exerciseId     — set/replace
+ * DELETE /api/me/aliases/:exerciseId  — clear
+ *
+ * Renombre de un ejercicio para ESTE usuario. Mismo guard que favoritos: el
+ * ejercicio tiene que ser visible por el user (catálogo global o custom suyo)
+ * para evitar que pueda sondear ObjectIds de customs ajenos.
+ *
+ * Devolvemos SOLO `exerciseAliases` para que el cliente mezcle con
+ * UserContext.updateUser sin un refetch de /api/me (ver optimistic-user-updates).
+ *
+ * Zod valida sobre el body ya; el schema Mongoose cubre el min/max por si
+ * alguien escribiera directo con otro cliente.
+ */
+const aliasBodySchema = z.object({
+  name: z.string().trim().min(1).max(40),
+})
+
+export async function setAlias(req, res, next) {
+  if (!mongoose.isValidObjectId(req.params.exerciseId)) {
+    return res.status(404).json({ message: 'Ejercicio no encontrado' })
+  }
+  const parsed = aliasBodySchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Nombre inválido',
+      issues: parsed.error.issues,
+    })
+  }
+  try {
+    const exercise = await Exercise.findOne({
+      _id: req.params.exerciseId,
+      $or: [{ createdBy: null }, { createdBy: req.user.id }],
+    }).select('_id')
+    if (!exercise) {
+      return res.status(404).json({ message: 'Ejercicio no encontrado' })
+    }
+    // Notación dot para no pisar las otras entradas del Map. Mongoose
+    // traduce `exerciseAliases.<id>` a la clave del Map correcta.
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { [`exerciseAliases.${exercise._id}`]: parsed.data.name } },
+      { new: true, runValidators: true },
+    ).select('exerciseAliases')
+    res.json({ exerciseAliases: user.exerciseAliases })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function removeAlias(req, res, next) {
+  if (!mongoose.isValidObjectId(req.params.exerciseId)) {
+    return res.status(404).json({ message: 'Ejercicio no encontrado' })
+  }
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $unset: { [`exerciseAliases.${req.params.exerciseId}`]: '' } },
+      { new: true },
+    ).select('exerciseAliases')
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' })
+    }
+    res.json({ exerciseAliases: user.exerciseAliases })
   } catch (err) {
     next(err)
   }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FavoriteButton from './FavoriteButton.jsx'
+import { useExerciseName } from '../../lib/exerciseName.js'
 
 /*
   Card del catálogo (desktop). GIF cuadrado grande arriba, nombre debajo,
@@ -86,12 +87,11 @@ function Chip({ children, tone = 'default' }) {
   antes de crear dos archivos paralelos.
 */
 export default function ExerciseCard({ exercise, onClick }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
 
-  const name =
-    exercise.name?.[i18n.language] ?? exercise.name?.es ?? exercise.name?.en ?? '—'
+  const { name } = useExerciseName(exercise)
   const isCustom = Boolean(exercise.createdBy)
 
   const content = (

@@ -134,6 +134,27 @@ const userSchema = new mongoose.Schema({
     default: [],
   }],
 
+  /**
+   * Renombres de ejercicios por usuario (chunk 3b).
+   *
+   * Clave = exerciseId (como string, Mongoose Map no acepta ObjectId como
+   * tipo de clave); valor = nombre que escribe el usuario. El renombre vive
+   * SOLO en la memoria del usuario: otros usuarios siguen viendo el nombre
+   * canónico del catálogo. Lo tratamos como una preferencia de presentación,
+   * nunca se guarda en Session.entries.exerciseName (que es snapshot
+   * histórico independiente del usuario que mire).
+   *
+   * Map en lugar de colección aparte: la cardinalidad real es pequeña (<20
+   * renombres por usuario) y el objeto llega entero con /api/me, así que el
+   * display cuesta un lookup O(1) en cliente sin fetch extra. Si en algún
+   * momento el patrón crece se migra a su propia colección.
+   */
+  exerciseAliases: {
+    type: Map,
+    of: { type: String, trim: true, minlength: 1, maxlength: 40 },
+    default: () => new Map(),
+  },
+
 }, {
   // Añade createdAt y updatedAt automáticamente y los mantiene al día.
   timestamps: true,

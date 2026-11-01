@@ -89,7 +89,16 @@ export function latest1RM(sessionDetail) {
       if (!set.completed && set.completed !== undefined) continue
       const kg = estimate1RM(set.weightKg, set.reps)
       if (!best || kg > best.kg) {
-        best = { exerciseName: entry.exerciseName, kg }
+        // Guardamos también el id del ejercicio para que el Home pueda
+        // aplicar el alias del usuario sin perder el fallback canónico.
+        best = {
+          exerciseName: entry.exerciseName,
+          exerciseId:
+            (entry.exercise && typeof entry.exercise === 'object'
+              ? entry.exercise._id
+              : entry.exercise) ?? null,
+          kg,
+        }
       }
     }
   }

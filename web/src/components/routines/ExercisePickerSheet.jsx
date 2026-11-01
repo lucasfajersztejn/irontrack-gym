@@ -7,6 +7,8 @@ import CustomExerciseSheet from '../catalog/CustomExerciseSheet.jsx'
 import ExerciseHelpSheet from '../training/ExerciseHelpSheet.jsx'
 import { DumbbellIcon } from '../icons/NavIcons.jsx'
 import { useCatalog } from '../../lib/useCatalog.js'
+import { resolveExerciseName } from '../../lib/exerciseName.js'
+import { useUser } from '../../contexts/UserContext.jsx'
 
 /*
   Hoja (bottom sheet en mobile, modal centrada en desktop) para elegir un
@@ -32,7 +34,10 @@ export default function ExercisePickerSheet({
   onPick,
   alreadyPickedIds = [],
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { user } = useUser()
+  const aliases = user?.exerciseAliases ?? null
+  const lang = i18n.language?.startsWith('en') ? 'en' : 'es'
   const [filters, setFilters] = useState({
     search: '',
     bodyPart: null,
@@ -207,11 +212,10 @@ export default function ExercisePickerSheet({
                     type="button"
                     onClick={() => onPick(ex)}
                     aria-pressed={picked}
-                    aria-label={
-                      picked
-                        ? `${ex.name?.es ?? ex.name?.en} · ${t('routines.alreadyPicked')}`
-                        : ex.name?.es ?? ex.name?.en
-                    }
+                    aria-label={(() => {
+                      const n = resolveExerciseName(ex, aliases, lang)
+                      return picked ? `${n} · ${t('routines.alreadyPicked')}` : n
+                    })()}
                     className="press relative block flex-1 rounded-container text-left transition-[filter,transform] hover:brightness-[1.08]"
                   >
                     <ExerciseRow exercise={ex} />
@@ -239,7 +243,7 @@ export default function ExercisePickerSheet({
                     type="button"
                     onClick={() => setInfoExercise(ex)}
                     aria-label={t('routines.infoExercise', {
-                      name: ex.name?.es ?? ex.name?.en,
+                      name: resolveExerciseName(ex, aliases, lang),
                     })}
                     className="press flex w-10 shrink-0 items-center justify-center rounded-container border border-border/60 bg-surface text-text-muted transition-[filter,transform,color,background-color] hover:bg-surface-2 hover:text-text"
                   >

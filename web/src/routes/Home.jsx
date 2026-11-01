@@ -14,6 +14,7 @@ import {
 } from '../components/icons/NavIcons.jsx'
 import { useUser } from '../contexts/UserContext.jsx'
 import { useHomeData } from '../lib/useHomeData.js'
+import { resolveExerciseName } from '../lib/exerciseName.js'
 import { useAvailableHeatmapRanges, useHeatmap } from '../lib/useHeatmap.js'
 
 /*
@@ -132,7 +133,11 @@ export default function Home() {
               footer={
                 data.oneRm ? (
                   <span className="block truncate text-xs text-text-muted">
-                    {data.oneRm.exerciseName}
+                    {resolveExerciseName(
+                      data.oneRm,
+                      user?.exerciseAliases ?? null,
+                      i18n.language?.startsWith('en') ? 'en' : 'es',
+                    )}
                   </span>
                 ) : null
               }
