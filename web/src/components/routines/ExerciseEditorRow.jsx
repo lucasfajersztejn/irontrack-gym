@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../../contexts/UserContext.jsx'
+import { useExerciseName } from '../../lib/exerciseName.js'
 import {
   barWeightFor,
   perSideFromTotal,
@@ -267,14 +268,13 @@ export default function ExerciseEditorRow({
   canMoveUp,
   canMoveDown,
 }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { user } = useUser()
   const barMode = user?.settings?.barInputMode ?? 'plates'
   const userBarKg = user?.settings?.defaultBarWeightKg ?? 20
 
   const { exercise } = entry
-  const name =
-    exercise.name?.[i18n.language] ?? exercise.name?.es ?? exercise.name?.en ?? '—'
+  const { name } = useExerciseName(exercise)
 
   return (
     <article className="card-liquid flex flex-col gap-3 rounded-container p-3 md:p-4">

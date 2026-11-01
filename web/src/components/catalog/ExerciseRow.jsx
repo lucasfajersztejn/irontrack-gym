@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRightIcon } from '../icons/NavIcons.jsx'
 import FavoriteButton from './FavoriteButton.jsx'
+import { useExerciseName } from '../../lib/exerciseName.js'
 
 /*
   Fila compacta del catálogo (mobile). Thumbnail cuadrado pequeño a la
@@ -73,9 +74,8 @@ function Chip({ children, tone = 'default' }) {
   donde el click lo gestiona el parent).
 */
 export default function ExerciseRow({ exercise, onClick }) {
-  const { t, i18n } = useTranslation()
-  const name =
-    exercise.name?.[i18n.language] ?? exercise.name?.es ?? exercise.name?.en ?? '—'
+  const { t } = useTranslation()
+  const { name } = useExerciseName(exercise)
   const isCustom = Boolean(exercise.createdBy)
 
   const content = (

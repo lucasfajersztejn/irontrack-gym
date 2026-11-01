@@ -45,6 +45,14 @@ export function breakdownForSession(detail) {
     for (const sec of secs) secondary.add(sec)
     exercises.push({
       name: e.exerciseName,
+      // Lo que se persiste en Session es el nombre canónico (snapshot),
+      // pero exponer el id del ejercicio aquí permite al render pintar
+      // el alias actual del usuario sin perder el fallback canónico si
+      // el alias se borra. Ver [[muscle-chips-pattern]] como referencia
+      // del mismo truco con los chips.
+      exerciseId:
+        (e.exercise && typeof e.exercise === 'object' ? e.exercise._id : e.exercise) ??
+        null,
       tracking: e.tracking,
       primaryMuscle: e.muscle,
       sets: completed.map((s) => ({

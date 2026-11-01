@@ -5,6 +5,7 @@ import ExerciseHelpSheet from './ExerciseHelpSheet.jsx'
 import ConfirmModal from '../routines/ConfirmModal.jsx'
 import { useUser } from '../../contexts/UserContext.jsx'
 import { barWeightFor } from '../../lib/weight.js'
+import { useExerciseName } from '../../lib/exerciseName.js'
 
 /*
   Card de un ejercicio dentro de la sesión live. Header con nombre + chips
@@ -39,6 +40,10 @@ export default function SessionExerciseCard({
 
   const exerciseObj =
     entry.exercise && typeof entry.exercise === 'object' ? entry.exercise : null
+  // Preferimos pintar el nombre a partir del catálogo populado (para captar
+  // el alias actual del usuario); si no viene populado, caemos al snapshot
+  // denormalizado de la sesión. El snapshot sigue siendo quien persiste en DB.
+  const { name: displayName } = useExerciseName(exerciseObj ?? entry)
   const usesBar = Boolean(exerciseObj?.usesBar)
   const barInputMode = user?.settings?.barInputMode ?? 'plates'
   const userBarKg = user?.settings?.defaultBarWeightKg ?? 20
@@ -51,7 +56,7 @@ export default function SessionExerciseCard({
       <header className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="line-clamp-2 font-display text-sm font-semibold leading-tight text-text">
-            {entry.exerciseName}
+            {displayName}
           </h3>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <span className="inline-flex items-center rounded-pill bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent">
@@ -70,7 +75,7 @@ export default function SessionExerciseCard({
             <button
               type="button"
               onClick={() => setHelpOpen(true)}
-              aria-label={t('training.helpOpen', { name: entry.exerciseName })}
+              aria-label={t('training.helpOpen', { name: displayName })}
               className="press rounded-full p-1.5 text-text-muted transition-[filter,transform,color,background-color] hover:bg-surface-2 hover:text-text"
             >
               <svg
@@ -150,7 +155,7 @@ export default function SessionExerciseCard({
       <ConfirmModal
         open={confirmOpen}
         title={t('training.confirmRemoveExerciseTitle', {
-          name: entry.exerciseName,
+          name: displayName,
         })}
         description={t('training.confirmRemoveExerciseSub')}
         confirmLabel={t('training.removeExercise')}
