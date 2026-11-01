@@ -190,10 +190,16 @@ export async function getSession(req, res, next) {
     return res.status(404).json({ message: 'Sesión no encontrada' })
   }
   try {
+    // populate igual que en /active: /stats/week y useHomeData leen entries
+    // para desglosar por grupo muscular (incluidos los secundarios) y
+    // calcular 1RM; sin populate perderíamos `secondaryMuscles` que solo
+    // vive en el catálogo. La denormalización del modelo (exerciseName,
+    // muscle, tracking) sigue siendo el ancla para historial — populate
+    // añade capacidad analítica sin romperla.
     const session = await Session.findOne({
       _id: req.params.id,
       user: req.user.id,
-    })
+    }).populate('entries.exercise')
     if (!session) {
       return res.status(404).json({ message: 'Sesión no encontrada' })
     }

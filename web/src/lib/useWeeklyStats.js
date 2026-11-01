@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from './api.js'
 
 /*
@@ -6,24 +6,55 @@ import { api } from './api.js'
 
   Dos pasadas al backend:
   1. GET /api/sessions?from=<lunes> para la lista summary (sin entries).
-  2. Un detail por cada sesión listada para poder desglosar series por
-     músculo y pesos máximos. En volumen semanal normal son 3–7 sesiones,
-     así que paralelizar con Promise.all es asumible. Si se dispara el
-     volumen (usuario con 20 sesiones/semana) consideramos un endpoint
-     agregado dedicado; hoy sería sobre-ingeniería.
+  2. Un detail por cada sesión listada — getSession ahora populate
+     `entries.exercise`, así que recibimos secondaryMuscles para desglose.
+     Normal son 3–7 sesiones semanales; paralelizar con Promise.all es OK.
+     Si crece mucho consideramos endpoint agregado dedicado.
 
   Si falla alguna fetch de detalle, la ignoramos (no bloquea la vista) y
   los agregados cuentan lo que sí se trajo.
+
+  Reglas de agregación:
+  - Músculo primario: cuenta series + volumen + peso máx + lista de ejercicios.
+  - Músculos secundarios (si vienen populados): cuentan SOLO series y la
+    referencia al ejercicio. Volumen y peso máx no se atribuyen porque el
+    secundario no soporta la carga completa — mezclarlo falsearía el "máx
+    peso de pecho" al contar un remo (dorsal con pecho secundario).
 */
 
 function mondayOfCurrentWeek(now = new Date()) {
   const d = new Date(now)
   d.setHours(0, 0, 0, 0)
-  // getDay(): 0 = domingo, 1 = lunes, ... 6 = sábado.
-  // ISO quiere lunes = 0, domingo = 6. Normalizamos.
   const isoDay = (d.getDay() + 6) % 7
   d.setDate(d.getDate() - isoDay)
   return d
+}
+
+function ensureMuscleBucket(map, muscle) {
+  if (!map.has(muscle)) {
+    map.set(muscle, {
+      muscle,
+      sets: 0,
+      volume: 0,
+      maxWeight: 0,
+      exercises: new Map(),
+    })
+  }
+  return map.get(muscle)
+}
+
+function ensureExerciseBucket(muscleBucket, exerciseName, tracking) {
+  if (!muscleBucket.exercises.has(exerciseName)) {
+    muscleBucket.exercises.set(exerciseName, {
+      name: exerciseName,
+      tracking,
+      sets: 0,
+      volume: 0,
+      maxWeight: 0,
+      details: [], // {weightKg, reps, durationSec, distanceM} por serie completada
+    })
+  }
+  return muscleBucket.exercises.get(exerciseName)
 }
 
 function aggregate(details) {
@@ -35,36 +66,66 @@ function aggregate(details) {
   for (const s of details) {
     if (!s) continue
     if (s.durationSec) totalDurationSec += s.durationSec
+
     for (const e of s.entries ?? []) {
-      const m = byMuscle.get(e.muscle) ?? {
-        muscle: e.muscle,
-        sets: 0,
-        volume: 0,
-        maxWeight: 0,
-      }
-      for (const set of e.sets ?? []) {
-        if (!set.completed) continue
-        totalCompletedSets += 1
-        m.sets += 1
+      const completedSets = (e.sets ?? []).filter((set) => set.completed)
+      if (completedSets.length === 0) continue
+
+      const primary = e.muscle
+      const secondaries =
+        (e.exercise && typeof e.exercise === 'object' && e.exercise.secondaryMuscles) || []
+      const detailsPerSet = completedSets.map((set) => ({
+        weightKg: set.weightKg ?? null,
+        reps: set.reps ?? null,
+        durationSec: set.durationSec ?? null,
+        distanceM: set.distanceM ?? null,
+      }))
+
+      // Primary: contribución completa.
+      const pBucket = ensureMuscleBucket(byMuscle, primary)
+      pBucket.sets += completedSets.length
+      const pEx = ensureExerciseBucket(pBucket, e.exerciseName, e.tracking)
+      pEx.sets += completedSets.length
+      pEx.details.push(...detailsPerSet)
+
+      totalCompletedSets += completedSets.length
+
+      for (const set of completedSets) {
         if (e.tracking === 'weight_reps' && set.weightKg != null && set.reps != null) {
           const vol = set.weightKg * set.reps
           totalVolume += vol
-          m.volume += vol
-          if (set.weightKg > m.maxWeight) m.maxWeight = set.weightKg
+          pBucket.volume += vol
+          pEx.volume += vol
+          if (set.weightKg > pBucket.maxWeight) pBucket.maxWeight = set.weightKg
+          if (set.weightKg > pEx.maxWeight) pEx.maxWeight = set.weightKg
         }
       }
-      byMuscle.set(e.muscle, m)
+
+      // Secundarios: solo series + referencia. No sumamos volumen ni max.
+      for (const sec of secondaries) {
+        if (sec === primary) continue
+        const sBucket = ensureMuscleBucket(byMuscle, sec)
+        sBucket.sets += completedSets.length
+        const sEx = ensureExerciseBucket(sBucket, e.exerciseName, e.tracking)
+        sEx.sets += completedSets.length
+        sEx.details.push(...detailsPerSet)
+      }
     }
   }
 
-  return {
-    totalDurationSec,
-    totalVolume,
-    totalCompletedSets,
-    byMuscle: Array.from(byMuscle.values())
-      .filter((m) => m.sets > 0)
-      .sort((a, b) => b.volume - a.volume || b.sets - a.sets),
-  }
+  // Serializar los Map a arrays para el consumidor React (los Map re-crean
+  // referencia en cada render si los pasas por props directamente).
+  const byMuscleArr = Array.from(byMuscle.values())
+    .filter((m) => m.sets > 0)
+    .map((m) => ({
+      ...m,
+      exercises: Array.from(m.exercises.values()).sort(
+        (a, b) => b.sets - a.sets || b.volume - a.volume,
+      ),
+    }))
+    .sort((a, b) => b.volume - a.volume || b.sets - a.sets)
+
+  return { totalDurationSec, totalVolume, totalCompletedSets, byMuscle: byMuscleArr }
 }
 
 export function useWeeklyStats() {
@@ -75,39 +136,38 @@ export function useWeeklyStats() {
     details: [],
   })
 
+  const load = useCallback(async () => {
+    setState((s) => ({ ...s, loading: true, error: null }))
+    try {
+      const monday = mondayOfCurrentWeek()
+      const query = `/api/sessions?limit=50&from=${encodeURIComponent(monday.toISOString())}`
+      const summaries = await api(query)
+      const details = await Promise.all(
+        (Array.isArray(summaries) ? summaries : []).map((s) =>
+          api(`/api/sessions/${s._id}`).catch(() => null),
+        ),
+      )
+      setState({
+        loading: false,
+        error: null,
+        summaries,
+        details: details.filter(Boolean),
+      })
+    } catch (err) {
+      setState({ loading: false, error: err, summaries: [], details: [] })
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
-    async function load() {
-      try {
-        const monday = mondayOfCurrentWeek()
-        const query =
-          `/api/sessions?limit=50&from=${encodeURIComponent(monday.toISOString())}`
-        const summaries = await api(query)
-        if (cancelled) return
-
-        const details = await Promise.all(
-          (Array.isArray(summaries) ? summaries : []).map((s) =>
-            api(`/api/sessions/${s._id}`).catch(() => null),
-          ),
-        )
-        if (cancelled) return
-
-        setState({
-          loading: false,
-          error: null,
-          summaries,
-          details: details.filter(Boolean),
-        })
-      } catch (err) {
-        if (cancelled) return
-        setState({ loading: false, error: err, summaries: [], details: [] })
-      }
-    }
-    load()
+    ;(async () => {
+      await load()
+      if (cancelled) return
+    })()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [load])
 
   const stats = useMemo(() => aggregate(state.details), [state.details])
 
@@ -116,6 +176,8 @@ export function useWeeklyStats() {
     error: state.error,
     sessionCount: state.summaries.length,
     monday: mondayOfCurrentWeek(),
+    summaries: state.summaries,
+    refetch: load,
     ...stats,
   }
 }

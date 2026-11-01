@@ -39,34 +39,50 @@ function useElapsed(startedAtIso) {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
 }
 
+/*
+  Reglas de atribución:
+  - Músculo primario (entry.muscle): recibe series + volumen + peso máx.
+  - Músculos secundarios (entry.exercise.secondaryMuscles, cuando viene
+    populado): solo series. Volumen y máx se quedan en el primario para no
+    inflar el "máx peso de pecho" al contar un remo.
+*/
+function ensureBucket(map, muscle) {
+  if (!map.has(muscle)) {
+    map.set(muscle, { muscle, sets: 0, volume: 0, maxWeight: 0 })
+  }
+  return map.get(muscle)
+}
+
 function aggregate(entries) {
   let completedSets = 0
   let totalVolume = 0
   const byMuscle = new Map()
 
   for (const e of entries) {
-    const m = byMuscle.get(e.muscle) ?? {
-      muscle: e.muscle,
-      sets: 0,
-      volume: 0,
-      maxWeight: 0,
-    }
-    for (const s of e.sets) {
-      if (!s.completed) continue
-      completedSets += 1
-      m.sets += 1
+    const completed = e.sets.filter((s) => s.completed)
+    if (completed.length === 0) continue
+    completedSets += completed.length
+
+    const primary = ensureBucket(byMuscle, e.muscle)
+    primary.sets += completed.length
+    for (const s of completed) {
       if (e.tracking === 'weight_reps' && s.weightKg != null && s.reps != null) {
         const vol = s.weightKg * s.reps
         totalVolume += vol
-        m.volume += vol
-        if (s.weightKg > m.maxWeight) m.maxWeight = s.weightKg
+        primary.volume += vol
+        if (s.weightKg > primary.maxWeight) primary.maxWeight = s.weightKg
       }
     }
-    byMuscle.set(e.muscle, m)
+
+    const secondaries =
+      (e.exercise && typeof e.exercise === 'object' && e.exercise.secondaryMuscles) || []
+    for (const sec of secondaries) {
+      if (sec === e.muscle) continue
+      const bucket = ensureBucket(byMuscle, sec)
+      bucket.sets += completed.length
+    }
   }
 
-  // Solo músculos con al menos una serie completada: la lista refleja el
-  // entreno real, no todos los músculos planificados.
   const byMuscleArr = Array.from(byMuscle.values())
     .filter((m) => m.sets > 0)
     .sort((a, b) => b.volume - a.volume || b.sets - a.sets)

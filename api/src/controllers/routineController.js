@@ -75,6 +75,27 @@ export async function listRoutines(req, res, next) {
     const userId = new mongoose.Types.ObjectId(req.user.id)
     const result = await Routine.aggregate([
       { $match: { user: userId } },
+      /*
+        Lookup barato: traemos solo el `muscle` primario de cada ejercicio
+        referenciado para poder pintar chips de grupo en la card de rutina.
+        Nunca el documento entero: cada ejercicio del catálogo pesa KB (gifUrl,
+        instructions). Con el pipeline interno de $project limitamos lo que
+        viaja desde la colección 'exercises'.
+      */
+      {
+        $lookup: {
+          from: 'exercises',
+          localField: 'exercises.exercise',
+          foreignField: '_id',
+          as: 'exerciseDocs',
+          pipeline: [{ $project: { muscle: 1 } }],
+        },
+      },
+      {
+        $addFields: {
+          muscles: { $setUnion: ['$exerciseDocs.muscle', []] },
+        },
+      },
       {
         $project: {
           name: 1,
@@ -84,6 +105,7 @@ export async function listRoutines(req, res, next) {
           lastUsedAt: 1,
           createdAt: 1,
           updatedAt: 1,
+          muscles: 1,
           exerciseCount: { $size: { $ifNull: ['$exercises', []] } },
         },
       },

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useUser } from '../contexts/UserContext.jsx'
 import Logo from './icons/Logo.jsx'
 import {
+  CalendarIcon,
   CatalogIcon,
   HistoryIcon,
   HomeIcon,
@@ -37,17 +38,18 @@ import {
   bookmark antiguo no caiga en 404.
 */
 /*
-  Entrenar es la actividad central de IronTrack: va en el nav. Lo colocamos
-  tras "Rutinas" porque el flujo mental es "ver mis rutinas → entrenar una";
-  mantenerlos adyacentes evita viajes del pulgar entre los dos destinos más
-  relacionados. Sumamos un sexto tab asumiendo que 6 cabe en móvil estándar
-  (320 px+) con `text-[11px]`; si en pruebas el bottom-nav aprieta demasiado
-  reorganizaremos (p. ej. moviendo Perfil a avatar en header).
+  Siete destinos en el nav: Home / Rutinas / Entrenar / Semana / Catálogo /
+  Historial / Perfil. Rutinas → Entrenar → Semana queda como "cadena del
+  entreno": preparar, hacer, revisar; viven juntos para que el pulgar
+  recorra el flujo sin saltos. En móvil con `text-[11px]` cabe en pantallas
+  de 360 px+; si en pruebas apretamos, el candidato a mover es Perfil
+  (hacia un avatar en el header).
 */
 const TABS = [
   { to: '/home', labelKey: 'nav.home', Icon: HomeIcon },
   { to: '/routines', labelKey: 'nav.routines', Icon: RoutinesIcon },
   { to: '/training', labelKey: 'nav.training', Icon: KettlebellIcon },
+  { to: '/stats/week', labelKey: 'nav.week', Icon: CalendarIcon },
   { to: '/catalog', labelKey: 'nav.catalog', Icon: CatalogIcon },
   { to: '/history', labelKey: 'nav.history', Icon: HistoryIcon },
   { to: '/settings', labelKey: 'nav.profile', Icon: ProfileIcon },
