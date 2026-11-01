@@ -3,19 +3,19 @@ import { useUser } from '../contexts/UserContext.jsx'
 import { api } from './api.js'
 
 /*
-  Toggle optimista de favoritos. Lee la lista desde `user.favoriteExercises`
-  (viene en /api/me) y escribe con PUT/DELETE /api/me/favorites/:id.
-  Mantenemos el estado al día refrescando el user del contexto tras cada
-  cambio: así el icono de favorito en catálogo, picker y futuras pantallas
-  comparte una única fuente de verdad.
+  Toggle de favoritos SIN refetch de /api/me:
+  1. Actualizamos user.favoriteExercises localmente (optimista) para que la
+     mancuerna se pinte amarilla al instante.
+  2. Disparamos PUT/DELETE. Si va bien, reconciliamos con lo que devuelve el
+     servidor (`{ favoriteExercises }`) — por si llegaba un cambio concurrente.
+  3. Si falla, rollback al snapshot que teníamos antes.
 
-  No optimizamos (optimistic update local sin refetch) todavía porque la
-  lista semilla es pequeña (<100 ids) y el refetch de /api/me es barato.
-  Cuando el perfil crezca con más campos, mueve a optimistic + rollback en
-  caso de error.
+  Antes esto llamaba a refetch() del UserContext, que pone loading=true y
+  cascada un re-render con flash a toda la app. Esta versión toca solo el
+  campo necesario y es imperceptible.
 */
 export function useFavorites() {
-  const { user, refetch } = useUser()
+  const { user, updateUser } = useUser()
 
   const favoriteSet = useMemo(
     () => new Set((user?.favoriteExercises ?? []).map(String)),
@@ -29,19 +29,30 @@ export function useFavorites() {
 
   const toggle = useCallback(
     async (exerciseId) => {
+      const current = user?.favoriteExercises ?? []
       const already = favoriteSet.has(String(exerciseId))
+      const optimistic = already
+        ? current.filter((id) => String(id) !== String(exerciseId))
+        : [...current, exerciseId]
+
+      updateUser({ favoriteExercises: optimistic })
       try {
-        await api(`/api/me/favorites/${exerciseId}`, {
+        const res = await api(`/api/me/favorites/${exerciseId}`, {
           method: already ? 'DELETE' : 'PUT',
         })
-        await refetch()
+        // Reconciliar con el servidor: dedupe + orden autoritativo. En la
+        // práctica es el mismo array, pero cubre carrera con otra pestaña.
+        if (res?.favoriteExercises) {
+          updateUser({ favoriteExercises: res.favoriteExercises })
+        }
       } catch (err) {
-        // Dejamos propagar para que el caller pueda enseñar un error puntual
-        // si lo necesita. Hoy nadie lo captura; el usuario reintenta.
+        // Rollback al snapshot anterior y propagamos para que el caller pueda
+        // mostrar error puntual (hoy nadie lo captura, el usuario reintenta).
+        updateUser({ favoriteExercises: current })
         throw err
       }
     },
-    [favoriteSet, refetch],
+    [user?.favoriteExercises, favoriteSet, updateUser],
   )
 
   return { favoriteSet, isFavorite, toggle, count: favoriteSet.size }

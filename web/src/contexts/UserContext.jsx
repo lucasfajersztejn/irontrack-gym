@@ -18,6 +18,7 @@ const UserContext = createContext({
   isAuthed: false,
   needsOnboarding: false,
   refetch: () => {},
+  updateUser: () => {},
 })
 
 export function UserProvider({ children }) {
@@ -55,12 +56,23 @@ export function UserProvider({ children }) {
     }
   }, [user?.settings?.locale])
 
+  /*
+    updateUser: merge local sin ir al servidor. Para cuando un endpoint ya
+    devuelve el estado actualizado (p. ej. PUT /api/me/favorites responde
+    { favoriteExercises }) y no queremos pagar un refetch de /api/me entero
+    — el refetch pone loading=true y hace parpadear a toda la app.
+  */
+  const updateUser = useCallback((partial) => {
+    setUser((prev) => (prev ? { ...prev, ...partial } : prev))
+  }, [])
+
   const value = {
     user,
     loading,
     isAuthed: !!user,
     needsOnboarding: !!user?.needsOnboarding,
     refetch: fetchMe,
+    updateUser,
   }
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>
