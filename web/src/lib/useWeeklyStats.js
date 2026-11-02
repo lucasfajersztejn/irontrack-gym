@@ -2,26 +2,51 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from './api.js'
 
 /*
-  Vista semanal: devolvemos las sesiones de la semana actual (lunes → ahora)
+  Vista semanal: devolvemos las sesiones de UNA semana (lunes → domingo)
   emparejadas con su detalle populado. Toda la agregación POR MÚSCULO ocurre
   AHORA por-sesión en la vista, no en un buffer global: el usuario pidió
   explícitamente que /stats/week muestre solo sesiones y que cada una
   despliegue sus ejercicios + grupos trabajados.
 
+  La semana a mostrar la decide el caller (WeekStats mantiene el offset y
+  pasa el lunes correspondiente). El hook acota con from/to para poder pedir
+  semanas pasadas; para la semana actual, `to` cae en el futuro y no recorta
+  nada.
+
   Dos pasadas al backend:
-  1. GET /api/sessions?from=<lunes>  → list summary (sin entries).
-  2. GET /api/sessions/:id por cada  → detail populado (secondaryMuscles).
+  1. GET /api/sessions?from=<lunes>&to=<domingo> → list summary (sin entries).
+  2. GET /api/sessions/:id por cada             → detail (secondaryMuscles).
 
   Si falla la fetch de detalle, la emparejamos con detail=null y la vista
   pinta la cabecera sin desglose: no bloquea el resto.
 */
 
-function mondayOfCurrentWeek(now = new Date()) {
-  const d = new Date(now)
+const WEEK_MS = 7 * 24 * 3600 * 1000
+
+// Lunes 00:00 (hora local) de la semana que contiene `date`. setHours/setDate
+// en hora local tratan bien los saltos de horario de verano: mantienen la
+// hora de pared, así que el lunes sigue siendo medianoche tras el cambio.
+export function mondayOf(date = new Date()) {
+  const d = new Date(date)
   d.setHours(0, 0, 0, 0)
   const isoDay = (d.getDay() + 6) % 7
   d.setDate(d.getDate() - isoDay)
   return d
+}
+
+/*
+  Número de semana ISO-8601 (la semana 1 es la que contiene el primer jueves
+  del año). Lo calculamos en UTC para que el redondeo no baile con el huso
+  horario, partiendo del jueves de la semana pedida.
+*/
+export function isoWeek(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = (d.getUTCDay() + 6) % 7
+  d.setUTCDate(d.getUTCDate() - dayNum + 3) // jueves de esta semana
+  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4))
+  const firstDayNum = (firstThursday.getUTCDay() + 6) % 7
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3)
+  return 1 + Math.round((d - firstThursday) / WEEK_MS)
 }
 
 /*
@@ -73,19 +98,56 @@ export function breakdownForSession(detail) {
   }
 }
 
-export function useWeeklyStats() {
+/*
+  Músculos trabajados en TODA la semana, para el mapa corporal.
+
+  Un músculo es primario si lo fue en alguna sesión; secundario solo si nunca
+  llegó a primario. Si el lunes haces press banca (pecho primario) y el jueves
+  fondos (pecho secundario), el pecho de la semana es primario: la carga mayor
+  manda, y degradarlo a secundario leería como que entrenaste menos de lo que
+  entrenaste.
+
+  Reusa breakdownForSession, que ya descarta entries sin series completadas:
+  el mapa refleja lo que se hizo de verdad, no lo que estaba planificado.
+*/
+export function weekMuscleUsage(sessions) {
+  const primary = new Set()
+  const secondary = new Set()
+  for (const { detail } of sessions ?? []) {
+    const b = breakdownForSession(detail)
+    for (const m of b.primaryMuscles) primary.add(m)
+    for (const m of b.secondaryMuscles) secondary.add(m)
+  }
+  for (const m of primary) secondary.delete(m)
+  return {
+    primary: Array.from(primary),
+    secondary: Array.from(secondary),
+  }
+}
+
+export function useWeeklyStats(weekStart) {
   const [state, setState] = useState({
     loading: true,
     error: null,
     sessions: [],
   })
 
+  // Dependemos del timestamp, no del objeto Date: así el efecto solo se
+  // vuelve a disparar cuando cambia la semana, no en cada render que cree
+  // un Date nuevo con el mismo instante.
+  const startMs = weekStart.getTime()
+
   const load = useCallback(async () => {
     setState((s) => ({ ...s, loading: true, error: null }))
     try {
-      const monday = mondayOfCurrentWeek()
+      const from = new Date(startMs)
+      // Fin de la semana: 1 ms antes del lunes siguiente, para no incluir una
+      // sesión del lunes de la semana próxima (el backend filtra con $lte).
+      const to = new Date(startMs + WEEK_MS - 1)
       const query =
-        `/api/sessions?limit=50&from=${encodeURIComponent(monday.toISOString())}`
+        `/api/sessions?limit=50` +
+        `&from=${encodeURIComponent(from.toISOString())}` +
+        `&to=${encodeURIComponent(to.toISOString())}`
       const summaries = await api(query)
       const list = Array.isArray(summaries) ? summaries : []
       const details = await Promise.all(
@@ -101,13 +163,13 @@ export function useWeeklyStats() {
     } catch (err) {
       setState({ loading: false, error: err, sessions: [] })
     }
-  }, [])
+  }, [startMs])
 
   useEffect(() => {
     load()
   }, [load])
 
-  const monday = useMemo(() => mondayOfCurrentWeek(), [])
+  const monday = useMemo(() => new Date(startMs), [startMs])
 
   return {
     loading: state.loading,

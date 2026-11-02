@@ -31,6 +31,19 @@
   --color-link: #58a6ff;
 
   /*
+    Carga muscular del mapa corporal de /stats/week. Es una familia derivada
+    para una visualización concreta, igual que --color-heat-*, no un color
+    suelto: el mapa pinta este rojo al 95% en los músculos primarios y al 34%
+    en los secundarios, y de ahí salen las dos intensidades.
+
+    Coincide en valor con --color-error porque es el único rojo del sistema y
+    DESIGN.md cierra la paleta; el nombre es distinto porque el significado lo
+    es — aquí rojo significa "trabajado", no "algo ha fallado", y un cambio
+    futuro en el rojo de error no debe arrastrar al mapa.
+  */
+  --color-muscle: #f85149;
+
+  /*
     Dos familias: Space Grotesk para títulos y cifras grandes (geométrica,
     con carácter), Inter para texto corrido. Nada de monoespaciada
     (spec §7): los números se alinean con tabular-nums, no con una fuente
