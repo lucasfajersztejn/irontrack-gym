@@ -274,7 +274,12 @@
   "weekStats": {
     "title": "Esta semana",
     "back": "Volver a inicio",
-    "sinceMonday": "Desde el lunes {{date}}",
+    "weekLabel": "Semana {{week}}",
+    "weekNavTitle": "Semana",
+    "weekShort": "W-{{week}}",
+    "thisWeekTag": "Esta semana",
+    "olderWeek": "Semana anterior",
+    "newerWeek": "Semana siguiente",
     "progressKicker": "Progreso",
     "sessionsSuffix": "sesiones",
     "sessions": "Sesiones",

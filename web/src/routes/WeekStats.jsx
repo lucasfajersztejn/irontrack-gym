@@ -1,12 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../contexts/UserContext.jsx'
-import { useWeeklyStats, breakdownForSession } from '../lib/useWeeklyStats.js'
+import {
+  useWeeklyStats,
+  breakdownForSession,
+  mondayOf,
+  isoWeek,
+} from '../lib/useWeeklyStats.js'
 import { api } from '../lib/api.js'
 import ConfirmModal from '../components/routines/ConfirmModal.jsx'
 import MuscleChips from '../components/MuscleChips.jsx'
+import { ChevronRightIcon } from '../components/icons/NavIcons.jsx'
 import { resolveExerciseName } from '../lib/exerciseName.js'
+
+// Cuántas semanas atrás dejamos navegar. Un año es de sobra para un diario
+// de gimnasio y evita pasear sin fin por semanas vacías anteriores a la
+// cuenta. El quick-jump del desplegable muestra solo las más recientes.
+const MAX_WEEKS_BACK = 52
+const DROPDOWN_WEEKS = 12
 
 /*
   /stats/week — vista detalle de la semana actual.
@@ -46,7 +58,21 @@ function fmtDuration(seconds, t) {
 export default function WeekStats() {
   const { t, i18n } = useTranslation()
   const { user, refetch: refetchUser } = useUser()
-  const weekly = useWeeklyStats()
+
+  // offset en semanas hacia atrás: 0 = esta semana, 1 = la pasada…
+  const [weekOffset, setWeekOffset] = useState(0)
+  // El lunes de ESTA semana se fija una vez al montar; el resto se deriva
+  // restando semanas. Recalcularlo en cada render haría que, si el usuario
+  // deja la pestaña abierta al cruzar la medianoche del domingo, "esta
+  // semana" saltara sin avisar. Para esta vista es aceptable fijarlo.
+  const currentMonday = useMemo(() => mondayOf(new Date()), [])
+  const weekStart = useMemo(() => {
+    const d = new Date(currentMonday)
+    d.setDate(d.getDate() - weekOffset * 7)
+    return d
+  }, [currentMonday, weekOffset])
+
+  const weekly = useWeeklyStats(weekStart)
   const goal = user?.settings?.weeklyGoal ?? DEFAULT_GOAL
   const [editing, setEditing] = useState(false)
   const [goalDraft, setGoalDraft] = useState(goal)
@@ -56,7 +82,12 @@ export default function WeekStats() {
   const [sessionToDelete, setSessionToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Al cambiar de semana, cerrar cualquier sesión expandida: su id no está en
+  // la lista nueva y dejarla "abierta" es estado fantasma.
+  useEffect(() => setOpenSession(null), [weekOffset])
+
   const progressPct = Math.min(100, (weekly.sessionCount / goal) * 100)
+  const weekNumber = isoWeek(weekStart)
 
   async function saveGoal() {
     const value = Number(goalDraft)
@@ -101,17 +132,22 @@ export default function WeekStats() {
           ← {t('weekStats.back')}
         </Link>
         <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-text md:text-4xl">
-          {t('weekStats.title')}
+          {weekOffset === 0
+            ? t('weekStats.title')
+            : t('weekStats.weekLabel', { week: weekNumber })}
         </h1>
-        <p className="mt-1 text-sm text-text-muted">
-          {t('weekStats.sinceMonday', {
-            date: new Intl.DateTimeFormat(i18n.language, {
-              day: '2-digit',
-              month: 'long',
-            }).format(weekly.monday),
-          })}
-        </p>
       </header>
+
+      <WeekNavigator
+        weekStart={weekStart}
+        weekNumber={weekNumber}
+        offset={weekOffset}
+        onPrev={() => setWeekOffset((o) => Math.min(MAX_WEEKS_BACK, o + 1))}
+        onNext={() => setWeekOffset((o) => Math.max(0, o - 1))}
+        onSelect={setWeekOffset}
+        currentMonday={currentMonday}
+        locale={i18n.language}
+      />
 
       {weekly.loading ? (
         <Skeleton />
@@ -178,6 +214,184 @@ export default function WeekStats() {
         onCancel={() => setSessionToDelete(null)}
       />
     </div>
+  )
+}
+
+// Rango lunes–domingo de una semana, formateado corto: "27 oct – 2 nov".
+// Formateamos los dos extremos igual aunque caigan en el mismo mes: es una
+// línea más de texto, pero se lee sin ambigüedad y evita ramas por
+// mismo-mes / mismo-año que aportan poco.
+function weekRange(weekStart, locale) {
+  const end = new Date(weekStart)
+  end.setDate(end.getDate() + 6)
+  const fmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' })
+  return `${fmt.format(weekStart)} – ${fmt.format(end)}`
+}
+
+/*
+  Navegador de semana. Card "Semana" con flecha atrás (más antiguo), un
+  disparador central que abre el desplegable de salto rápido, y flecha
+  adelante (más reciente). La flecha adelante se desactiva en la semana
+  actual — no se viaja al futuro — y la de atrás al tope de MAX_WEEKS_BACK.
+
+  El desplegable es un salto rápido a las últimas DROPDOWN_WEEKS semanas; las
+  flechas cubren el grano fino más allá de esa ventana. Se cierra al elegir,
+  al tocar fuera (backdrop) o con Escape.
+*/
+function WeekNavigator({
+  weekStart,
+  weekNumber,
+  offset,
+  onPrev,
+  onNext,
+  onSelect,
+  currentMonday,
+  locale,
+}) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  const atCurrent = offset === 0
+  const atOldest = offset >= MAX_WEEKS_BACK
+
+  // Opciones del desplegable: de la actual hacia atrás. Deriva cada lunez
+  // restando semanas al lunes de hoy, así no arrastramos husos ni DST.
+  const options = useMemo(() => {
+    return Array.from({ length: DROPDOWN_WEEKS }, (_, o) => {
+      const d = new Date(currentMonday)
+      d.setDate(d.getDate() - o * 7)
+      return { offset: o, start: d, week: isoWeek(d) }
+    })
+  }, [currentMonday])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => e.key === 'Escape' && setOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  return (
+    <section className="card-liquid flex flex-col gap-2 rounded-container p-3 md:p-4">
+      <span className="px-1 font-display text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">
+        {t('weekStats.weekNavTitle')}
+      </span>
+      <div className="flex items-center gap-2">
+        <NavArrow
+          direction="prev"
+          disabled={atOldest}
+          label={t('weekStats.olderWeek')}
+          onClick={onPrev}
+        />
+
+        <div className="relative min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            className="press flex w-full items-center justify-center gap-2 rounded-control px-3 py-2 text-center transition-[filter,transform,background-color] hover:bg-surface-2"
+          >
+            <span className="flex min-w-0 flex-col items-center">
+              <span className="tabular font-display text-base font-semibold leading-tight text-text">
+                {t('weekStats.weekShort', { week: weekNumber })}
+                {atCurrent && (
+                  <span className="ml-2 align-middle text-[11px] font-medium text-accent">
+                    {t('weekStats.thisWeekTag')}
+                  </span>
+                )}
+              </span>
+              <span className="text-xs text-text-muted">
+                {weekRange(weekStart, locale)}
+              </span>
+            </span>
+            <ChevronRightIcon
+              className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${
+                open ? '-rotate-90' : 'rotate-90'
+              }`}
+            />
+          </button>
+
+          {open && (
+            <>
+              {/*
+                Backdrop que captura el toque fuera para cerrar. Transparente
+                y bajo el panel; el panel va por encima con z mayor.
+              */}
+              <button
+                type="button"
+                aria-hidden
+                tabIndex={-1}
+                onClick={() => setOpen(false)}
+                className="fixed inset-0 z-40 cursor-default"
+              />
+              <ul
+                role="menu"
+                aria-label={t('weekStats.weekNavTitle')}
+                className="absolute left-1/2 top-full z-50 mt-1 max-h-72 w-60 max-w-[80vw] -translate-x-1/2 overflow-y-auto rounded-container border border-border/60 bg-surface p-1 shadow-lg"
+              >
+                {options.map((opt) => {
+                  const selected = opt.offset === offset
+                  return (
+                    <li key={opt.offset}>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        aria-current={selected ? 'true' : undefined}
+                        onClick={() => {
+                          onSelect(opt.offset)
+                          setOpen(false)
+                        }}
+                        className={`flex w-full items-baseline justify-between gap-3 rounded-card px-3 py-2 text-left transition-colors ${
+                          selected
+                            ? 'bg-surface-2 text-text'
+                            : 'text-text-muted hover:bg-surface-2 hover:text-text'
+                        }`}
+                      >
+                        <span className="tabular text-sm font-medium">
+                          {t('weekStats.weekShort', { week: opt.week })}
+                          {opt.offset === 0 && (
+                            <span className="ml-2 text-[11px] font-normal text-accent">
+                              {t('weekStats.thisWeekTag')}
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-xs text-text-muted">
+                          {weekRange(opt.start, locale)}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </div>
+
+        <NavArrow
+          direction="next"
+          disabled={atCurrent}
+          label={t('weekStats.newerWeek')}
+          onClick={onNext}
+        />
+      </div>
+    </section>
+  )
+}
+
+function NavArrow({ direction, disabled, label, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="press flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-border/60 bg-surface text-text transition-[filter,transform,background-color,color] hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-30"
+    >
+      <ChevronRightIcon
+        className={`h-5 w-5 ${direction === 'prev' ? 'rotate-180' : ''}`}
+      />
+    </button>
   )
 }
 
