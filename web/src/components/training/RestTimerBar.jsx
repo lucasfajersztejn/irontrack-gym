@@ -21,6 +21,12 @@ import {
   justo cuando menos apetece. Y quien prefiera el cronómetro de su móvil
   simplemente no lo pulsa.
 
+  La duración de arranque la decide el usuario en Ajustes
+  (`settings.restTimerSec`) y entra por prop: este componente repinta cada
+  segundo, así que cuanto menos sepa de dónde salen sus datos, mejor. Quien
+  lee la preferencia es SessionLiveView, que además no monta la barra si el
+  usuario la puso en Off.
+
   Posición: sobre la bottom-nav en móvil (la nav es z-30, esto z-40 con el
   offset justo encima) y abajo de la columna de contenido en desktop, donde
   la navegación es sidebar. Suma env(safe-area-inset-bottom) para no quedar
@@ -61,7 +67,7 @@ function ClockIcon({ className }) {
   )
 }
 
-export default function RestTimerBar() {
+export default function RestTimerBar({ restSec = REST_DEFAULT_SEC }) {
   const { t } = useTranslation()
   const reduce = useReducedMotion()
   const restEndsAt = useSessionStore((s) => s.restEndsAt)
@@ -201,14 +207,12 @@ export default function RestTimerBar() {
           */
           <button
             type="button"
-            onClick={() => startRest(REST_DEFAULT_SEC)}
+            onClick={() => startRest(restSec)}
             className="press flex w-full items-center justify-center gap-2 rounded-container border border-border/70 bg-surface/95 px-4 py-3 text-sm font-semibold text-text shadow-lg backdrop-blur-md transition-[filter,transform,background-color] hover:bg-surface-2"
           >
             <ClockIcon className="h-4 w-4 text-accent" />
             {t('training.rest.start')}
-            <span className="tabular text-text-muted">
-              {format(REST_DEFAULT_SEC)}
-            </span>
+            <span className="tabular text-text-muted">{format(restSec)}</span>
           </button>
         )}
       </div>

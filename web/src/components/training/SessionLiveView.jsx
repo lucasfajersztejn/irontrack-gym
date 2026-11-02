@@ -8,7 +8,8 @@ import ConfirmModal from '../routines/ConfirmModal.jsx'
 import SupersetBlock from '../routines/SupersetBlock.jsx'
 import { useSessionLive } from '../../lib/useSessionLive.js'
 import { groupEntries } from '../../lib/supersets.js'
-import { useSessionStore } from '../../stores/sessionStore.js'
+import { REST_DEFAULT_SEC, useSessionStore } from '../../stores/sessionStore.js'
+import { useUser } from '../../contexts/UserContext.jsx'
 
 /*
   Vista "live" de la sesión activa. Compone el header (nombre + cronómetro
@@ -36,8 +37,19 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
   const [confirmFinishOpen, setConfirmFinishOpen] = useState(false)
   const stopRest = useSessionStore((s) => s.stopRest)
 
+  /*
+    Descanso por defecto del usuario. REST_DEFAULT_SEC solo cubre el hueco
+    entre el primer render y la respuesta de `/api/me`; es el mismo número
+    que el default del campo en el modelo, así que la barra no cambia de
+    duración al cargar el usuario.
+  */
+  const { user } = useUser()
+  const restSec = user?.settings?.restTimerSec ?? REST_DEFAULT_SEC
+
   // Al salir de la vista (terminar sesión, navegar fuera) no queremos que el
   // store se quede con un descanso a medias que reaparezca en la próxima.
+  // Esto cubre también el caso de ir a Ajustes y poner el descanso en Off:
+  // al volver no hay cuenta atrás heredada esperando.
   useEffect(() => stopRest, [stopRest])
 
   const alreadyIds = entries.map((e) =>
@@ -156,14 +168,22 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
       />
 
       {/*
-        La barra es fija, así que no ocupa sitio en el flujo: este hueco
-        evita que el panel de stats quede tapado al final del scroll.
-        Vive aquí y no en el padding de AppShell porque la barra solo
-        existe durante una sesión activa.
-      */}
-      <div aria-hidden className="h-16 md:h-20" />
+        Barra de descanso. No se monta si el usuario puso el descanso en Off
+        (`restTimerSec: 0`) desde Ajustes: ahí la decisión es "no quiero
+        cronómetro", y una barra fija ocupando el borde inferior de la
+        pantalla no es algo que se pueda ignorar.
 
-      <RestTimerBar />
+        El hueco de abajo va con ella: la barra es `fixed`, así que no ocupa
+        sitio en el flujo, y sin este div el panel de stats queda tapado al
+        final del scroll. Vive aquí y no en el padding de AppShell porque la
+        barra solo existe durante una sesión activa.
+      */}
+      {restSec > 0 && (
+        <>
+          <div aria-hidden className="h-16 md:h-20" />
+          <RestTimerBar restSec={restSec} />
+        </>
+      )}
     </div>
   )
 }

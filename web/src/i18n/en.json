@@ -367,5 +367,70 @@
     "errors": {
       "generic": "Couldn't create the exercise. Try again."
     }
+  },
+  "settings": {
+    "title": "Settings",
+    "intro": "Changes save as you make them.",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "saveError": "Couldn't save. Try again.",
+    "sections": {
+      "training": "Your training",
+      "app": "The app",
+      "account": "Your account"
+    },
+    "rest": {
+      "label": "Rest between sets",
+      "helper": "How long the rest bar starts at. With Off the bar never shows up and you use your phone's timer.",
+      "off": "Off"
+    },
+    "barInput": {
+      "label": "How you enter weight",
+      "helper": "For barbell exercises. With “per side” we add the bar for you; the database always stores the total.",
+      "plates": "Plates per side",
+      "total": "Total weight"
+    },
+    "barWeight": {
+      "label": "Bar weight",
+      "helper": "Your olympic bar. The standard one is 20 kg, but some gyms run 15. EZ and Smith bars bring their own.",
+      "dec": "Take {{n}} kilos off the bar weight",
+      "inc": "Add {{n}} kilos to the bar weight"
+    },
+    "weeklyGoal": {
+      "label": "Weekly goal",
+      "helper": "Sessions per week. It's the target behind the progress on Home and Week.",
+      "dec": "Lower the weekly goal",
+      "inc": "Raise the weekly goal"
+    },
+    "locale": {
+      "label": "Language",
+      "helper": "Applies to the app's own text, not to exercise names from the catalog."
+    },
+    "account": {
+      "provider": "You sign in with {{provider}}",
+      "providerFallback": "You sign in with your OAuth provider. IronTrack stores no passwords.",
+      "signOut": "Sign out",
+      "signOutHelper": "Signs you out on this device. Your data stays where it is."
+    },
+    "delete": {
+      "title": "Delete account",
+      "body": "Deletes your account and everything you logged. This can't be undone.",
+      "cta": "Delete account",
+      "modalTitle": "Delete your account",
+      "modalIntro": "This permanently deletes:",
+      "items": {
+        "sessions": "Every session and the sets you logged in them.",
+        "routines": "Every routine.",
+        "exercises": "The exercises you created.",
+        "preferences": "Favorites, exercise renames and these settings.",
+        "profile": "Your profile and the sign-in with your OAuth provider."
+      },
+      "irreversible": "There is no undo and no backup.",
+      "confirmLabel": "Type {{username}} to confirm",
+      "cancel": "Cancel",
+      "confirm": "Delete my account",
+      "deleting": "Deleting…",
+      "error": "Couldn't delete the account. Try again."
+    }
   }
 }

@@ -2,6 +2,9 @@ import 'dotenv/config'
 import { MongoClient } from 'mongodb'
 import { betterAuth } from 'better-auth'
 import { mongodbAdapter } from 'better-auth/adapters/mongodb'
+import Session from '../models/session.model.js'
+import Routine from '../models/routine.model.js'
+import Exercise from '../models/exercise.model.js'
 
 /**
  * Better Auth necesita un `MongoClient` nativo, no la conexión de Mongoose
@@ -47,6 +50,39 @@ export const auth = betterAuth({
      * con `User.findById()` para componer `/api/me`.
      */
     modelName: 'users',
+
+    /**
+     * Borrado de cuenta (RGPD: derecho de supresión). Better Auth lo trae
+     * desactivado; lo activamos y le colgamos la limpieza de NUESTRAS
+     * colecciones.
+     *
+     * Reparto de responsabilidades:
+     *   - Better Auth borra lo suyo (`users`, `accounts`, `sessions`) en su
+     *     `internalAdapter.deleteUser` y limpia la cookie de sesión.
+     *   - `beforeDelete` borra lo de IronTrack. Es el ÚNICO sitio donde vive
+     *     esa lista: al añadir una colección nueva por usuario hay que
+     *     acordarse de este hook.
+     *
+     * No quedan huérfanos que perseguir después: los ejercicios custom solo
+     * son visibles para su dueño y `Session.entries.exerciseName` es un
+     * snapshot histórico, no una referencia viva al catálogo.
+     *
+     * Sin transacción, a propósito. Atlas las soporta, pero los borrados de
+     * Better Auth caerían fuera de ella de todas formas, así que la
+     * atomicidad sería falsa. La garantía real es que cada `deleteMany` es
+     * idempotente: si uno falla, el hook lanza, Better Auth aborta el borrado
+     * del usuario y se puede reintentar sin que lo ya borrado estorbe.
+     */
+    deleteUser: {
+      enabled: true,
+      beforeDelete: async (user) => {
+        await Promise.all([
+          Session.deleteMany({ user: user.id }),
+          Routine.deleteMany({ user: user.id }),
+          Exercise.deleteMany({ createdBy: user.id }),
+        ])
+      },
+    },
   },
 
   account: {
@@ -72,6 +108,23 @@ export const auth = betterAuth({
   session: {
     modelName: 'sessions',
     expiresIn: 60 * 60 * 24 * 30, // 30 días
+
+    /**
+     * `freshAge: 0` desactiva el control de "sesión fresca".
+     *
+     * Por defecto Better Auth exige que la sesión se haya creado hace menos
+     * de un día para las operaciones sensibles (borrar cuenta es una), y si
+     * no, pide contraseña o un email de verificación. Aquí no hay ninguna de
+     * las dos: solo OAuth, sin `passwordHash`, y sin dominio propio
+     * verificado para mandar correo (spec §5).
+     *
+     * Con sesiones de 30 días, dejarlo activado significa que casi cualquiera
+     * que quiera borrar su cuenta se choca con un 400 que no podemos
+     * resolver. Se apaga, y el freno pasa a la UI: el borrado exige escribir
+     * el propio username. Hoy no hay ninguna otra operación que dependa de la
+     * frescura de la sesión, así que no se pierde nada más por el camino.
+     */
+    freshAge: 0,
   },
 
   /**

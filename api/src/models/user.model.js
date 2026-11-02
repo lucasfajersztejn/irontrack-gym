@@ -25,7 +25,21 @@ const settingsSchema = new mongoose.Schema({
   // barras de 15 kg como estándar.
   defaultBarWeightKg: { type: Number, default: 20, min: 0, max: 50 },
 
-  restTimerSec: { type: Number, default: 90, min: 0, max: 600 },
+  /**
+   * Descanso por defecto entre series, en segundos.
+   *
+   * 0 significa "sin cronómetro": la barra de descanso no se monta y el
+   * usuario se apaña con el reloj de su móvil. Es un valor del mismo campo y
+   * no un booleano aparte porque un descanso de 0 segundos no tiene otro
+   * significado posible, mientras que dos campos (`enabled` + duración) sí
+   * pueden contradecirse y obligan a decidir cuál gana cada vez que se leen.
+   *
+   * El default coincide con `REST_DEFAULT_SEC` del store del frontend (120).
+   * Esa constante es el fallback mientras `/api/me` no ha respondido: si los
+   * dos números no son el mismo, la barra cambiaría de duración sola al
+   * terminar de cargar el usuario.
+   */
+  restTimerSec: { type: Number, default: 120, min: 0, max: 600 },
 
   /**
    * Objetivo semanal de sesiones. Es una preferencia personal, no una regla

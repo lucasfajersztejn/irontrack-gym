@@ -367,5 +367,70 @@
     "errors": {
       "generic": "No pudimos crear el ejercicio. Vuelve a intentarlo."
     }
+  },
+  "settings": {
+    "title": "Ajustes",
+    "intro": "Los cambios se guardan al instante.",
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "saveError": "No se pudo guardar. Vuelve a intentarlo.",
+    "sections": {
+      "training": "Tu entreno",
+      "app": "La app",
+      "account": "Tu cuenta"
+    },
+    "rest": {
+      "label": "Descanso entre series",
+      "helper": "Con qué duración arranca la barra de descanso. Con Off la barra no aparece y usas el cronómetro de tu móvil.",
+      "off": "Off"
+    },
+    "barInput": {
+      "label": "Cómo escribes el peso",
+      "helper": "En ejercicios con barra. Con «discos por lado» sumamos la barra por ti; en la base siempre se guarda el peso total.",
+      "plates": "Discos por lado",
+      "total": "Peso total"
+    },
+    "barWeight": {
+      "label": "Peso de la barra",
+      "helper": "Tu barra olímpica. La estándar pesa 20 kg, pero hay gimnasios con barras de 15. La barra Z y la Smith traen el suyo.",
+      "dec": "Quitar {{n}} kilos al peso de la barra",
+      "inc": "Añadir {{n}} kilos al peso de la barra"
+    },
+    "weeklyGoal": {
+      "label": "Objetivo semanal",
+      "helper": "Sesiones por semana. Es el objetivo del progreso de Inicio y de Semana.",
+      "dec": "Bajar el objetivo semanal",
+      "inc": "Subir el objetivo semanal"
+    },
+    "locale": {
+      "label": "Idioma",
+      "helper": "Afecta a los textos de la app, no a los nombres de los ejercicios del catálogo."
+    },
+    "account": {
+      "provider": "Entras con {{provider}}",
+      "providerFallback": "Entras con tu proveedor de OAuth. IronTrack no guarda contraseñas.",
+      "signOut": "Cerrar sesión",
+      "signOutHelper": "Cierra la sesión en este dispositivo. Tus datos se quedan donde están."
+    },
+    "delete": {
+      "title": "Borrar cuenta",
+      "body": "Borra tu cuenta y todo lo que has registrado. No se puede deshacer.",
+      "cta": "Borrar cuenta",
+      "modalTitle": "Borrar tu cuenta",
+      "modalIntro": "Se borra para siempre:",
+      "items": {
+        "sessions": "Todas tus sesiones y las series que registraste en ellas.",
+        "routines": "Todas tus rutinas.",
+        "exercises": "Los ejercicios que creaste tú.",
+        "preferences": "Favoritos, renombres de ejercicios y estos ajustes.",
+        "profile": "Tu perfil y el acceso con tu proveedor OAuth."
+      },
+      "irreversible": "No se puede deshacer y no hay copia de seguridad.",
+      "confirmLabel": "Escribe {{username}} para confirmar",
+      "cancel": "Cancelar",
+      "confirm": "Borrar mi cuenta",
+      "deleting": "Borrando…",
+      "error": "No se pudo borrar la cuenta. Vuelve a intentarlo."
+    }
   }
 }

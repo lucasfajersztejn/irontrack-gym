@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../contexts/UserContext.jsx'
+import Avatar from './Avatar.jsx'
 import Logo from './icons/Logo.jsx'
 import {
   CalendarIcon,
@@ -74,18 +75,6 @@ function providerLabel(user) {
   const [first] = user.accounts
   const map = { google: 'Google', github: 'GitHub', microsoft: 'Microsoft', discord: 'Discord' }
   return map[first.providerId] ?? first.providerId
-}
-
-function Avatar({ user }) {
-  if (user?.image) {
-    return <img src={user.image} alt="" className="h-9 w-9 rounded-full object-cover" />
-  }
-  const initial = (user?.username ?? user?.name ?? '?').charAt(0).toUpperCase()
-  return (
-    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-2 text-sm font-semibold text-text">
-      {initial}
-    </span>
-  )
 }
 
 export default function AppShell() {
