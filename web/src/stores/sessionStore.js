@@ -19,9 +19,13 @@ import { create } from 'zustand'
   provoca el repintado: lo que queda siempre se deriva de Date.now().
 
   REST_DEFAULT_SEC = 120 — mediana razonable entre "serie de hipertrofia"
-  (60–90 s) y "serie pesada de fuerza" (3–5 min). El descanso arranca
-  SIEMPRE en este valor; ajustarlo es trabajo de los botones −30/+30 de la
-  barra, no de una preferencia que haya que ir a buscar a Settings.
+  (60–90 s) y "serie pesada de fuerza" (3–5 min).
+
+  Es el valor de arranque por defecto y el FALLBACK mientras `/api/me` no ha
+  respondido; la duración real sale de `settings.restTimerSec` (Ajustes), y
+  tiene que coincidir con el default de ese campo en el modelo o la barra
+  cambiaría de duración sola al terminar de cargar el usuario. El ajuste fino
+  dentro de un descanso sigue siendo cosa de los botones −30/+30 de la barra.
 
   REST_STEP_SEC es el salto de esos botones.
 */
