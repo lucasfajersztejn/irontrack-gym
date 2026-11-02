@@ -98,6 +98,33 @@ export function breakdownForSession(detail) {
   }
 }
 
+/*
+  Músculos trabajados en TODA la semana, para el mapa corporal.
+
+  Un músculo es primario si lo fue en alguna sesión; secundario solo si nunca
+  llegó a primario. Si el lunes haces press banca (pecho primario) y el jueves
+  fondos (pecho secundario), el pecho de la semana es primario: la carga mayor
+  manda, y degradarlo a secundario leería como que entrenaste menos de lo que
+  entrenaste.
+
+  Reusa breakdownForSession, que ya descarta entries sin series completadas:
+  el mapa refleja lo que se hizo de verdad, no lo que estaba planificado.
+*/
+export function weekMuscleUsage(sessions) {
+  const primary = new Set()
+  const secondary = new Set()
+  for (const { detail } of sessions ?? []) {
+    const b = breakdownForSession(detail)
+    for (const m of b.primaryMuscles) primary.add(m)
+    for (const m of b.secondaryMuscles) secondary.add(m)
+  }
+  for (const m of primary) secondary.delete(m)
+  return {
+    primary: Array.from(primary),
+    secondary: Array.from(secondary),
+  }
+}
+
 export function useWeeklyStats(weekStart) {
   const [state, setState] = useState({
     loading: true,

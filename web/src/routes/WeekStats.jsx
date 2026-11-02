@@ -5,9 +5,11 @@ import { useUser } from '../contexts/UserContext.jsx'
 import {
   useWeeklyStats,
   breakdownForSession,
+  weekMuscleUsage,
   mondayOf,
   isoWeek,
 } from '../lib/useWeeklyStats.js'
+import MuscleMap from '../components/MuscleMap.jsx'
 import { api } from '../lib/api.js'
 import ConfirmModal from '../components/routines/ConfirmModal.jsx'
 import MuscleChips from '../components/MuscleChips.jsx'
@@ -88,6 +90,10 @@ export default function WeekStats() {
 
   const progressPct = Math.min(100, (weekly.sessionCount / goal) * 100)
   const weekNumber = isoWeek(weekStart)
+  const muscles = useMemo(
+    () => weekMuscleUsage(weekly.sessions),
+    [weekly.sessions],
+  )
 
   async function saveGoal() {
     const value = Number(goalDraft)
@@ -202,6 +208,8 @@ export default function WeekStats() {
               </ul>
             </section>
           )}
+
+          <MuscleMap primary={muscles.primary} secondary={muscles.secondary} />
         </>
       )}
 
