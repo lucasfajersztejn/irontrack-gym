@@ -1,8 +1,10 @@
+import { Suspense } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../contexts/UserContext.jsx'
 import Avatar from './Avatar.jsx'
 import Logo from './icons/Logo.jsx'
+import RouteFallback from './RouteFallback.jsx'
 import {
   CalendarIcon,
   CatalogIcon,
@@ -109,7 +111,12 @@ export default function AppShell() {
       </aside>
 
       <main className="flex-1 px-4 pb-24 pt-5 md:px-8 md:pb-10 md:pt-8">
-        <Outlet />
+        {/* Suspense aquí dentro (y no en App.jsx) deja la sidebar y la
+            bottom-nav montadas mientras llega el chunk de la ruta: al cambiar
+            de pestaña solo se repinta esta área, no el layout entero. */}
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       <nav
