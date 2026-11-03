@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import {
-  LOCALES, UNIT_SYSTEMS, PRIVACY_LEVELS,
+  LOCALES, PRIVACY_LEVELS,
   BAR_INPUT_MODES, RESERVED_USERNAMES,
 } from './constants.js';
 
@@ -15,9 +15,8 @@ import {
 const settingsSchema = new mongoose.Schema({
   locale:  { type: String, enum: LOCALES,      default: 'es' },
 
-  // OJO: esto solo cambia cómo se MUESTRAN los datos. En la base todo se
-  // guarda siempre en kg, metros y segundos. Ver session.model.js.
-  units:   { type: String, enum: UNIT_SYSTEMS, default: 'metric' },
+  // IronTrack es solo métrica (kg, metros, segundos). No hay `units` porque
+  // nunca hubo toggle kg/lb en la UI — ver spec §1 y la nota de Ajustes.
 
   barInputMode: { type: String, enum: BAR_INPUT_MODES, default: 'plates' },
 

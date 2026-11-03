@@ -61,9 +61,6 @@ export const OAUTH_PROVIDERS = ['google', 'github', 'microsoft', 'discord'];
 
 export const LOCALES = ['es', 'en'];
 
-/** Solo afecta a la PRESENTACIÓN. En la base siempre se guarda en kg/m/s. */
-export const UNIT_SYSTEMS = ['metric', 'imperial'];
-
 export const PRIVACY_LEVELS = [
   'private', // por defecto: nadie lo ve
   'link',    // accesible con enlace directo, no sale en el buscador

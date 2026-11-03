@@ -5,7 +5,6 @@ import Exercise from '../models/exercise.model.js'
 import {
   RESERVED_USERNAMES,
   LOCALES,
-  UNIT_SYSTEMS,
   BAR_INPUT_MODES,
 } from '../models/constants.js'
 
@@ -82,7 +81,6 @@ const usernameSchema = z.object({
  */
 const settingsSchema = z.object({
   locale: z.enum(LOCALES).optional(),
-  units: z.enum(UNIT_SYSTEMS).optional(),
   barInputMode: z.enum(BAR_INPUT_MODES).optional(),
   defaultBarWeightKg: z.number().min(0).max(50).optional(),
   restTimerSec: z.number().int().min(0).max(600).optional(),
@@ -102,7 +100,7 @@ export async function updateSettings(req, res, next) {
   try {
     // $set con notación dot: evita pisar los otros campos de `settings` por
     // mandarlo entero. Si pasamos { settings: { weeklyGoal: 5 } }, Mongo
-    // reemplaza TODO el subdoc y perderíamos locale, units, etc.
+    // reemplaza TODO el subdoc y perderíamos locale, barInputMode, etc.
     const update = {}
     for (const [k, v] of Object.entries(parsed.data)) {
       update[`settings.${k}`] = v
