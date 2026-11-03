@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { deleteAccount, listLinkedProviders, signOut } from '../lib/auth.js'
+import { deleteAccount, signOut } from '../lib/auth.js'
 import { useUser } from '../contexts/UserContext.jsx'
 import { useSettings } from '../lib/useSettings.js'
 import { REST_DEFAULT_SEC } from '../stores/sessionStore.js'
@@ -30,10 +30,8 @@ import DeleteAccountModal from '../components/settings/DeleteAccountModal.jsx'
   principal de la vista, y aquí no hay ninguno. El verde solo aparece en la
   opción seleccionada de cada control y en el "Guardado".
 
-  El selector de unidades (kg/lb) todavía no está: `settings.units` no lo lee
-  nadie y no existe capa de conversión en la UI. Entra en su propio chunk,
-  junto con `lib/units.js` y el repaso de todas las superficies que muestran
-  peso. Un control que no hace nada es peor que no tener el control.
+  IronTrack es solo métrica: kg y km, sin toggle de unidades (ver spec §1).
+  Por eso no hay fila "Unidades" aquí ni capa de conversión en la UI.
 */
 
 // Presets del descanso. 0 = sin cronómetro: la barra no se monta durante la
@@ -58,31 +56,12 @@ function formatRest(seconds, t) {
 export default function Settings() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { user, refetch } = useUser()
+  const { user, linkedProviders, refetch } = useUser()
   const { settings, save, savingKey, savedKey, error } = useSettings()
 
-  const [providers, setProviders] = useState([])
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
-
-  /*
-    Con qué proveedor entra el usuario. Es información de cuenta real — sin
-    contraseñas, la única forma de volver a entrar es ese proveedor — pero no
-    es crítica: si la llamada falla, la fila simplemente no aparece y el
-    resto de Ajustes funciona igual. De ahí el catch silencioso.
-  */
-  useEffect(() => {
-    let alive = true
-    listLinkedProviders()
-      .then((accounts) => {
-        if (alive) setProviders(accounts.map((a) => a.providerId))
-      })
-      .catch(() => {})
-    return () => {
-      alive = false
-    }
-  }, [])
 
   // Un estado por grupo: cuál es la clave que se está guardando o se acaba
   // de guardar. Las claves de cada grupo se listan aquí para no tener que
@@ -139,7 +118,7 @@ export default function Settings() {
     }
   }
 
-  const providerLabel = providers
+  const providerLabel = linkedProviders
     .map((id) => PROVIDER_NAMES[id] ?? id)
     .join(', ')
 

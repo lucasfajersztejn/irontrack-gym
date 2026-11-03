@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import i18n from '../i18n/index.js'
 import { api } from '../lib/api.js'
+import { listLinkedProviders } from '../lib/auth.js'
 
 /*
   Fuente de verdad del estado de autenticación en el frontend. Una sola
@@ -17,6 +18,7 @@ const UserContext = createContext({
   loading: true,
   isAuthed: false,
   needsOnboarding: false,
+  linkedProviders: [],
   refetch: () => {},
   updateUser: () => {},
 })
@@ -24,6 +26,7 @@ const UserContext = createContext({
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [linkedProviders, setLinkedProviders] = useState([])
 
   const fetchMe = useCallback(async () => {
     setLoading(true)
@@ -43,6 +46,30 @@ export function UserProvider({ children }) {
   useEffect(() => {
     fetchMe()
   }, [fetchMe])
+
+  /*
+    Proveedores OAuth vinculados. Better Auth no viaja dentro de /api/me,
+    así que lo pedimos aparte una sola vez por sesión autenticada. Vive
+    aquí (en lugar de en Ajustes) para que la sidebar también pueda mostrar
+    "Conectado con X" sin una segunda llamada por arranque.
+  */
+  useEffect(() => {
+    if (!user) {
+      setLinkedProviders([])
+      return
+    }
+    let alive = true
+    listLinkedProviders()
+      .then((accounts) => {
+        if (alive) setLinkedProviders(accounts.map((a) => a.providerId))
+      })
+      .catch(() => {
+        if (alive) setLinkedProviders([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [user?.id])
 
   /*
     El usuario eligió su idioma en el onboarding y vive en settings.locale.
@@ -71,6 +98,7 @@ export function UserProvider({ children }) {
     loading,
     isAuthed: !!user,
     needsOnboarding: !!user?.needsOnboarding,
+    linkedProviders,
     refetch: fetchMe,
     updateUser,
   }
