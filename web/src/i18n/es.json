@@ -3,6 +3,42 @@
     "name": "IronTrack",
     "tagline": "Registra tu entreno. Mide tu progreso."
   },
+  "common": {
+    "loading": "Cargando…"
+  },
+  "landing": {
+    "heroLine1": "Registra tu entreno.",
+    "heroLine2": "Mide tu progreso.",
+    "heroSubMobile": "Series, récords y rachas en una app hecha para el gimnasio, no para una hoja de cálculo.",
+    "heroSubDesktop": "Series, récords y rachas en una app hecha para el gimnasio, no para una hoja de cálculo. Abre, entrena, guarda.",
+    "whatIs": "¿Qué es IronTrack?",
+    "chips": ["Registro en segundos", "Récords automáticos", "Rachas que motivan"],
+    "loginTitle": "Entra en IronTrack",
+    "loginSub": "Usa la cuenta que ya tienes. Sin contraseñas nuevas.",
+    "continueWith": "Continuar con {{provider}}",
+    "redirecting": "Redirigiendo…",
+    "comingSoon": "Pronto",
+    "comingSoonAria": "{{label}} (próximamente)",
+    "signInError": "No se pudo iniciar sesión. Vuelve a intentarlo.",
+    "or": "o",
+    "demo": "Entrar como demo",
+    "demoSoon": "Disponible en la fase 3",
+    "legal": "Al continuar aceptas los <terms>Términos</terms> y la <privacy>Privacidad</privacy>.",
+    "heatmapWeeks": "Últimas {{count}} semanas",
+    "heatmapStreak": "Racha · {{count}} días"
+  },
+  "onboarding": {
+    "titleBefore": "Elige tu",
+    "subtitle": "Es cómo apareces en IronTrack. Único, sin espacios y en minúsculas. Lo podrás cambiar más adelante.",
+    "usernameLabel": "Username",
+    "submit": "Entrar en IronTrack",
+    "saving": "Guardando…",
+    "errors": {
+      "format": "3–20 caracteres, solo minúsculas, números, guion y guion bajo.",
+      "taken": "Ese nombre ya está en uso o está reservado. Prueba otro.",
+      "generic": "No se pudo guardar. Vuelve a intentarlo."
+    }
+  },
   "muscleChips": {
     "title": "Grupos trabajados",
     "secondaryTag": "sec.",

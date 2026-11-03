@@ -26,12 +26,19 @@ export default function StatTile({
         <span>{icon}</span>
         <span className="truncate">{label}</span>
       </div>
-      <div className="flex items-baseline gap-2">
-        <span className="tabular font-display text-[2.5rem] font-semibold leading-none tracking-tight text-text">
+      {/*
+        min-w-0 deja que la fila se encoja dentro de la card; sin él, el
+        contenido fuerza su ancho natural y el sufijo se sale (grid de 3
+        columnas en móviles estrechos). La cifra es fluida: escala con el
+        ancho del viewport con un suelo legible y un techo de 2.5rem para
+        no crecer de más en desktop (jerarquía de DESIGN.md intacta).
+      */}
+      <div className="flex min-w-0 items-baseline gap-1 md:gap-2">
+        <span className="tabular font-display text-[clamp(1.5rem,6.5vw,2.5rem)] font-semibold leading-none tracking-tight text-text">
           {value}
         </span>
         {suffix && (
-          <span className="text-sm text-text-muted">{suffix}</span>
+          <span className="shrink-0 text-sm text-text-muted">{suffix}</span>
         )}
       </div>
       {footer && <div className="mt-auto">{footer}</div>}
