@@ -12,7 +12,8 @@ import { ChevronRightIcon } from '../icons/NavIcons.jsx'
 function monthAbbrev(dateStr, locale) {
   const d = new Date(dateStr)
   const fmt = new Intl.DateTimeFormat(locale, { month: 'short' })
-  return fmt.format(d).replace('.', '').toUpperCase()
+  const m = fmt.format(d).replace('.', '')
+  return m.charAt(0).toUpperCase() + m.slice(1)
 }
 
 function formatDuration(seconds, locale) {
@@ -68,7 +69,7 @@ export default function LastSessionsCard({ sessions }) {
                     <span className="tabular font-display text-base font-semibold leading-none text-text">
                       {day}
                     </span>
-                    <span className="mt-0.5 text-[10px] font-medium tracking-wide text-text-muted">
+                    <span className="mt-0.5 text-[11px] font-medium text-text-muted">
                       {monthAbbrev(s.startedAt, locale)}
                     </span>
                   </div>

@@ -22,15 +22,13 @@ export default function GreetingHeader() {
 
   return (
     <header>
-      <p className="text-xs font-medium uppercase tracking-[0.14em] text-text-muted">
-        {dateCap}
-      </p>
       <h1
-        className="mt-2 font-display text-4xl font-semibold leading-[1.05] tracking-[-0.01em] text-text md:text-5xl"
+        className="font-display text-3xl font-semibold leading-tight tracking-[-0.01em] text-text"
         style={{ textWrap: 'balance' }}
       >
         {t('home.greeting', { username: name })}
       </h1>
+      <p className="mt-2 text-sm text-text-muted">{dateCap}</p>
     </header>
   )
 }
