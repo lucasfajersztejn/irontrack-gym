@@ -159,13 +159,38 @@ export default function RoutineEditor() {
     }))
   }
 
+  /*
+    Reordena entries respetando las superseries. Si el vecino inmediato
+    comparte groupId con el entry, hacemos un swap simple (reordena dentro
+    del grupo). Si no — porque el entry está en la frontera de su bloque,
+    o es solo y el vecino está dentro de otro grupo —, un swap plano
+    partiría visualmente la superserie: entonces reordenamos a nivel de
+    BLOQUE, intercambiando el bloque del entry con el bloque adyacente al
+    completo. Así "Mover arriba" sobre el primer ejercicio de una superserie
+    sube los tres juntos, no deja uno colgando por delante.
+  */
   function move(i, dir) {
     setState((s) => {
-      const next = [...s.entries]
+      const entries = s.entries
       const target = i + dir
-      if (target < 0 || target >= next.length) return s
-      ;[next[i], next[target]] = [next[target], next[i]]
-      return { ...s, entries: next }
+      if (target < 0 || target >= entries.length) return s
+      const curGid = entries[i].groupId ?? null
+      const tgtGid = entries[target].groupId ?? null
+      if (curGid && curGid === tgtGid) {
+        const next = [...entries]
+        ;[next[i], next[target]] = [next[target], next[i]]
+        return { ...s, entries: next }
+      }
+      const blocks = groupEntries(entries)
+      const curBi = blocks.findIndex((b) =>
+        b.items.some((it) => it.index === i),
+      )
+      const tgtBi = curBi + (dir > 0 ? 1 : -1)
+      if (tgtBi < 0 || tgtBi >= blocks.length) return s
+      const reordered = [...blocks]
+      ;[reordered[curBi], reordered[tgtBi]] = [reordered[tgtBi], reordered[curBi]]
+      const flat = reordered.flatMap((b) => b.items.map((it) => it.entry))
+      return { ...s, entries: flat }
     })
   }
 
