@@ -69,17 +69,23 @@ function bottomLinkClass({ isActive }) {
   return isActive ? `${base} text-accent` : `${base} text-text-muted`
 }
 
-function providerLabel(user) {
-  if (!user?.accounts?.length) return null
-  const [first] = user.accounts
-  const map = { google: 'Google', github: 'GitHub', microsoft: 'Microsoft', discord: 'Discord' }
-  return map[first.providerId] ?? first.providerId
+const PROVIDER_LABELS = {
+  google: 'Google',
+  github: 'GitHub',
+  microsoft: 'Microsoft',
+  discord: 'Discord',
+}
+
+function providerLabel(providers) {
+  if (!providers?.length) return null
+  const [first] = providers
+  return PROVIDER_LABELS[first] ?? first
 }
 
 export default function AppShell() {
   const { t } = useTranslation()
-  const { user } = useUser()
-  const provider = providerLabel(user)
+  const { user, linkedProviders } = useUser()
+  const provider = providerLabel(linkedProviders)
 
   return (
     <div className="min-h-screen md:flex">
