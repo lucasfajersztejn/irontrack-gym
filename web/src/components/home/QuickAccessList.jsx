@@ -29,7 +29,10 @@ function links(t, routinesCount) {
       Icon: CatalogIcon,
     },
     {
-      to: '/history',
+      // El historial se fusionó en Semana (/stats/week); el atajo sigue
+      // llamándose "Historial" porque es lo que el usuario busca, pero lleva
+      // a la pantalla que ahora reúne todas las sesiones.
+      to: '/stats/week',
       label: t('home.quickAccessHistory'),
       sub: t('home.quickAccessHistorySub'),
       Icon: HistoryIcon,

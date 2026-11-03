@@ -42,7 +42,7 @@ export default function LastSessionsCard({ sessions }) {
         <h2 className="font-display text-xl font-semibold tracking-tight text-text">
           {t('home.recentSessions')}
         </h2>
-        <Link to="/history" className="text-sm text-link hover:underline">
+        <Link to="/stats/week" className="text-sm text-link hover:underline">
           {t('home.viewAll')}
         </Link>
       </div>
@@ -62,7 +62,7 @@ export default function LastSessionsCard({ sessions }) {
             return (
               <li key={s._id ?? s.id}>
                 <Link
-                  to={`/history`}
+                  to="/stats/week"
                   className="press group flex items-center gap-3 rounded-card bg-surface-2 p-3 transition-[background-color,transform] hover:bg-surface-3"
                 >
                   <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-control bg-bg text-center">
