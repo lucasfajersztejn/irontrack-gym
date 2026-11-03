@@ -16,11 +16,11 @@ import MuscleChips from '../components/MuscleChips.jsx'
 import { ChevronRightIcon } from '../components/icons/NavIcons.jsx'
 import { resolveExerciseName } from '../lib/exerciseName.js'
 
-// Cuántas semanas atrás dejamos navegar. Un año es de sobra para un diario
-// de gimnasio y evita pasear sin fin por semanas vacías anteriores a la
-// cuenta. El quick-jump del desplegable muestra solo las más recientes.
+// Cuántas semanas atrás se puede navegar, tanto con las flechas como en el
+// salto rápido del desplegable (que lista TODAS estas semanas agrupadas por
+// mes, tengan sesiones o no: es un navegador de tiempo, no un índice de
+// actividad). Un año es de sobra para un diario de gimnasio.
 const MAX_WEEKS_BACK = 52
-const DROPDOWN_WEEKS = 12
 
 /*
   /stats/week — vista detalle de la semana actual.
@@ -84,9 +84,14 @@ export default function WeekStats() {
   const [sessionToDelete, setSessionToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
-  // Al cambiar de semana, cerrar cualquier sesión expandida: su id no está en
-  // la lista nueva y dejarla "abierta" es estado fantasma.
-  useEffect(() => setOpenSession(null), [weekOffset])
+  // Cambiar de semana cierra cualquier sesión expandida: su id no está en la
+  // lista nueva y dejarla "abierta" sería estado fantasma. Se resetea en el
+  // propio handler (no en un efecto) para no encadenar renders con un setState
+  // dentro de useEffect.
+  function changeWeek(next) {
+    setWeekOffset(next)
+    setOpenSession(null)
+  }
 
   const progressPct = Math.min(100, (weekly.sessionCount / goal) * 100)
   const weekNumber = isoWeek(weekStart)
@@ -148,9 +153,9 @@ export default function WeekStats() {
         weekStart={weekStart}
         weekNumber={weekNumber}
         offset={weekOffset}
-        onPrev={() => setWeekOffset((o) => Math.min(MAX_WEEKS_BACK, o + 1))}
-        onNext={() => setWeekOffset((o) => Math.max(0, o - 1))}
-        onSelect={setWeekOffset}
+        onPrev={() => changeWeek((o) => Math.min(MAX_WEEKS_BACK, o + 1))}
+        onNext={() => changeWeek((o) => Math.max(0, o - 1))}
+        onSelect={changeWeek}
         currentMonday={currentMonday}
         locale={i18n.language}
       />
@@ -237,6 +242,39 @@ function weekRange(weekStart, locale) {
 }
 
 /*
+  Semanas del desplegable: de la actual hacia atrás hasta MAX_WEEKS_BACK,
+  agrupadas por mes. Es un navegador de tiempo, no un índice de actividad:
+  lista todas las semanas del año tengan sesiones o no, para poder saltar a
+  cualquier punto. Deriva cada lunes restando semanas al lunes de hoy (sin
+  arrastrar husos ni cambios de horario). Pura, sin red.
+*/
+function weeksByMonth(currentMonday, locale) {
+  const groups = []
+  const byKey = new Map()
+  for (let offset = 0; offset <= MAX_WEEKS_BACK; offset++) {
+    const monday = new Date(currentMonday)
+    monday.setDate(monday.getDate() - offset * 7)
+    const key = `${monday.getFullYear()}-${monday.getMonth()}`
+    let group = byKey.get(key)
+    if (!group) {
+      const label = new Intl.DateTimeFormat(locale, {
+        month: 'long',
+        year: 'numeric',
+      }).format(monday)
+      group = {
+        key,
+        label: label.charAt(0).toUpperCase() + label.slice(1),
+        weeks: [],
+      }
+      byKey.set(key, group)
+      groups.push(group)
+    }
+    group.weeks.push({ offset, monday, week: isoWeek(monday) })
+  }
+  return groups
+}
+
+/*
   Navegador de semana. Card "Semana" con flecha atrás (más antiguo), un
   disparador central que abre el desplegable de salto rápido, y flecha
   adelante (más reciente). La flecha adelante se desactiva en la semana
@@ -262,15 +300,12 @@ function WeekNavigator({
   const atCurrent = offset === 0
   const atOldest = offset >= MAX_WEEKS_BACK
 
-  // Opciones del desplegable: de la actual hacia atrás. Deriva cada lunez
-  // restando semanas al lunes de hoy, así no arrastramos husos ni DST.
-  const options = useMemo(() => {
-    return Array.from({ length: DROPDOWN_WEEKS }, (_, o) => {
-      const d = new Date(currentMonday)
-      d.setDate(d.getDate() - o * 7)
-      return { offset: o, start: d, week: isoWeek(d) }
-    })
-  }, [currentMonday])
+  // Salto rápido: todas las semanas del año agrupadas por mes (navegador de
+  // tiempo). Memoizado por lunes/locale; no depende de abrir el menú.
+  const months = useMemo(
+    () => weeksByMonth(currentMonday, locale),
+    [currentMonday, locale],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -338,39 +373,48 @@ function WeekNavigator({
                 aria-label={t('weekStats.weekNavTitle')}
                 className="absolute left-1/2 top-full z-50 mt-1 max-h-72 w-60 max-w-[80vw] -translate-x-1/2 overflow-y-auto rounded-container border border-border/60 bg-surface p-1 shadow-lg"
               >
-                {options.map((opt) => {
-                  const selected = opt.offset === offset
-                  return (
-                    <li key={opt.offset}>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        aria-current={selected ? 'true' : undefined}
-                        onClick={() => {
-                          onSelect(opt.offset)
-                          setOpen(false)
-                        }}
-                        className={`flex w-full items-baseline justify-between gap-3 rounded-card px-3 py-2 text-left transition-colors ${
-                          selected
-                            ? 'bg-surface-2 text-text'
-                            : 'text-text-muted hover:bg-surface-2 hover:text-text'
-                        }`}
-                      >
-                        <span className="tabular text-sm font-medium">
-                          {t('weekStats.weekShort', { week: opt.week })}
-                          {opt.offset === 0 && (
-                            <span className="ml-2 text-[11px] font-normal text-accent">
-                              {t('weekStats.thisWeekTag')}
-                            </span>
-                          )}
-                        </span>
-                        <span className="shrink-0 text-xs text-text-muted">
-                          {weekRange(opt.start, locale)}
-                        </span>
-                      </button>
+                {months.map((group) => (
+                    <li key={group.key} role="presentation">
+                      <p className="px-3 pb-1 pt-2 text-[11px] font-semibold text-text-muted">
+                        {group.label}
+                      </p>
+                      <ul role="group" aria-label={group.label} className="flex flex-col">
+                        {group.weeks.map((w) => {
+                          const selected = w.offset === offset
+                          return (
+                            <li key={w.offset}>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                aria-current={selected ? 'true' : undefined}
+                                onClick={() => {
+                                  onSelect(w.offset)
+                                  setOpen(false)
+                                }}
+                                className={`flex w-full items-baseline justify-between gap-3 rounded-card px-3 py-2 text-left transition-colors ${
+                                  selected
+                                    ? 'bg-surface-2 text-text'
+                                    : 'text-text-muted hover:bg-surface-2 hover:text-text'
+                                }`}
+                              >
+                                <span className="tabular text-sm font-medium">
+                                  {t('weekStats.weekShort', { week: w.week })}
+                                  {w.offset === 0 && (
+                                    <span className="ml-2 text-[11px] font-normal text-accent">
+                                      {t('weekStats.thisWeekTag')}
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="shrink-0 text-xs text-text-muted">
+                                  {weekRange(w.monday, locale)}
+                                </span>
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
                     </li>
-                  )
-                })}
+                  ))}
               </ul>
             </>
           )}

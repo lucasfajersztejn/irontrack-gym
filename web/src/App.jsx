@@ -5,7 +5,6 @@ import Catalog from './routes/Catalog.jsx'
 import Routines from './routes/Routines.jsx'
 import RoutineEditor from './routes/RoutineEditor.jsx'
 import Training from './routes/Training.jsx'
-import History from './routes/History.jsx'
 import Settings from './routes/Settings.jsx'
 import WeekStats from './routes/WeekStats.jsx'
 import Onboarding from './routes/Onboarding.jsx'
@@ -56,7 +55,12 @@ export default function App() {
         <Route path="/routines/new" element={<RoutineEditor />} />
         <Route path="/routines/:id" element={<RoutineEditor />} />
         <Route path="/training" element={<Training />} />
-        <Route path="/history" element={<History />} />
+        {/*
+          El historial se fusionó en Semana (/stats/week): las sesiones y su
+          detalle viven allí. Mantenemos /history como redirect para que
+          bookmarks o enlaces antiguos no caigan en 404.
+        */}
+        <Route path="/history" element={<Navigate to="/stats/week" replace />} />
         <Route path="/stats/week" element={<WeekStats />} />
         <Route path="/settings" element={<Settings />} />
         {/*

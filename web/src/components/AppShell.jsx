@@ -6,7 +6,6 @@ import Logo from './icons/Logo.jsx'
 import {
   CalendarIcon,
   CatalogIcon,
-  HistoryIcon,
   HomeIcon,
   KettlebellIcon,
   ProfileIcon,
@@ -39,12 +38,11 @@ import {
   bookmark antiguo no caiga en 404.
 */
 /*
-  Siete destinos en el nav: Home / Rutinas / Entrenar / Semana / Catálogo /
-  Historial / Perfil. Rutinas → Entrenar → Semana queda como "cadena del
-  entreno": preparar, hacer, revisar; viven juntos para que el pulgar
-  recorra el flujo sin saltos. En móvil con `text-[11px]` cabe en pantallas
-  de 360 px+; si en pruebas apretamos, el candidato a mover es Perfil
-  (hacia un avatar en el header).
+  Seis destinos en el nav: Home / Rutinas / Entrenar / Semana / Catálogo /
+  Perfil. Rutinas → Entrenar → Semana es la "cadena del entreno": preparar,
+  hacer, revisar — y Semana es además el historial de sesiones, que se fusionó
+  ahí (no hay tab Historial separado). Con `text-[11px]` caben de sobra en
+  móvil desde 360 px.
 */
 const TABS = [
   { to: '/home', labelKey: 'nav.home', Icon: HomeIcon },
@@ -52,7 +50,6 @@ const TABS = [
   { to: '/training', labelKey: 'nav.training', Icon: KettlebellIcon },
   { to: '/stats/week', labelKey: 'nav.week', Icon: CalendarIcon },
   { to: '/catalog', labelKey: 'nav.catalog', Icon: CatalogIcon },
-  { to: '/history', labelKey: 'nav.history', Icon: HistoryIcon },
   { to: '/settings', labelKey: 'nav.profile', Icon: ProfileIcon },
 ]
 

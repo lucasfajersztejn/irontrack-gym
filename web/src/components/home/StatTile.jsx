@@ -22,8 +22,8 @@ export default function StatTile({
       transition={{ duration: 0.3, delay: reduce ? 0 : index * 0.05 }}
       className="card-liquid flex h-full flex-col gap-3 rounded-container p-4 md:p-5"
     >
-      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
-        <span className="text-accent">{icon}</span>
+      <div className="flex items-center gap-2 text-xs font-medium text-text-muted">
+        <span>{icon}</span>
         <span className="truncate">{label}</span>
       </div>
       <div className="flex items-baseline gap-2">

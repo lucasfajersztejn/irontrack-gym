@@ -12,7 +12,8 @@ import { ChevronRightIcon } from '../icons/NavIcons.jsx'
 function monthAbbrev(dateStr, locale) {
   const d = new Date(dateStr)
   const fmt = new Intl.DateTimeFormat(locale, { month: 'short' })
-  return fmt.format(d).replace('.', '').toUpperCase()
+  const m = fmt.format(d).replace('.', '')
+  return m.charAt(0).toUpperCase() + m.slice(1)
 }
 
 function formatDuration(seconds, locale) {
@@ -41,7 +42,7 @@ export default function LastSessionsCard({ sessions }) {
         <h2 className="font-display text-xl font-semibold tracking-tight text-text">
           {t('home.recentSessions')}
         </h2>
-        <Link to="/history" className="text-sm text-link hover:underline">
+        <Link to="/stats/week" className="text-sm text-link hover:underline">
           {t('home.viewAll')}
         </Link>
       </div>
@@ -61,14 +62,14 @@ export default function LastSessionsCard({ sessions }) {
             return (
               <li key={s._id ?? s.id}>
                 <Link
-                  to={`/history`}
+                  to="/stats/week"
                   className="press group flex items-center gap-3 rounded-card bg-surface-2 p-3 transition-[background-color,transform] hover:bg-surface-3"
                 >
                   <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-control bg-bg text-center">
                     <span className="tabular font-display text-base font-semibold leading-none text-text">
                       {day}
                     </span>
-                    <span className="mt-0.5 text-[10px] font-medium tracking-wide text-text-muted">
+                    <span className="mt-0.5 text-[11px] font-medium text-text-muted">
                       {monthAbbrev(s.startedAt, locale)}
                     </span>
                   </div>
