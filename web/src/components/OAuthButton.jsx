@@ -7,6 +7,8 @@
   de credenciales en el backend. Un chip "Pronto" aparece a la derecha solo
   en ese caso.
 */
+import { useTranslation } from 'react-i18next'
+
 export default function OAuthButton({
   label,
   icon: Icon,
@@ -14,10 +16,13 @@ export default function OAuthButton({
   disabled = false,
   comingSoon = false,
 }) {
+  const { t } = useTranslation()
   // Cuando el proveedor aún no está disponible, el chip "Pronto" es decoración
   // visual: el estado real lo lleva el aria-label para lectores de pantalla,
   // así no se les lee "Pronto" como si fuera un segundo botón.
-  const ariaLabel = comingSoon ? `${label} (próximamente)` : undefined
+  const ariaLabel = comingSoon
+    ? t('landing.comingSoonAria', { label })
+    : undefined
 
   return (
     <button
@@ -47,7 +52,7 @@ export default function OAuthButton({
           aria-hidden="true"
           className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-muted"
         >
-          Pronto
+          {t('landing.comingSoon')}
         </span>
       )}
     </button>

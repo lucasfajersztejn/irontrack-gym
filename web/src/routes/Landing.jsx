@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { signInWithProvider } from '../lib/auth.js'
 import Logo from '../components/icons/Logo.jsx'
 import {
@@ -22,16 +23,22 @@ import LegalFooter from '../components/LegalFooter.jsx'
   Solo Google está wired en el backend. Los otros tres proveedores se
   renderizan deshabilitados con el chip "Pronto" para no engañar al usuario
   (ver spec §5 y config/auth.js:39).
+
+  El label del botón se compone con t('landing.continueWith') + el nombre de
+  marca; guardamos solo el nombre (Google, GitHub…) en PROVIDERS porque es un
+  nombre propio que no se traduce, y así el bundle lleva una sola plantilla
+  en vez de cuatro frases casi idénticas por idioma.
 */
 
 const PROVIDERS = [
-  { id: 'google',    label: 'Continuar con Google',    icon: GoogleIcon,    enabled: true },
-  { id: 'github',    label: 'Continuar con GitHub',    icon: GitHubIcon,    enabled: false },
-  { id: 'microsoft', label: 'Continuar con Microsoft', icon: MicrosoftIcon, enabled: false },
-  { id: 'discord',   label: 'Continuar con Discord',   icon: DiscordIcon,   enabled: false },
+  { id: 'google',    name: 'Google',    icon: GoogleIcon,    enabled: true },
+  { id: 'github',    name: 'GitHub',    icon: GitHubIcon,    enabled: false },
+  { id: 'microsoft', name: 'Microsoft', icon: MicrosoftIcon, enabled: false },
+  { id: 'discord',   name: 'Discord',   icon: DiscordIcon,   enabled: false },
 ]
 
 function OAuthStack({ onError }) {
+  const { t } = useTranslation()
   const [busy, setBusy] = useState(null)
 
   async function handle(providerId) {
@@ -40,7 +47,7 @@ function OAuthStack({ onError }) {
       await signInWithProvider(providerId)
     } catch (err) {
       console.error('signIn.social falló:', err)
-      onError?.('No se pudo iniciar sesión. Vuelve a intentarlo.')
+      onError?.(t('landing.signInError'))
       setBusy(null)
     }
   }
@@ -50,7 +57,11 @@ function OAuthStack({ onError }) {
       {PROVIDERS.map((p) => (
         <OAuthButton
           key={p.id}
-          label={busy === p.id ? 'Redirigiendo…' : p.label}
+          label={
+            busy === p.id
+              ? t('landing.redirecting')
+              : t('landing.continueWith', { provider: p.name })
+          }
           icon={p.icon}
           disabled={!p.enabled || busy !== null}
           comingSoon={!p.enabled}
@@ -62,20 +73,26 @@ function OAuthStack({ onError }) {
 }
 
 function DemoLink() {
+  const { t } = useTranslation()
   return (
     <button
       type="button"
       disabled
       className="w-full cursor-not-allowed text-center text-sm font-medium text-link opacity-60"
-      title="Disponible en la fase 3"
+      title={t('landing.demoSoon')}
     >
-      Entrar como demo
+      {t('landing.demo')}
     </button>
   )
 }
 
 export default function Landing() {
+  const { t } = useTranslation()
   const [error, setError] = useState(null)
+
+  // returnObjects: el bundle guarda los chips como un array, así el número de
+  // chips lo decide la traducción y no el componente.
+  const chips = t('landing.chips', { returnObjects: true })
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -98,13 +115,12 @@ export default function Landing() {
 
         <div className="space-y-3">
           <h1 className="font-display text-hero font-bold">
-            Registra tu entreno.
+            {t('landing.heroLine1')}
             <br />
-            <span className="text-accent">Mide tu progreso.</span>
+            <span className="text-accent">{t('landing.heroLine2')}</span>
           </h1>
           <p className="text-[15px] leading-relaxed text-pretty text-text-muted">
-            Series, récords y rachas en una app hecha para el gimnasio, no para
-            una hoja de cálculo.
+            {t('landing.heroSubMobile')}
           </p>
         </div>
 
@@ -128,7 +144,7 @@ export default function Landing() {
             href="#"
             className="-mx-2 rounded-card px-2 py-2 text-sm text-text-muted hover:text-text"
           >
-            ¿Qué es IronTrack?
+            {t('landing.whatIs')}
           </a>
         </header>
 
@@ -136,30 +152,27 @@ export default function Landing() {
           {/* Hero */}
           <section className="space-y-8">
             <h1 className="font-display text-hero font-bold">
-              Registra tu entreno.
+              {t('landing.heroLine1')}
               <br />
-              <span className="text-accent">Mide tu progreso.</span>
+              <span className="text-accent">{t('landing.heroLine2')}</span>
             </h1>
             {/* text-pretty redistribuye la última línea del párrafo para
                 evitar que "guarda." quede sola (straggler). Chrome y Safari
                 lo honran nativamente; en navegadores que lo ignoran el
                 texto cae al modo "normal" sin romper nada. */}
             <p className="max-w-lg text-lg leading-relaxed text-pretty text-text-muted">
-              Series, récords y rachas en una app hecha para el gimnasio, no para
-              una hoja de cálculo. Abre, entrena, guarda.
+              {t('landing.heroSubDesktop')}
             </p>
 
             <div className="flex flex-wrap gap-2">
-              {['Registro en segundos', 'Récords automáticos', 'Rachas que motivan'].map(
-                (chip) => (
-                  <span
-                    key={chip}
-                    className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-text"
-                  >
-                    {chip}
-                  </span>
-                ),
-              )}
+              {chips.map((chip) => (
+                <span
+                  key={chip}
+                  className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-text"
+                >
+                  {chip}
+                </span>
+              ))}
             </div>
 
             <HeatmapPreview size="wide" />
@@ -168,10 +181,10 @@ export default function Landing() {
           {/* Login card */}
           <section className="rounded-container bg-surface p-8 shadow-glow-landing">
             <h2 className="font-display text-2xl font-semibold">
-              Entra en IronTrack
+              {t('landing.loginTitle')}
             </h2>
             <p className="mt-2 mb-6 text-sm text-text-muted">
-              Usa la cuenta que ya tienes. Sin contraseñas nuevas.
+              {t('landing.loginSub')}
             </p>
 
             <OAuthStack onError={setError} />
@@ -184,7 +197,7 @@ export default function Landing() {
 
             <div className="my-6 flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-text-muted">o</span>
+              <span className="text-xs text-text-muted">{t('landing.or')}</span>
               <div className="h-px flex-1 bg-border" />
             </div>
 

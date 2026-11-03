@@ -3,6 +3,42 @@
     "name": "IronTrack",
     "tagline": "Log your workout. Track your progress."
   },
+  "common": {
+    "loading": "Loading…"
+  },
+  "landing": {
+    "heroLine1": "Log your workout.",
+    "heroLine2": "Track your progress.",
+    "heroSubMobile": "Sets, records and streaks in an app built for the gym, not for a spreadsheet.",
+    "heroSubDesktop": "Sets, records and streaks in an app built for the gym, not for a spreadsheet. Open, train, save.",
+    "whatIs": "What is IronTrack?",
+    "chips": ["Log in seconds", "Automatic records", "Streaks that motivate"],
+    "loginTitle": "Sign in to IronTrack",
+    "loginSub": "Use an account you already have. No new passwords.",
+    "continueWith": "Continue with {{provider}}",
+    "redirecting": "Redirecting…",
+    "comingSoon": "Soon",
+    "comingSoonAria": "{{label}} (coming soon)",
+    "signInError": "Couldn't sign in. Please try again.",
+    "or": "or",
+    "demo": "Enter as demo",
+    "demoSoon": "Available in phase 3",
+    "legal": "By continuing you accept the <terms>Terms</terms> and <privacy>Privacy Policy</privacy>.",
+    "heatmapWeeks": "Last {{count}} weeks",
+    "heatmapStreak": "Streak · {{count}} days"
+  },
+  "onboarding": {
+    "titleBefore": "Choose your",
+    "subtitle": "This is how you appear in IronTrack. Unique, no spaces, lowercase. You can change it later.",
+    "usernameLabel": "Username",
+    "submit": "Enter IronTrack",
+    "saving": "Saving…",
+    "errors": {
+      "format": "3–20 characters: lowercase letters, numbers, hyphen and underscore.",
+      "taken": "That name is taken or reserved. Try another one.",
+      "generic": "Couldn't save. Please try again."
+    }
+  },
   "muscleChips": {
     "title": "Muscle groups",
     "secondaryTag": "sec.",

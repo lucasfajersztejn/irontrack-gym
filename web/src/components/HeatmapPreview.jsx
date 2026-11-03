@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
   Heatmap decorativo del hero de la Landing. No consume datos reales (no hay
   usuario aún); genera un patrón determinista para que siempre tenga la
@@ -36,15 +38,20 @@ function makeGrid(cols, rows, seed) {
 }
 
 export default function HeatmapPreview({ size = 'compact' }) {
+  const { t } = useTranslation()
   const cols = size === 'wide' ? 26 : 14
   const cells = makeGrid(cols, ROWS, size === 'wide' ? 26 : 18)
-  const weeksLabel = size === 'wide' ? 'Últimas 26 semanas' : 'Últimas 18 semanas'
+  const weeks = size === 'wide' ? 26 : 18
 
   return (
     <div className="rounded-container bg-surface p-5">
       <div className="mb-3 flex items-baseline justify-between">
-        <span className="text-sm text-text-muted">{weeksLabel}</span>
-        <span className="text-sm font-semibold text-accent">Racha · 5 días</span>
+        <span className="text-sm text-text-muted">
+          {t('landing.heatmapWeeks', { count: weeks })}
+        </span>
+        <span className="text-sm font-semibold text-accent">
+          {t('landing.heatmapStreak', { count: 5 })}
+        </span>
       </div>
       <div
         className="grid gap-[3px]"

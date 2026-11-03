@@ -6,18 +6,26 @@
 // vertical para que el target sea ≥24 px efectivos (WCAG 2.5.8), y
 // cancela ese espacio con margin negativo para que la línea de texto
 // no crezca. El resultado se lee igual pero el pulgar tiene aire.
+import { Trans } from 'react-i18next'
+
 export default function LegalFooter() {
+  // Trans interpola los dos enlaces DENTRO de la frase traducida: el orden de
+  // "Términos" y "Privacidad" puede cambiar entre idiomas, y partir la frase
+  // en trozos sueltos rompería la gramática. Los <terms>/<privacy> del bundle
+  // se mapean a estos anchors por nombre.
   return (
     <p className="text-center text-xs text-text-muted">
-      Al continuar aceptas los{' '}
-      <a href="#" className="-my-1 inline-block py-1 text-link hover:underline">
-        Términos
-      </a>{' '}
-      y la{' '}
-      <a href="#" className="-my-1 inline-block py-1 text-link hover:underline">
-        Privacidad
-      </a>
-      .
+      <Trans
+        i18nKey="landing.legal"
+        components={{
+          terms: (
+            <a href="#" className="-my-1 inline-block py-1 text-link hover:underline" />
+          ),
+          privacy: (
+            <a href="#" className="-my-1 inline-block py-1 text-link hover:underline" />
+          ),
+        }}
+      />
     </p>
   )
 }
