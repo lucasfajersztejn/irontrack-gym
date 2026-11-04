@@ -78,6 +78,16 @@ const entrySchema = new mongoose.Schema({
    */
   groupId: { type: String, default: null, trim: true, maxlength: 64 },
 
+  /**
+   * Override del peso de la barra para ESTA sesión y ESTE ejercicio. Solo
+   * aplica al equipment `barbell` (ver lib/weight.js: Z y Smith respetan
+   * el hardware, no se tocan). Se copia desde la rutina al crear la sesión
+   * y el usuario puede ajustarlo durante el entreno si el gym del día
+   * tiene una barra distinta. null = usa la jerarquía normal
+   * (default del catálogo → preferencia de usuario → 20 kg).
+   */
+  barWeightKg: { type: Number, min: 0, max: 50, default: null },
+
   sets: { type: [setSchema], default: [] },
 }, { _id: false });
 

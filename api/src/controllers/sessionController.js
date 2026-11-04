@@ -41,6 +41,8 @@ const entrySchema = z.object({
   // Superset: ver routine.model.js — cliente lo genera, servidor solo valida
   // forma. nullable para "ejercicio solo".
   groupId: z.string().trim().max(64).nullable().optional(),
+  // Override del peso de barra solo para esta sesión (ver model).
+  barWeightKg: z.number().min(0).max(50).nullable().optional(),
   notes: z.string().trim().max(500).optional(),
   sets: z.array(setSchema).default([]),
 })
@@ -476,6 +478,9 @@ export async function createSession(req, res, next) {
         // los dejó la rutina; el usuario puede modificarlos durante el
         // entreno sin tocar la plantilla.
         groupId: re.groupId ?? null,
+        // El override de barra de la rutina viaja a la sesión; editar en
+        // vivo no toca la plantilla.
+        barWeightKg: re.barWeightKg ?? null,
         notes: re.notes,
         sets: [], // vacíos: se van rellenando durante el entrenamiento.
       }))
