@@ -26,6 +26,7 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
   const {
     entries,
     status,
+    updateEntry,
     updateSet,
     removeSet,
     addSet,
@@ -100,6 +101,7 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
               entry={entry}
               onAddSet={() => addSet(index)}
               onUpdateSet={(setIndex, patch) => updateSet(index, setIndex, patch)}
+              onUpdateEntry={(patch) => updateEntry(index, patch)}
               onToggleSetComplete={(setIndex, completed) =>
                 updateSet(index, setIndex, { completed })
               }

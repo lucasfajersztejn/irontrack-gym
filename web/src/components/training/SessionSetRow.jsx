@@ -55,7 +55,9 @@ function NumberCell({
 /*
   Celda RIR + (i) de ayuda. El popover solo se monta en la primera serie del
   entry (prop `showInfo`) para no apilar tres botones i idénticos cuando hay
-  3 series: un solo explicador por columna basta.
+  3 series: un solo explicador por columna basta. En las series siguientes
+  reservamos el hueco del botón con un spacer invisible para que la columna
+  de inputs mantenga la misma anchura en todas las filas.
 */
 function RirCell({ value, onChange, showInfo, ariaLabel }) {
   return (
@@ -70,7 +72,11 @@ function RirCell({ value, onChange, showInfo, ariaLabel }) {
         ariaLabel={ariaLabel}
         className="w-14"
       />
-      {showInfo && <RirInfoPopover />}
+      {showInfo ? (
+        <RirInfoPopover />
+      ) : (
+        <span className="h-5 w-5 shrink-0" aria-hidden />
+      )}
     </div>
   )
 }
@@ -241,7 +247,19 @@ export default function SessionSetRow({
     }
   })()
 
-  const showTotalHint = showPlates && set.weightKg != null
+  /*
+    Hint SIEMPRE visible en ejercicios con barra cuando ya se ha anotado un
+    peso. En modo plates (el input pide "x lado") el hint remata con el
+    total — "20 kg × 2 + barra 20 = 60 kg". En modo total (el input pide
+    kg totales) el hint hace la conversión inversa a lado — "60 kg = 20 kg
+    × 2 + barra 20". Misma info, dirección distinta según lo que el usuario
+    está escribiendo.
+  */
+  const showTotalHint =
+    tracking === 'weight_reps' && usesBar && set.weightKg != null
+  const totalPerSide = showTotalHint
+    ? (perSide ?? perSideFromTotal(set.weightKg, barKg))
+    : null
 
   return (
     <div
@@ -274,7 +292,7 @@ export default function SessionSetRow({
           {t('training.setFields.totalHint', {
             total: set.weightKg,
             bar: barKg,
-            perSide,
+            perSide: totalPerSide,
           })}
         </span>
       )}

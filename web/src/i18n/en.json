@@ -256,7 +256,7 @@
       "distance": "Dist.",
       "seconds": "s",
       "perSide": "per side",
-      "totalHint": "Total {{total}} kg · bar {{bar}} + 2 × {{perSide}}",
+      "totalHint": "{{perSide}} kg × 2 + bar {{bar}} = {{total}} kg",
       "weightAria": "Weight for set {{n}}",
       "repsAria": "Reps for set {{n}}",
       "durationAria": "Duration for set {{n}}",
@@ -266,6 +266,15 @@
       "rirAria": "RIR for set {{n}}",
       "rirInfo": "What is RIR?",
       "rirTooltip": "Reps In Reserve: how many more reps you could have done at the end of the set. 0 = to failure, 5 = plenty left in the tank. Leave the field blank to skip rating the set."
+    },
+    "barSettings": {
+      "open": "Adjust bar weight",
+      "title": "Bar weight",
+      "current": "Now: {{kg}} kg",
+      "customPlaceholder": "kg",
+      "customAria": "Bar weight in kg",
+      "done": "Done",
+      "reset": "Reset to default"
     },
     "helpOpen": "See how to do \"{{name}}\"",
     "helpTitle": "How to do \"{{name}}\"",
