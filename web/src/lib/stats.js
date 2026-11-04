@@ -106,55 +106,23 @@ export function latest1RM(sessionDetail) {
 }
 
 /*
-  Buckets diarios para el heatmap. La ventana se ancla a la semana ISO:
-  termina el domingo de ESTA semana y empieza el lunes 12 semanas antes.
-  Así la primera columna del heatmap siempre arranca en lunes (como GitHub)
-  y el "esta semana vs. la anterior" se lee comparando columnas vecinas.
+  Reparto 1-4 por INTENSIDAD (RIR + duración de cardio, ver sessionController
+  getHeatmap y useHeatmap). Umbrales FIJOS sobre `cell.intensity ∈ [0, 1]`,
+  no relativos al máximo de la ventana: una semana floja no debe repintar
+  como verde fuerte solo porque nada más intenso existe.
 
-  Los días futuros dentro de la semana actual se marcan isFuture=true para
-  que el render pueda pintarlos como celda vacía sin confundirlos con días
-  sin entreno.
+  Fallback: si hay `count > 0` pero `intensity == null` (el usuario entrenó
+  pero no anotó RIR en ninguna serie y tampoco hizo cardio), pintamos
+  nivel 1 — "entrenaste, no sabemos cuánto". Nunca un cell vacío, nunca un
+  nivel 4 silencioso.
 */
-export function bucketHeatmap(sessions, weeks = 12, today = new Date()) {
-  const localToday = startOfLocalDay(today)
-  const dayFromMon = (localToday.getDay() + 6) % 7 // 0 = lunes … 6 = domingo
-  const end = addDays(localToday, 6 - dayFromMon)
-  const totalDays = weeks * 7
-  const start = addDays(end, -(totalDays - 1))
-
-  const counts = new Map()
-  for (const s of sessions ?? []) {
-    const key = toLocalDayKey(s.startedAt)
-    counts.set(key, (counts.get(key) ?? 0) + 1)
-  }
-  const todayKey = toLocalDayKey(localToday)
-  const cells = []
-  for (let i = 0; i < totalDays; i++) {
-    const d = addDays(start, i)
-    const key = toLocalDayKey(d)
-    const isFuture = d > localToday
-    cells.push({
-      date: key,
-      count: counts.get(key) ?? 0,
-      isFuture,
-      isToday: key === todayKey,
-    })
-  }
-  return cells
-}
-
-// Reparto 1-4 por intensidad relativa. Se usa el máximo real de la ventana
-// para que una semana pico de 2 sesiones/día no se chafe contra el techo
-// teórico y para que un principiante vea verde con pocas sesiones.
 export function levelsFromCells(cells) {
-  const max = cells.reduce((m, c) => (c.count > m ? c.count : m), 0)
-  if (max === 0) return cells.map(() => 0)
   return cells.map((c) => {
-    if (c.count === 0) return 0
-    const r = c.count / max
-    if (r <= 0.25) return 1
-    if (r <= 0.5) return 2
-    if (r <= 0.75) return 3
+    if (!c.count) return 0
+    if (c.intensity == null) return 1
+    if (c.intensity <= 0.4) return 1
+    if (c.intensity <= 0.6) return 2
+    if (c.intensity <= 0.8) return 3
     return 4
   })
 }
