@@ -24,7 +24,21 @@ const setSchema = new mongoose.Schema({
   distanceM:     { type: Number, min: 0 }, // distance_time
 
   // Comunes:
-  rpe:       { type: Number, min: 1, max: 10 }, // esfuerzo percibido 1-10
+
+  /**
+   * Reps In Reserve: cuántas repeticiones MÁS podría haber hecho el usuario
+   * al final de la serie. 0 = al fallo, 5 = podría haber hecho 5+ más.
+   *
+   * Se usa como señal de intensidad de la sesión (heatmap de Home). No se
+   * pide en cardio (tracking `time` / `distance_time`): ahí la intensidad
+   * se deriva de la duración. Opcional porque forzar a valorar cada serie
+   * es fricción; sin RIR el set sigue contando como entreno hecho pero
+   * no aporta intensidad.
+   *
+   * Escala contable (no percibida) y acotada: más allá de 5 no aporta
+   * información útil y rompería la media ponderada.
+   */
+  rir:       { type: Number, min: 0, max: 5, validate: Number.isInteger },
   completed: { type: Boolean, default: false }, // marcada con el check
   restSec:   { type: Number, min: 0 },          // descanso que SE tomó
 

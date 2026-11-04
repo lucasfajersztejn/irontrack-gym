@@ -310,7 +310,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"entries\": [\n    {\n      \"exercise\": \"REEMPLAZAR_POR_UN_ID_DE_EXERCISE\",\n      \"exerciseName\": \"Press banca\",\n      \"muscle\": \"pectorals\",\n      \"tracking\": \"weight_reps\",\n      \"order\": 0,\n      \"sets\": [\n        { \"order\": 0, \"weightKg\": 60, \"reps\": 8, \"completed\": true },\n        { \"order\": 1, \"weightKg\": 60, \"reps\": 7, \"completed\": true, \"rpe\": 8 }\n      ]\n    }\n  ]\n}"
+              "raw": "{\n  \"entries\": [\n    {\n      \"exercise\": \"REEMPLAZAR_POR_UN_ID_DE_EXERCISE\",\n      \"exerciseName\": \"Press banca\",\n      \"muscle\": \"pectorals\",\n      \"tracking\": \"weight_reps\",\n      \"order\": 0,\n      \"sets\": [\n        { \"order\": 0, \"weightKg\": 60, \"reps\": 8, \"completed\": true },\n        { \"order\": 1, \"weightKg\": 60, \"reps\": 7, \"completed\": true, \"rir\": 2 }\n      ]\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/sessions/REEMPLAZAR_POR_UN_ID_DE_SESSION",

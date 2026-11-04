@@ -27,7 +27,7 @@ const setSchema = z.object({
   addedWeightKg: z.number().min(0).optional(),
   durationSec: z.number().int().min(0).optional(),
   distanceM: z.number().min(0).optional(),
-  rpe: z.number().min(1).max(10).optional(),
+  rir: z.number().int().min(0).max(5).optional(),
   completed: z.boolean().optional(),
   restSec: z.number().int().min(0).optional(),
 })
@@ -70,6 +70,21 @@ const listQuerySchema = z.object({
   to: z.coerce.date().optional(),
   routine: objectIdSchema.optional(),
 })
+
+/*
+  Rango máx de ~14 meses: el heatmap de Home cubre un año natural y algún mes
+  de margen para animaciones de cambio de año. Más allá sería una petición
+  de otro tipo (data export, estadística histórica) y debería ir por su
+  propio endpoint — no queremos justificar un $unwind sobre dos años de
+  datos desde un refresh accidental.
+*/
+const heatmapQuerySchema = z.object({
+  from: z.coerce.date(),
+  to: z.coerce.date(),
+}).refine(
+  (v) => (v.to - v.from) <= 1000 * 60 * 60 * 24 * 430,
+  { message: 'Rango máximo de 430 días' },
+).refine((v) => v.to >= v.from, { message: 'to debe ser >= from' })
 
 // ---------------------------------------------------------------------------
 // GET /api/sessions  -> historial paginado SIN el array entries
@@ -143,6 +158,174 @@ export async function listSessions(req, res, next) {
           },
         },
       },
+    ])
+    res.json(result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/sessions/heatmap  -> intensidad por sesión en un rango
+// ---------------------------------------------------------------------------
+
+/*
+  Devuelve una fila por SESIÓN (no por día) con su `intensity ∈ [0, 1]` o null.
+  El cliente agrupa por día local — hacerlo aquí con `$dateToString` requeriría
+  conocer el TZ del usuario, y almacenar el TZ en el perfil solo para esto es
+  romper el principio "UTC en servidor, local en cliente".
+
+  Fórmula de intensidad por sesión:
+    - Fuerza (tracking `weight_reps`, `reps`): media ponderada de los
+      efforts por serie, donde effort_set = (5 - rir) / 5 y el peso es
+      `weightKg * reps` (o `reps` si no hay peso). Sets sin RIR se saltan
+      por completo — nunca un cero silencioso.
+    - Cardio (tracking `time`, `distance_time`): se calcula a partir de la
+      duración TOTAL del entry con cuatro buckets fijos
+      (<20 min → 0.25, <40 → 0.50, <60 → 0.75, ≥60 → 1.00).
+    - Si la sesión mezcla fuerza y cardio, se devuelve el `max` de ambos.
+      La media ponderada mezclaría unidades (reps-volume vs segundos) sin
+      un ancla común; el max responde a "¿cuánto se exigió el usuario?"
+      que es exactamente lo que el heatmap pinta.
+*/
+export async function getHeatmap(req, res, next) {
+  const parsed = heatmapQuerySchema.safeParse(req.query)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Parámetros inválidos',
+      issues: parsed.error.issues,
+    })
+  }
+  const { from, to } = parsed.data
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.id)
+    const result = await Session.aggregate([
+      { $match: { user: userId, startedAt: { $gte: from, $lte: to } } },
+      /*
+        Doble $unwind: con ~5-15 entries x 3-5 sets por sesión, el fan-out es
+        pequeño. Un año de entrenamientos intensos son ~400 sesiones =
+        ~20k filas, cantidad que Mongo digiere sin mover el índice de sitio.
+        `preserveNullAndEmptyArrays` para que una sesión sin entries (o un
+        entry sin sets, que es el estado nada más empezar) siga contribuyendo
+        con `count` aunque no pueda aportar intensidad.
+      */
+      { $unwind: { path: '$entries', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$entries.sets', preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          _isStrength: {
+            $in: ['$entries.tracking', ['weight_reps', 'reps']],
+          },
+          _isCardio: {
+            $in: ['$entries.tracking', ['time', 'distance_time']],
+          },
+        },
+      },
+      {
+        $addFields: {
+          /*
+            Peso de la serie para la media ponderada. Solo cuenta si hay
+            RIR; sin RIR el peso queda en 0 y la serie no mueve nada.
+          */
+          _setWeight: {
+            $cond: [
+              { $and: ['$_isStrength', { $ne: ['$entries.sets.rir', null] }] },
+              {
+                $cond: [
+                  { $eq: ['$entries.tracking', 'weight_reps'] },
+                  {
+                    $cond: [
+                      { $gt: [{ $ifNull: ['$entries.sets.weightKg', 0] }, 0] },
+                      {
+                        $multiply: [
+                          '$entries.sets.weightKg',
+                          { $ifNull: ['$entries.sets.reps', 0] },
+                        ],
+                      },
+                      { $ifNull: ['$entries.sets.reps', 0] },
+                    ],
+                  },
+                  { $ifNull: ['$entries.sets.reps', 0] },
+                ],
+              },
+              0,
+            ],
+          },
+          _setEffort: {
+            $cond: [
+              { $and: ['$_isStrength', { $ne: ['$entries.sets.rir', null] }] },
+              { $divide: [{ $subtract: [5, '$entries.sets.rir'] }, 5] },
+              0,
+            ],
+          },
+          _cardioSec: {
+            $cond: [
+              '$_isCardio',
+              { $ifNull: ['$entries.sets.durationSec', 0] },
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id',
+          startedAt: { $first: '$startedAt' },
+          strengthEffortSum: {
+            $sum: { $multiply: ['$_setEffort', '$_setWeight'] },
+          },
+          strengthWeight: { $sum: '$_setWeight' },
+          cardioSeconds: { $sum: '$_cardioSec' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          startedAt: 1,
+          intensity: {
+            $let: {
+              vars: {
+                strengthEffort: {
+                  $cond: [
+                    { $gt: ['$strengthWeight', 0] },
+                    { $divide: ['$strengthEffortSum', '$strengthWeight'] },
+                    null,
+                  ],
+                },
+                cardioMinutes: { $divide: ['$cardioSeconds', 60] },
+              },
+              in: {
+                $let: {
+                  vars: {
+                    cardioEffort: {
+                      $switch: {
+                        branches: [
+                          { case: { $eq: ['$$cardioMinutes', 0] }, then: null },
+                          { case: { $lt: ['$$cardioMinutes', 20] }, then: 0.25 },
+                          { case: { $lt: ['$$cardioMinutes', 40] }, then: 0.50 },
+                          { case: { $lt: ['$$cardioMinutes', 60] }, then: 0.75 },
+                        ],
+                        default: 1.0,
+                      },
+                    },
+                  },
+                  in: {
+                    $cond: [
+                      { $and: [
+                        { $ne: ['$$strengthEffort', null] },
+                        { $ne: ['$$cardioEffort', null] },
+                      ] },
+                      { $max: ['$$strengthEffort', '$$cardioEffort'] },
+                      { $ifNull: ['$$strengthEffort', '$$cardioEffort'] },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      { $sort: { startedAt: 1 } },
     ])
     res.json(result)
   } catch (err) {
