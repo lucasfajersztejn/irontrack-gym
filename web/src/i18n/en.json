@@ -1,8 +1,4 @@
 {
-  "app": {
-    "name": "IronTrack",
-    "tagline": "Log your workout. Track your progress."
-  },
   "common": {
     "loading": "Loading…"
   },
@@ -50,8 +46,8 @@
     "training": "Train",
     "week": "Week",
     "catalog": "Catalog",
-    "history": "History",
     "profile": "Profile",
+    "primaryAria": "Primary navigation",
     "connectedWith": "Signed in with {{provider}}"
   },
   "home": {
@@ -62,12 +58,9 @@
     "noRoutineYet": "Pick a routine to begin",
     "streak": "Current streak",
     "days": "days",
-    "bestStreak": "Best streak: {{count}} days",
     "thisWeek": "This week",
     "thisWeekLinkAria": "View weekly detail",
-    "weeklyGoal": "Goal: {{count}} sessions",
     "oneRm": "Recent 1RM",
-    "record": "Record",
     "recentSessions": "Recent sessions",
     "viewAll": "View history",
     "noSessionsTitle": "No sessions yet",
@@ -209,7 +202,6 @@
       "name": "Name",
       "description": "Description",
       "sets": "Sets",
-      "reps": "Reps",
       "repsOptional": "Target reps (optional)",
       "weight": "Starting weight",
       "perSide": "Plates per side",
@@ -236,10 +228,7 @@
     "or": "or",
     "startFreeSession": "Start a free session",
     "startRoutineAria": "Start {{name}}",
-    "resumeTitle": "Resume your session",
-    "resumeSubWithRoutine": "Following: {{routine}}",
     "resumeSubFree": "Free session",
-    "resumeElapsed": "{{time}} elapsed",
     "liveEmptyTitle": "No exercises yet",
     "liveEmptySub": "Add one to start logging sets.",
     "addExercise": "Add exercise",
@@ -341,9 +330,6 @@
     "legendSecondary": "Secondary",
     "progressKicker": "Progress",
     "sessionsSuffix": "sessions",
-    "sessions": "Sessions",
-    "time": "Time",
-    "volume": "Volume",
     "editGoal": "Edit goal",
     "goalLabel": "Goal",
     "goalRange": "Goal must be between 1 and 14.",
@@ -353,10 +339,6 @@
     "saveErrorGeneric": "Couldn't save the goal.",
     "hoursMinutes": "{{h}}h {{m}}m",
     "minutes": "{{m}}m",
-    "byMuscleTitle": "By muscle group",
-    "maxShort": "max {{kg}} kg",
-    "secondaryTag": "sec.",
-    "secondaryTitle": "Secondary muscle",
     "musclesTitle": "Muscle groups",
     "sessionEmpty": "No sets logged in this session.",
     "sessionsTitle": "This week's sessions",
