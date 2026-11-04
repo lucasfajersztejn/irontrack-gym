@@ -24,7 +24,21 @@ const setSchema = new mongoose.Schema({
   distanceM:     { type: Number, min: 0 }, // distance_time
 
   // Comunes:
-  rpe:       { type: Number, min: 1, max: 10 }, // esfuerzo percibido 1-10
+
+  /**
+   * Reps In Reserve: cuántas repeticiones MÁS podría haber hecho el usuario
+   * al final de la serie. 0 = al fallo, 5 = podría haber hecho 5+ más.
+   *
+   * Se usa como señal de intensidad de la sesión (heatmap de Home). No se
+   * pide en cardio (tracking `time` / `distance_time`): ahí la intensidad
+   * se deriva de la duración. Opcional porque forzar a valorar cada serie
+   * es fricción; sin RIR el set sigue contando como entreno hecho pero
+   * no aporta intensidad.
+   *
+   * Escala contable (no percibida) y acotada: más allá de 5 no aporta
+   * información útil y rompería la media ponderada.
+   */
+  rir:       { type: Number, min: 0, max: 5, validate: Number.isInteger },
   completed: { type: Boolean, default: false }, // marcada con el check
   restSec:   { type: Number, min: 0 },          // descanso que SE tomó
 
@@ -63,6 +77,16 @@ const entrySchema = new mongoose.Schema({
    * descanso automático entre ellos.
    */
   groupId: { type: String, default: null, trim: true, maxlength: 64 },
+
+  /**
+   * Override del peso de la barra para ESTA sesión y ESTE ejercicio. Solo
+   * aplica al equipment `barbell` (ver lib/weight.js: Z y Smith respetan
+   * el hardware, no se tocan). Se copia desde la rutina al crear la sesión
+   * y el usuario puede ajustarlo durante el entreno si el gym del día
+   * tiene una barra distinta. null = usa la jerarquía normal
+   * (default del catálogo → preferencia de usuario → 20 kg).
+   */
+  barWeightKg: { type: Number, min: 0, max: 50, default: null },
 
   sets: { type: [setSchema], default: [] },
 }, { _id: false });

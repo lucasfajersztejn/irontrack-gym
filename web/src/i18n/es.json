@@ -86,6 +86,8 @@
     "sessionsTotal_other": "{{count}} sesiones en este rango",
     "legendLess": "Menos",
     "legendMore": "Más",
+    "heatmapTitle": "{{date}} · {{count}} · intensidad {{intensity}}%",
+    "heatmapTitleNoRir": "{{date}} · {{count}} · sin RIR",
     "exercisesCount_one": "{{count}} ejercicio",
     "exercisesCount_other": "{{count}} ejercicios"
   },
@@ -254,13 +256,25 @@
       "distance": "Dist.",
       "seconds": "s",
       "perSide": "x lado",
-      "totalHint": "Total {{total}} kg · barra {{bar}} + 2 × {{perSide}}",
+      "totalHint": "{{perSide}} kg × 2 + barra {{bar}} = {{total}} kg",
       "weightAria": "Peso de la serie {{n}}",
       "repsAria": "Repeticiones de la serie {{n}}",
       "durationAria": "Duración de la serie {{n}}",
       "distanceAria": "Distancia de la serie {{n}}",
       "completeAria": "Marcar serie {{n}} como completada",
-      "deleteAria": "Borrar serie {{n}}"
+      "deleteAria": "Borrar serie {{n}}",
+      "rirAria": "RIR de la serie {{n}}",
+      "rirInfo": "¿Qué es RIR?",
+      "rirTooltip": "Reps In Reserve: cuántas repeticiones más podrías haber hecho al terminar la serie. 0 = al fallo, 5 = muchas de sobra. Deja la casilla vacía si no quieres valorar la serie."
+    },
+    "barSettings": {
+      "open": "Ajustar peso de la barra",
+      "title": "Peso de la barra",
+      "current": "Ahora: {{kg}} kg",
+      "customPlaceholder": "kg",
+      "customAria": "Peso de la barra en kg",
+      "done": "Hecho",
+      "reset": "Volver al valor por defecto"
     },
     "helpOpen": "Ver cómo hacer «{{name}}»",
     "helpTitle": "Cómo hacer «{{name}}»",

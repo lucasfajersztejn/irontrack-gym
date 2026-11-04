@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SessionSetRow from './SessionSetRow.jsx'
 import ExerciseHelpSheet from './ExerciseHelpSheet.jsx'
+import BarWeightPopover from './BarWeightPopover.jsx'
 import ConfirmModal from '../routines/ConfirmModal.jsx'
 import { useUser } from '../../contexts/UserContext.jsx'
 import { barWeightFor } from '../../lib/weight.js'
@@ -28,6 +29,7 @@ export default function SessionExerciseCard({
   entry,
   onAddSet,
   onUpdateSet,
+  onUpdateEntry,
   onToggleSetComplete,
   onRemoveSet,
   onRemoveEntry,
@@ -47,9 +49,12 @@ export default function SessionExerciseCard({
   const usesBar = Boolean(exerciseObj?.usesBar)
   const barInputMode = user?.settings?.barInputMode ?? 'plates'
   const userBarKg = user?.settings?.defaultBarWeightKg ?? 20
+  // Override per-sesión (entry.barWeightKg) tiene prioridad sobre el default
+  // del catálogo y la preferencia global del usuario. Ver lib/weight.js.
   const barKg = exerciseObj
-    ? barWeightFor(exerciseObj, null, userBarKg)
+    ? barWeightFor(exerciseObj, entry.barWeightKg, userBarKg)
     : 0
+  const showBarSettings = exerciseObj?.equipment === 'barbell'
 
   return (
     <article className="card-liquid flex flex-col gap-3 rounded-container p-3 md:p-4">
@@ -71,6 +76,13 @@ export default function SessionExerciseCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {showBarSettings && (
+            <BarWeightPopover
+              value={entry.barWeightKg ?? null}
+              currentKg={barKg}
+              onChange={(nextKg) => onUpdateEntry?.({ barWeightKg: nextKg })}
+            />
+          )}
           {exerciseObj && (
             <button
               type="button"

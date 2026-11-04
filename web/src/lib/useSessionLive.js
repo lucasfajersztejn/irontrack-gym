@@ -45,6 +45,9 @@ function normalize(session) {
     // toApiEntries), el primer PATCH lo borra en DB y los bloques de
     // superserie se deshacen solos al recargar.
     groupId: e.groupId ?? null,
+    // Mismo motivo: el override de barra de la sesión persistiría en DB
+    // pero sin leerlo + reenviarlo volvería a null al primer PATCH.
+    barWeightKg: e.barWeightKg ?? null,
     notes: e.notes ?? '',
     sets: (e.sets ?? []).map((s) => ({ ...s })),
   }))
@@ -63,6 +66,7 @@ function toApiEntries(entries) {
       tracking: e.tracking,
       order: i,
       groupId: e.groupId ?? null,
+      barWeightKg: e.barWeightKg ?? null,
       notes: e.notes?.trim() || undefined,
       sets: e.sets
         .filter((s) => isSetComplete(s, e.tracking))
@@ -78,7 +82,11 @@ function cleanSet(s, order) {
   if (s.addedWeightKg != null) out.addedWeightKg = s.addedWeightKg
   if (s.durationSec != null) out.durationSec = s.durationSec
   if (s.distanceM != null) out.distanceM = s.distanceM
-  if (s.rpe != null) out.rpe = s.rpe
+  // RIR (Reps In Reserve) solo se recoge en fuerza; cardio no lo renderiza.
+  // Si el usuario lo deja vacío el campo se omite del PATCH y el set guarda
+  // sin señal de intensidad — nada de ceros silenciosos que oscurecerían
+  // falsamente el heatmap.
+  if (s.rir != null) out.rir = s.rir
   if (s.restSec != null) out.restSec = s.restSec
   return out
 }

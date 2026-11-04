@@ -7,7 +7,8 @@ import { api } from './api.js'
   disparar un refetch global por cambiar de pestaña sería un desperdicio.
 
   Dos hooks:
-  - useHeatmap(range)        → paginación completa de sesiones en el rango.
+  - useHeatmap(range)        → intensidad por día en el rango, en un sólo
+                               request al endpoint /api/sessions/heatmap.
   - useAvailableHeatmapRanges() → probe de años anteriores con datos.
 
   Decisiones:
@@ -16,15 +17,15 @@ import { api } from './api.js'
     contiene el 31 de diciembre; los días fuera del año se devuelven como
     isOutside=true para que el render los pinte invisibles pero mantenga la
     rejilla alineada a lunes.
-  - El backend ordena sesiones por startedAt desc sin exponer total. Para
-    agotar un rango se pagina hasta encontrar una página con < limit filas.
-    Techo defensivo de 50 páginas (= 2500 sesiones) por si algo va mal.
+  - El backend devuelve UNA fila por sesión con su `intensity ∈ [0, 1]` o
+    null (ver sessionController.getHeatmap). El cliente agrupa por día local
+    y se queda con el `max` del día — una sesión dura no se diluye con una
+    posterior de movilidad.
   - El probe de años anteriores lanza una petición por año con limit=1 hasta
     el primer año sin datos (máx 4 años atrás): un usuario recién registrado
     hace una sola petición y no "ve" años pasados.
 */
 
-const MAX_PAGES = 50
 const MAX_YEARS_BACK = 4
 
 function startOfLocalDay(d) {
@@ -65,28 +66,27 @@ export function resolveHeatmapRange(range, today = new Date()) {
   return { start, end, year }
 }
 
-async function fetchAllSessionsInRange(from, to) {
-  const all = []
+async function fetchHeatmap(from, to) {
   const fromIso = encodeURIComponent(from.toISOString())
   const toIso = encodeURIComponent(to.toISOString())
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const resp = await api(
-      `/api/sessions?limit=50&page=${page}&from=${fromIso}&to=${toIso}`,
-    )
-    const items = Array.isArray(resp) ? resp : (resp?.sessions ?? [])
-    all.push(...items)
-    if (items.length < 50) break
-  }
-  return all
+  const resp = await api(
+    `/api/sessions/heatmap?from=${fromIso}&to=${toIso}`,
+  )
+  return Array.isArray(resp) ? resp : []
 }
 
 function buildCells(sessions, start, end, today, year) {
   const localToday = startOfLocalDay(today)
   const todayKey = toLocalDayKey(localToday)
   const counts = new Map()
+  const intensities = new Map() // key -> max intensity no-null del día
   for (const s of sessions) {
     const key = toLocalDayKey(new Date(s.startedAt))
     counts.set(key, (counts.get(key) ?? 0) + 1)
+    if (s.intensity != null) {
+      const prev = intensities.get(key)
+      if (prev == null || s.intensity > prev) intensities.set(key, s.intensity)
+    }
   }
   const totalDays = Math.round((end - start) / 86400000) + 1
   const cells = []
@@ -95,10 +95,12 @@ function buildCells(sessions, start, end, today, year) {
     const key = toLocalDayKey(d)
     const isFuture = d > localToday
     const isOutside = year != null && d.getFullYear() !== year
+    const count = isFuture || isOutside ? 0 : (counts.get(key) ?? 0)
     cells.push({
       date: d,
       dateKey: key,
-      count: isFuture || isOutside ? 0 : (counts.get(key) ?? 0),
+      count,
+      intensity: count === 0 ? null : (intensities.get(key) ?? null),
       isFuture,
       isOutside,
       isToday: key === todayKey,
@@ -119,7 +121,7 @@ export function useHeatmap(range, today = new Date()) {
     let cancelled = false
     const { start, end, year } = resolveHeatmapRange(range, today)
     setState((s) => ({ ...s, loading: true }))
-    fetchAllSessionsInRange(start, end)
+    fetchHeatmap(start, end)
       .then((sessions) => {
         if (cancelled) return
         const cells = buildCells(sessions, start, end, today, year)

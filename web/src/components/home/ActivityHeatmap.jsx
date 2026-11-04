@@ -193,13 +193,21 @@ export default function ActivityHeatmap({
                   )
                 }
                 const level = cell.isFuture ? 0 : levels[i]
+                const titleKey =
+                  cell.intensity == null
+                    ? 'home.heatmapTitleNoRir'
+                    : 'home.heatmapTitle'
                 return (
                   <div
                     key={i}
                     className={`rounded-[2px] ${LEVEL_CLASSES[level]} ${
                       cell.isToday ? 'ring-1 ring-accent/60' : ''
                     }`}
-                    title={`${cell.dateKey} · ${cell.count}`}
+                    title={t(titleKey, {
+                      date: cell.dateKey,
+                      count: cell.count,
+                      intensity: Math.round((cell.intensity ?? 0) * 100),
+                    })}
                   />
                 )
               })}

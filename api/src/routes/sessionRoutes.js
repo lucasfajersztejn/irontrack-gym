@@ -3,6 +3,7 @@ import { requireSession } from '../middleware/requireSession.js'
 import { requireAdminSecret } from '../middleware/requireAdminSecret.js'
 import {
   listSessions,
+  getHeatmap,
   getActiveSession,
   getSession,
   createSession,
@@ -33,6 +34,7 @@ router.use(requireSession)
  * ya lo rechazaría por no ser ObjectId válido, es mejor no depender de eso.
  */
 router.get('/active', getActiveSession)
+router.get('/heatmap', getHeatmap)
 router.get('/', listSessions)
 router.post('/', createSession)
 router.get('/:id', getSession)

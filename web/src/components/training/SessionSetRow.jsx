@@ -3,6 +3,7 @@ import {
   perSideFromTotal,
   totalFromPerSide,
 } from '../../lib/weight.js'
+import RirInfoPopover from './RirInfoPopover.jsx'
 
 /*
   Fila de una serie dentro de un ejercicio. El layout cambia según el
@@ -25,19 +26,58 @@ function toNumber(v) {
   return Number.isNaN(n) ? null : n
 }
 
-function NumberCell({ value, onChange, step = 1, min = 0, placeholder, ariaLabel }) {
+function NumberCell({
+  value,
+  onChange,
+  step = 1,
+  min = 0,
+  max,
+  placeholder,
+  ariaLabel,
+  className = 'w-full',
+}) {
   return (
     <input
       type="number"
       inputMode="decimal"
       step={step}
       min={min}
+      max={max}
       value={value ?? ''}
       placeholder={placeholder ?? ''}
       aria-label={ariaLabel}
       onChange={(e) => onChange(toNumber(e.target.value))}
-      className="tabular w-full rounded-control border border-border bg-bg px-2 py-2 text-center text-sm text-text focus:border-accent focus:outline-none"
+      className={`tabular ${className} rounded-control border border-border bg-bg px-2 py-2 text-center text-sm text-text focus:border-accent focus:outline-none`}
     />
+  )
+}
+
+/*
+  Celda RIR + (i) de ayuda. El popover solo se monta en la primera serie del
+  entry (prop `showInfo`) para no apilar tres botones i idénticos cuando hay
+  3 series: un solo explicador por columna basta. En las series siguientes
+  reservamos el hueco del botón con un spacer invisible para que la columna
+  de inputs mantenga la misma anchura en todas las filas.
+*/
+function RirCell({ value, onChange, showInfo, ariaLabel }) {
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <NumberCell
+        value={value}
+        onChange={onChange}
+        step={1}
+        min={0}
+        max={5}
+        placeholder="RIR"
+        ariaLabel={ariaLabel}
+        className="w-14"
+      />
+      {showInfo ? (
+        <RirInfoPopover />
+      ) : (
+        <span className="h-5 w-5 shrink-0" aria-hidden />
+      )}
+    </div>
   )
 }
 
@@ -147,17 +187,31 @@ export default function SessionSetRow({
               placeholder={t('training.setFields.reps')}
               ariaLabel={t('training.setFields.repsAria', { n: num })}
             />
+            <RirCell
+              value={set.rir}
+              onChange={(rir) => onChange({ rir })}
+              showInfo={index === 0}
+              ariaLabel={t('training.setFields.rirAria', { n: num })}
+            />
           </>
         )
       case 'reps':
         return (
-          <NumberCell
-            value={set.reps}
-            onChange={(reps) => onChange({ reps })}
-            step={1}
-            placeholder={t('training.setFields.reps')}
-            ariaLabel={t('training.setFields.repsAria', { n: num })}
-          />
+          <>
+            <NumberCell
+              value={set.reps}
+              onChange={(reps) => onChange({ reps })}
+              step={1}
+              placeholder={t('training.setFields.reps')}
+              ariaLabel={t('training.setFields.repsAria', { n: num })}
+            />
+            <RirCell
+              value={set.rir}
+              onChange={(rir) => onChange({ rir })}
+              showInfo={index === 0}
+              ariaLabel={t('training.setFields.rirAria', { n: num })}
+            />
+          </>
         )
       case 'time':
         return (
@@ -193,7 +247,19 @@ export default function SessionSetRow({
     }
   })()
 
-  const showTotalHint = showPlates && set.weightKg != null
+  /*
+    Hint SIEMPRE visible en ejercicios con barra cuando ya se ha anotado un
+    peso. En modo plates (el input pide "x lado") el hint remata con el
+    total — "20 kg × 2 + barra 20 = 60 kg". En modo total (el input pide
+    kg totales) el hint hace la conversión inversa a lado — "60 kg = 20 kg
+    × 2 + barra 20". Misma info, dirección distinta según lo que el usuario
+    está escribiendo.
+  */
+  const showTotalHint =
+    tracking === 'weight_reps' && usesBar && set.weightKg != null
+  const totalPerSide = showTotalHint
+    ? (perSide ?? perSideFromTotal(set.weightKg, barKg))
+    : null
 
   return (
     <div
@@ -226,7 +292,7 @@ export default function SessionSetRow({
           {t('training.setFields.totalHint', {
             total: set.weightKg,
             bar: barKg,
-            perSide,
+            perSide: totalPerSide,
           })}
         </span>
       )}
