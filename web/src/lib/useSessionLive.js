@@ -78,7 +78,11 @@ function cleanSet(s, order) {
   if (s.addedWeightKg != null) out.addedWeightKg = s.addedWeightKg
   if (s.durationSec != null) out.durationSec = s.durationSec
   if (s.distanceM != null) out.distanceM = s.distanceM
-  if (s.rpe != null) out.rpe = s.rpe
+  // RIR (Reps In Reserve) solo se recoge en fuerza; cardio no lo renderiza.
+  // Si el usuario lo deja vacío el campo se omite del PATCH y el set guarda
+  // sin señal de intensidad — nada de ceros silenciosos que oscurecerían
+  // falsamente el heatmap.
+  if (s.rir != null) out.rir = s.rir
   if (s.restSec != null) out.restSec = s.restSec
   return out
 }

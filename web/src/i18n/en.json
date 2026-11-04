@@ -86,6 +86,8 @@
     "sessionsTotal_other": "{{count}} sessions in this range",
     "legendLess": "Less",
     "legendMore": "More",
+    "heatmapTitle": "{{date}} · {{count}} · intensity {{intensity}}%",
+    "heatmapTitleNoRir": "{{date}} · {{count}} · no RIR",
     "exercisesCount_one": "{{count}} exercise",
     "exercisesCount_other": "{{count}} exercises"
   },
@@ -260,7 +262,10 @@
       "durationAria": "Duration for set {{n}}",
       "distanceAria": "Distance for set {{n}}",
       "completeAria": "Mark set {{n}} as completed",
-      "deleteAria": "Delete set {{n}}"
+      "deleteAria": "Delete set {{n}}",
+      "rirAria": "RIR for set {{n}}",
+      "rirInfo": "What is RIR?",
+      "rirTooltip": "Reps In Reserve: how many more reps you could have done at the end of the set. 0 = to failure, 5 = plenty left in the tank. Leave the field blank to skip rating the set."
     },
     "helpOpen": "See how to do \"{{name}}\"",
     "helpTitle": "How to do \"{{name}}\"",

@@ -3,6 +3,7 @@ import {
   perSideFromTotal,
   totalFromPerSide,
 } from '../../lib/weight.js'
+import RirInfoPopover from './RirInfoPopover.jsx'
 
 /*
   Fila de una serie dentro de un ejercicio. El layout cambia según el
@@ -25,19 +26,52 @@ function toNumber(v) {
   return Number.isNaN(n) ? null : n
 }
 
-function NumberCell({ value, onChange, step = 1, min = 0, placeholder, ariaLabel }) {
+function NumberCell({
+  value,
+  onChange,
+  step = 1,
+  min = 0,
+  max,
+  placeholder,
+  ariaLabel,
+  className = 'w-full',
+}) {
   return (
     <input
       type="number"
       inputMode="decimal"
       step={step}
       min={min}
+      max={max}
       value={value ?? ''}
       placeholder={placeholder ?? ''}
       aria-label={ariaLabel}
       onChange={(e) => onChange(toNumber(e.target.value))}
-      className="tabular w-full rounded-control border border-border bg-bg px-2 py-2 text-center text-sm text-text focus:border-accent focus:outline-none"
+      className={`tabular ${className} rounded-control border border-border bg-bg px-2 py-2 text-center text-sm text-text focus:border-accent focus:outline-none`}
     />
+  )
+}
+
+/*
+  Celda RIR + (i) de ayuda. El popover solo se monta en la primera serie del
+  entry (prop `showInfo`) para no apilar tres botones i idénticos cuando hay
+  3 series: un solo explicador por columna basta.
+*/
+function RirCell({ value, onChange, showInfo, ariaLabel }) {
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <NumberCell
+        value={value}
+        onChange={onChange}
+        step={1}
+        min={0}
+        max={5}
+        placeholder="RIR"
+        ariaLabel={ariaLabel}
+        className="w-14"
+      />
+      {showInfo && <RirInfoPopover />}
+    </div>
   )
 }
 
@@ -147,17 +181,31 @@ export default function SessionSetRow({
               placeholder={t('training.setFields.reps')}
               ariaLabel={t('training.setFields.repsAria', { n: num })}
             />
+            <RirCell
+              value={set.rir}
+              onChange={(rir) => onChange({ rir })}
+              showInfo={index === 0}
+              ariaLabel={t('training.setFields.rirAria', { n: num })}
+            />
           </>
         )
       case 'reps':
         return (
-          <NumberCell
-            value={set.reps}
-            onChange={(reps) => onChange({ reps })}
-            step={1}
-            placeholder={t('training.setFields.reps')}
-            ariaLabel={t('training.setFields.repsAria', { n: num })}
-          />
+          <>
+            <NumberCell
+              value={set.reps}
+              onChange={(reps) => onChange({ reps })}
+              step={1}
+              placeholder={t('training.setFields.reps')}
+              ariaLabel={t('training.setFields.repsAria', { n: num })}
+            />
+            <RirCell
+              value={set.rir}
+              onChange={(rir) => onChange({ rir })}
+              showInfo={index === 0}
+              ariaLabel={t('training.setFields.rirAria', { n: num })}
+            />
+          </>
         )
       case 'time':
         return (
