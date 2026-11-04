@@ -127,7 +127,7 @@ export default function AppShell() {
 
       <nav
         className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-surface/85 backdrop-blur-md md:hidden"
-        aria-label="Primary"
+        aria-label={t('nav.primaryAria')}
       >
         {TABS.map(({ to, labelKey, Icon }) => (
           <NavLink key={to} to={to} className={bottomLinkClass}>

@@ -1,8 +1,4 @@
 {
-  "app": {
-    "name": "IronTrack",
-    "tagline": "Registra tu entreno. Mide tu progreso."
-  },
   "common": {
     "loading": "Cargando…"
   },
@@ -50,8 +46,8 @@
     "training": "Entrenar",
     "week": "Semana",
     "catalog": "Catálogo",
-    "history": "Historial",
     "profile": "Perfil",
+    "primaryAria": "Navegación principal",
     "connectedWith": "Conectado con {{provider}}"
   },
   "home": {
@@ -62,12 +58,9 @@
     "noRoutineYet": "Elige una rutina para empezar",
     "streak": "Racha actual",
     "days": "días",
-    "bestStreak": "Mejor racha: {{count}} días",
     "thisWeek": "Esta semana",
     "thisWeekLinkAria": "Ver detalle semanal",
-    "weeklyGoal": "Objetivo: {{count}} sesiones",
     "oneRm": "1RM reciente",
-    "record": "Récord",
     "recentSessions": "Últimas sesiones",
     "viewAll": "Ver historial",
     "noSessionsTitle": "Aún no hay sesiones",
@@ -209,7 +202,6 @@
       "name": "Nombre",
       "description": "Descripción",
       "sets": "Series",
-      "reps": "Reps",
       "repsOptional": "Reps objetivo (opcional)",
       "weight": "Peso de arranque",
       "perSide": "Discos por lado",
@@ -236,10 +228,7 @@
     "or": "o",
     "startFreeSession": "Empezar sesión libre",
     "startRoutineAria": "Empezar {{name}}",
-    "resumeTitle": "Volver a tu sesión",
-    "resumeSubWithRoutine": "Siguiendo: {{routine}}",
     "resumeSubFree": "Sesión libre",
-    "resumeElapsed": "Lleva {{time}}",
     "liveEmptyTitle": "Sesión sin ejercicios",
     "liveEmptySub": "Añade uno para empezar a registrar series.",
     "addExercise": "Añadir ejercicio",
@@ -341,9 +330,6 @@
     "legendSecondary": "Secundario",
     "progressKicker": "Progreso",
     "sessionsSuffix": "sesiones",
-    "sessions": "Sesiones",
-    "time": "Tiempo",
-    "volume": "Volumen",
     "editGoal": "Editar objetivo",
     "goalLabel": "Objetivo",
     "goalRange": "El objetivo debe estar entre 1 y 14.",
@@ -353,10 +339,6 @@
     "saveErrorGeneric": "No se pudo guardar el objetivo.",
     "hoursMinutes": "{{h}} h {{m}} min",
     "minutes": "{{m}} min",
-    "byMuscleTitle": "Por grupo muscular",
-    "maxShort": "máx {{kg}} kg",
-    "secondaryTag": "sec.",
-    "secondaryTitle": "Músculo secundario",
     "musclesTitle": "Grupos trabajados",
     "sessionEmpty": "Sesión sin series registradas.",
     "sessionsTitle": "Sesiones de la semana",
