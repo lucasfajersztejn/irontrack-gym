@@ -487,6 +487,12 @@ export async function createSession(req, res, next) {
     }
 
     const session = await Session.create(doc)
+    // Mismo populate que /active y /:id: el frontend monta la vista live
+    // con esta respuesta y necesita `usesBar`, `equipment` y
+    // `defaultBarWeightKg` del catálogo para pintar el hint del total con
+    // barra y el popover de ajuste. Sin populate caerían en null y la UI
+    // esperaría a un refetch para enterarse.
+    await session.populate('entries.exercise')
     res.status(201).json(session)
   } catch (err) {
     next(err)
