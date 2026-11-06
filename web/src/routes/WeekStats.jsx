@@ -734,13 +734,13 @@ function buildMapView(mode, weekMuscles, recovering, neglected, t) {
   // 'neglected'
   return {
     layers: [
-      { muscles: neglected, color: 'var(--color-text-muted)', opacity: 0.6 },
+      { muscles: neglected, color: 'var(--color-neglected)', opacity: 0.85 },
     ],
     legendItems: [
       {
         label: t('weekStats.muscleMap.legendNeglected'),
-        color: 'var(--color-text-muted)',
-        opacity: 0.6,
+        color: 'var(--color-neglected)',
+        opacity: 0.85,
       },
     ],
     subtitle:
