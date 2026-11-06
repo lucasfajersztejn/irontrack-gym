@@ -6,6 +6,7 @@ import {
   getMuscles,
   getExerciseById,
   getExercisesHistory,
+  getExerciseProgress,
   createExercise,
   updateExercise,
   deleteExercise,
@@ -25,6 +26,10 @@ router.get('/muscles', getMuscles)
 // "history" se interpretaría como un ObjectId, fallaría la validación y
 // devolveríamos 404 en vez de ejecutar el controller correcto.
 router.get('/history', getExercisesHistory)
+// /:id/progress va antes del /:id solo para dejar claro el agrupamiento;
+// Express casa segmentos exactos antes de los params, así que el orden entre
+// estos dos no cambia el comportamiento — pero juntos se leen mejor.
+router.get('/:id/progress', getExerciseProgress)
 router.get('/:id', getExerciseById)
 
 // Mutaciones: solo afectan a ejercicios custom del propio usuario; el

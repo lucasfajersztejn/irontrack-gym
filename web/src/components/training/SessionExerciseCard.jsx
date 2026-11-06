@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SessionSetRow from './SessionSetRow.jsx'
 import ExerciseHelpSheet from './ExerciseHelpSheet.jsx'
@@ -7,6 +7,13 @@ import ConfirmModal from '../routines/ConfirmModal.jsx'
 import { useUser } from '../../contexts/UserContext.jsx'
 import { barWeightFor } from '../../lib/weight.js'
 import { useExerciseName } from '../../lib/exerciseName.js'
+import { estimate1RM } from '../../lib/stats.js'
+
+// Tolerancia para la comparación de 1RM contra el récord histórico. El
+// backend guarda el PR redondeado a 1 decimal (ver exerciseController.js
+// getExercisesHistory); sin margen, una serie que vuelva a clavar el mismo
+// 1RM post-redondeo dispararía el chip "PR" por un residuo de coma flotante.
+const PR_TOLERANCE_KG = 0.1
 
 /*
   Card de un ejercicio dentro de la sesión live. Header con nombre + chips
@@ -40,6 +47,35 @@ export default function SessionExerciseCard({
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const completedCount = entry.sets.filter((s) => s.completed).length
+
+  /*
+    Agregado vivo del ejercicio: tonelaje acumulado y 1RM estimado del día.
+    Solo tiene sentido para `weight_reps` (fuerza con peso externo); el
+    resto de trackings no aportan a estas métricas, y mostrar 0 kg llenaría
+    el card de ruido. Por eso abajo solo se renderiza si ambos > 0.
+  */
+  const liveStats = useMemo(() => {
+    if (entry.tracking !== 'weight_reps') return null
+    let tonnage = 0
+    let best = 0
+    for (const s of entry.sets) {
+      if (!s.completed) continue
+      if (s.weightKg == null || s.reps == null) continue
+      tonnage += s.weightKg * s.reps
+      const oneRm = estimate1RM(s.weightKg, s.reps)
+      if (oneRm > best) best = oneRm
+    }
+    return { tonnage, best1RM: best }
+  }, [entry.sets, entry.tracking])
+
+  // El récord histórico llega del endpoint /api/exercises/history. Si el
+  // ejercicio nunca se ha trabajado antes, el baseline es 0 y el primer 1RM
+  // válido ya cuenta como PR — que es exactamente lo que queremos.
+  const historical1RM = history?.prs?.best1RM ?? 0
+  const isPR =
+    liveStats != null &&
+    liveStats.best1RM > 0 &&
+    liveStats.best1RM > historical1RM + PR_TOLERANCE_KG
 
   const exerciseObj =
     entry.exercise && typeof entry.exercise === 'object' ? entry.exercise : null
@@ -130,6 +166,14 @@ export default function SessionExerciseCard({
         </div>
       </header>
 
+      {liveStats && liveStats.best1RM > 0 && (
+        <LiveStatsRow
+          tonnage={liveStats.tonnage}
+          best1RM={liveStats.best1RM}
+          isPR={isPR}
+        />
+      )}
+
       {entry.sets.length > 0 && (
         <div className="flex flex-col gap-1">
           {/*
@@ -186,6 +230,61 @@ export default function SessionExerciseCard({
       />
     </article>
   )
+}
+
+/*
+  Línea viva de agregados del ejercicio: tonelaje acumulado hoy + 1RM
+  estimado de la mejor serie hoy, con chip "PR" si bate el récord histórico.
+
+  Dos columnas en vez de una fila de pills porque el ojo debe comparar
+  el 1RM contra lo que recuerda del día anterior — mejor dos cifras
+  grandes con su label que una ristra de chips. `tabular-nums` para que
+  las cifras no "bailen" al ir cambiando entre series. El acento verde
+  se reserva al 1RM cuando es PR; el tonelaje nunca lo usa para que el
+  verde siga significando "récord", no "métrica positiva".
+*/
+function LiveStatsRow({ tonnage, best1RM, isPR }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex items-stretch gap-2 rounded-card bg-surface-2/60 px-3 py-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">
+          {t('training.liveStats.tonnage')}
+        </p>
+        <p className="tabular font-display text-sm font-semibold text-text">
+          {Math.round(tonnage)} kg
+        </p>
+      </div>
+      <div className="h-auto w-px bg-border/60" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">
+            {t('training.liveStats.oneRm')}
+          </p>
+          {isPR && (
+            <span
+              className="rounded-pill bg-accent/15 px-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-accent"
+              aria-label={t('training.liveStats.prAria')}
+            >
+              {t('training.liveStats.pr')}
+            </span>
+          )}
+        </div>
+        <p
+          className={`tabular font-display text-sm font-semibold ${
+            isPR ? 'text-accent' : 'text-text'
+          }`}
+        >
+          {formatKg(best1RM)} kg
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function formatKg(kg) {
+  // Una decimal, sin ceros colgando: 100.0 → 100, 102.5 → 102.5.
+  return Number.isInteger(kg) ? String(kg) : (Math.round(kg * 10) / 10).toString()
 }
 
 /*

@@ -235,6 +235,12 @@
     "addSet": "Añadir serie",
     "removeExercise": "Quitar ejercicio",
     "setsProgress": "{{done}} / {{total}}",
+    "liveStats": {
+      "tonnage": "Tonelaje",
+      "oneRm": "1RM est.",
+      "pr": "PR",
+      "prAria": "Nuevo récord personal"
+    },
     "saving": "Guardando…",
     "saved": "Guardado",
     "saveError": "No se pudo guardar",
@@ -356,7 +362,20 @@
     "confirmDeleteTitle": "¿Borrar esta sesión?",
     "confirmDeleteSub": "La sesión desaparece de tu historial. Esta acción no se puede deshacer.",
     "emptyTitle": "Semana en blanco",
-    "emptySub": "Ninguna serie marcada esta semana. Haz tu primera sesión y aparecerá aquí."
+    "emptySub": "Ninguna serie marcada esta semana. Haz tu primera sesión y aparecerá aquí.",
+    "exerciseCurve": {
+      "expandAria": "Ver evolución de {{name}}",
+      "collapseAria": "Cerrar evolución de {{name}}",
+      "heaviest": "Peso máx.",
+      "best1rm": "1RM máx.",
+      "sessions": "Sesiones",
+      "sessionsCount": "{{count}}",
+      "heaviestSeries": "Peso máx.",
+      "best1rmSeries": "1RM est.",
+      "empty": "Todavía sin histórico para este ejercicio.",
+      "loadError": "No se pudo cargar la curva.",
+      "loading": "Cargando evolución…"
+    }
   },
   "favorites": {
     "add": "Añadir a favoritos",

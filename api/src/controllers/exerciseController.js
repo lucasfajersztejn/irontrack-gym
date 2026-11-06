@@ -483,6 +483,104 @@ export const getExercisesHistory = async (req, res, next) => {
   }
 }
 
+// ---------------------------------------------------------------------------
+// GET /api/exercises/:id/progress  -> curva histórica (peso máx + 1RM) por sesión
+// ---------------------------------------------------------------------------
+
+/**
+ * Para un ejercicio concreto, devuelve un punto por cada sesión del usuario
+ * en la que haya una serie `completed` con `tracking === 'weight_reps'`:
+ *   - heaviestKg: la mayor carga de ese día.
+ *   - best1RM: el mejor Epley de ese día.
+ *
+ * Alcance deliberado:
+ *   - Solo `weight_reps`. En cardio (`time`, `distance_time`) y asistidos
+ *     (`reps` con addedWeightKg) ni "peso máx" ni "1RM" significan lo mismo;
+ *     la UI oculta la curva para esos trackings. Si en el futuro queremos
+ *     graficar otra cosa (mejor tiempo, mejor reps), se añade un endpoint
+ *     paralelo — mezclarlos aquí haría que un punto significase cosas
+ *     distintas según la fila.
+ *   - Un endpoint propio en vez de ampliar /history: /history pide N
+ *     ejercicios para la sesión viva (payload corto). La curva es un
+ *     ejercicio con historial largo; mezclar los dos obliga al front a
+ *     pedir siempre lo que no necesita.
+ */
+export const getExerciseProgress = async (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(404).json({ message: 'Ejercicio no encontrado' })
+  }
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.id)
+    const exerciseObjectId = new mongoose.Types.ObjectId(req.params.id)
+
+    // Comprobamos que el ejercicio existe y es visible para el usuario
+    // (global o custom suyo). Sin esto, pedir una curva de un custom ajeno
+    // devolvería [] silenciosamente, que es peor UX que un 404 claro.
+    const exercise = await Exercise.findOne({
+      _id: exerciseObjectId,
+      ...visibilityFilter(req.user.id, false),
+    }).select('_id').lean()
+    if (!exercise) {
+      return res.status(404).json({ message: 'Ejercicio no encontrado' })
+    }
+
+    /*
+      Un punto por sesión. Igual que en /history, solo cuentan sets con
+      `completed: true`: un peso tecleado sin marcar no debería mover la
+      curva. `$sort` al final en la pipeline garantiza que el front
+      reciba los puntos en orden cronológico (asc) y no tenga que
+      reordenar.
+    */
+    const rows = await Session.aggregate([
+      { $match: { user: userId, 'entries.exercise': exerciseObjectId } },
+      { $unwind: '$entries' },
+      {
+        $match: {
+          'entries.exercise': exerciseObjectId,
+          'entries.tracking': 'weight_reps',
+        },
+      },
+      { $unwind: '$entries.sets' },
+      {
+        $match: {
+          'entries.sets.completed': true,
+          'entries.sets.weightKg': { $gt: 0 },
+          'entries.sets.reps': { $gt: 0 },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id',
+          startedAt: { $first: '$startedAt' },
+          heaviestKg: { $max: '$entries.sets.weightKg' },
+          best1RM: {
+            $max: {
+              $multiply: [
+                '$entries.sets.weightKg',
+                { $add: [1, { $divide: ['$entries.sets.reps', 30] }] },
+              ],
+            },
+          },
+        },
+      },
+      { $sort: { startedAt: 1 } },
+    ])
+
+    const points = rows.map((row) => ({
+      sessionId: row._id.toString(),
+      date: row.startedAt,
+      heaviestKg: row.heaviestKg,
+      // Mismo redondeo que /history: una decimal es la resolución útil.
+      best1RM: Math.round(row.best1RM * 10) / 10,
+    }))
+
+    res.json({ exerciseId: req.params.id, points })
+  } catch (err) {
+    next(err)
+  }
+}
+
 export const deleteExercise = async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ message: 'Ejercicio no encontrado' })
