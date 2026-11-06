@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import { z } from 'zod'
 import Exercise from '../models/exercise.model.js'
+import Session from '../models/session.model.js'
 import User from '../models/user.model.js'
 import {
   MUSCLES,
@@ -283,6 +284,200 @@ export const updateExercise = async (req, res, next) => {
       return res.status(404).json({ message: 'Ejercicio no encontrado' })
     }
     res.json(exercise)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/exercises/history?ids=<a>,<b>  -> prefill + PRs para la sesión viva
+// ---------------------------------------------------------------------------
+
+/**
+ * Para cada ejercicio pedido devuelve:
+ *   - lastSession: los sets de la ÚLTIMA sesión del usuario en la que apareció
+ *     ese ejercicio. La UI los usa como sugerencia de prefill.
+ *   - prs: tope histórico por métrica relevante al tracking. La UI los usa
+ *     como baseline para detectar récords en vivo.
+ *
+ * Alcance acotado a propósito: solo fuerza (`weight_reps` + `reps`). Para
+ * cardio los PRs mezclarían unidades y el valor no es evidente (¿"mejor
+ * tiempo" en 5 km, en una hora, en un intervalo?); se dejan fuera hasta tener
+ * un modelo de dominio para ello.
+ *
+ * Una sola aggregation por sesión: al abrir /training se piden todos los ids
+ * de una. Si las rutinas crecen más allá de 40 ejercicios lo cortamos — pero
+ * una rutina realista no pasa de 15 y aquí tampoco hay paginación que
+ * complicar.
+ */
+const historyQuerySchema = z.object({
+  ids: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((s) => s.split(',').map((x) => x.trim()).filter(Boolean))
+    .refine((arr) => arr.length <= 40, {
+      message: 'Máximo 40 ejercicios por llamada',
+    })
+    .refine((arr) => arr.every((id) => /^[a-f0-9]{24}$/i.test(id)), {
+      message: 'ids contiene un ObjectId inválido',
+    }),
+})
+
+export const getExercisesHistory = async (req, res, next) => {
+  const parsed = historyQuerySchema.safeParse(req.query)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Parámetros inválidos',
+      issues: parsed.error.issues,
+    })
+  }
+  const ids = parsed.data.ids.map((id) => new mongoose.Types.ObjectId(id))
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.id)
+
+    /*
+      Dos aggregations en paralelo, con contratos distintos a propósito:
+
+        1) PRs: solo cuentan sets con `completed:true`. Una serie a medio
+           escribir (peso puesto, pero sin tocar el check) no debería
+           dispararnos un récord inexistente.
+
+        2) lastSession: la última sesión del usuario en la que apareció ese
+           ejercicio, con TODOS sus sets (completed o no). Prefill quiere
+           saber "qué levantaste la última vez" aunque esa vez olvidaras
+           marcar la casilla; el frontend mostrará los sets como sugerencia,
+           no como dato propio.
+
+      Una sola aggregation con `$top` (MongoDB 5.2+) también serviría, pero
+      dos pipelines separados se leen mejor y no nos atan a una versión
+      concreta del motor.
+    */
+    const [prRows, lastRows] = await Promise.all([
+      Session.aggregate([
+        { $match: { user: userId, 'entries.exercise': { $in: ids } } },
+        { $unwind: '$entries' },
+        { $match: { 'entries.exercise': { $in: ids } } },
+        { $unwind: '$entries.sets' },
+        { $match: { 'entries.sets.completed': true } },
+        {
+          $group: {
+            _id: '$entries.exercise',
+            heaviestKg: {
+              $max: {
+                $cond: [
+                  { $eq: ['$entries.tracking', 'weight_reps'] },
+                  '$entries.sets.weightKg',
+                  null,
+                ],
+              },
+            },
+            best1RM: {
+              $max: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ['$entries.tracking', 'weight_reps'] },
+                      { $gt: ['$entries.sets.weightKg', 0] },
+                      { $gt: ['$entries.sets.reps', 0] },
+                    ],
+                  },
+                  {
+                    $multiply: [
+                      '$entries.sets.weightKg',
+                      { $add: [1, { $divide: ['$entries.sets.reps', 30] }] },
+                    ],
+                  },
+                  null,
+                ],
+              },
+            },
+            bestReps: {
+              $max: {
+                $cond: [
+                  { $eq: ['$entries.tracking', 'reps'] },
+                  '$entries.sets.reps',
+                  null,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+      Session.aggregate([
+        { $match: { user: userId, 'entries.exercise': { $in: ids } } },
+        // $sort ANTES del $unwind: así el $first en el $group respeta el
+        // orden por sesión más reciente, no por el orden intrínseco del
+        // array entries dentro del documento.
+        { $sort: { startedAt: -1 } },
+        { $unwind: '$entries' },
+        { $match: { 'entries.exercise': { $in: ids } } },
+        {
+          $group: {
+            _id: '$entries.exercise',
+            startedAt: { $first: '$startedAt' },
+            sets: { $first: '$entries.sets' },
+          },
+        },
+      ]),
+    ])
+
+    /*
+      Normalización en JS: $max devuelve null cuando no hay candidato válido
+      (p.ej. un ejercicio de reps solo aporta bestReps). Redondeamos best1RM
+      a una decimal por ergonomía — mostrar 102.3333 kg en un toast queda feo.
+    */
+    const byId = {}
+    for (const row of lastRows) {
+      byId[row._id.toString()] = {
+        lastSession: {
+          startedAt: row.startedAt,
+          sets: (row.sets ?? []).map((s) => ({
+            order: s.order,
+            weightKg: s.weightKg ?? null,
+            reps: s.reps ?? null,
+            addedWeightKg: s.addedWeightKg ?? null,
+            durationSec: s.durationSec ?? null,
+            distanceM: s.distanceM ?? null,
+            rir: s.rir ?? null,
+          })),
+        },
+        prs: { heaviestKg: null, best1RM: null, bestReps: null },
+      }
+    }
+    for (const row of prRows) {
+      const key = row._id.toString()
+      if (!byId[key]) {
+        // Caso raro: PRs sin lastSession implicaría sets completados en una
+        // sesión que no lleva entry del ejercicio — imposible, pero no
+        // bloqueamos: creamos la clave vacía para no perder los PRs.
+        byId[key] = {
+          lastSession: null,
+          prs: { heaviestKg: null, best1RM: null, bestReps: null },
+        }
+      }
+      byId[key].prs = {
+        heaviestKg: row.heaviestKg ?? null,
+        best1RM: row.best1RM != null
+          ? Math.round(row.best1RM * 10) / 10
+          : null,
+        bestReps: row.bestReps ?? null,
+      }
+    }
+
+    // Garantizamos clave presente para TODOS los ids pedidos — el frontend
+    // puede iterar sin comprobar undefined.
+    for (const id of parsed.data.ids) {
+      if (!byId[id]) {
+        byId[id] = {
+          lastSession: null,
+          prs: { heaviestKg: null, best1RM: null, bestReps: null },
+        }
+      }
+    }
+
+    res.json(byId)
   } catch (err) {
     next(err)
   }

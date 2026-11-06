@@ -238,6 +238,13 @@
     "saving": "Saving…",
     "saved": "Saved",
     "saveError": "Couldn't save",
+    "pr": {
+      "title": "New PR!",
+      "heaviest": "{{kg}} kg",
+      "oneRm": "Est. 1RM {{kg}} kg",
+      "reps": "{{n}} reps in a set",
+      "dismiss": "Dismiss"
+    },
     "setFields": {
       "weight": "Weight",
       "reps": "Reps",

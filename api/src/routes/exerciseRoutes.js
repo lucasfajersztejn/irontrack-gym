@@ -5,6 +5,7 @@ import {
   getBodyParts,
   getMuscles,
   getExerciseById,
+  getExercisesHistory,
   createExercise,
   updateExercise,
   deleteExercise,
@@ -20,6 +21,10 @@ router.use(requireSession)
 router.get('/', getExercises)
 router.get('/bodyparts', getBodyParts)
 router.get('/muscles', getMuscles)
+// /history va ANTES de /:id porque Express casa en orden: con /:id delante,
+// "history" se interpretaría como un ObjectId, fallaría la validación y
+// devolveríamos 404 en vez de ejecutar el controller correcto.
+router.get('/history', getExercisesHistory)
 router.get('/:id', getExerciseById)
 
 // Mutaciones: solo afectan a ejercicios custom del propio usuario; el
