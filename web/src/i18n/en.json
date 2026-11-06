@@ -375,6 +375,22 @@
       "empty": "No history for this exercise yet.",
       "loadError": "Couldn't load the curve.",
       "loading": "Loading progress…"
+    },
+    "muscleMap": {
+      "title": "Muscle map",
+      "modes": {
+        "volume": "Volume",
+        "recovery": "Recovery",
+        "neglected": "Neglected"
+      },
+      "subRecovery": "{{count}} groups in recovery · last 72 h",
+      "subNeglected": "{{count}} groups without stimulus for 14 days or more",
+      "emptyRecovery": "No muscles in the recovery window. Good moment for your next session.",
+      "emptyNeglected": "Full coverage over the last two weeks.",
+      "legendVolumePrimary": "Primary target",
+      "legendVolumeSecondary": "Secondary",
+      "legendRecovery": "In recovery (<72 h)",
+      "legendNeglected": "Neglected (≥14 d or never)"
     }
   },
   "favorites": {

@@ -15,6 +15,7 @@ import ConfirmModal from '../components/routines/ConfirmModal.jsx'
 import MuscleChips from '../components/MuscleChips.jsx'
 import { ChevronRightIcon } from '../components/icons/NavIcons.jsx'
 import ExerciseProgressRow from '../components/stats/ExerciseProgressRow.jsx'
+import { useMuscleRecency } from '../lib/useMuscleRecency.js'
 
 // Cuántas semanas atrás se puede navegar, tanto con las flechas como en el
 // salto rápido del desplegable (que lista TODAS estas semanas agrupadas por
@@ -99,6 +100,13 @@ export default function WeekStats() {
     () => weekMuscleUsage(weekly.sessions),
     [weekly.sessions],
   )
+
+  // Modo del mapa muscular: volumen (default, igual que antes), recuperación
+  // (<72h desde el último estímulo primario) o descuidado (≥14d o nunca).
+  // La recencia solo alimenta los dos modos nuevos — volumen sigue leyendo
+  // de `muscles` (semana en curso), no del endpoint histórico.
+  const [muscleMapMode, setMuscleMapMode] = useState('volume')
+  const recency = useMuscleRecency()
 
   async function saveGoal() {
     const value = Number(goalDraft)
@@ -214,7 +222,13 @@ export default function WeekStats() {
             </section>
           )}
 
-          <MuscleMap primary={muscles.primary} secondary={muscles.secondary} />
+          <MuscleMapSection
+            mode={muscleMapMode}
+            onModeChange={setMuscleMapMode}
+            weekMuscles={muscles}
+            byMuscle={recency.byMuscle}
+            now={recency.now}
+          />
         </>
       )}
 
@@ -651,6 +665,219 @@ function SessionCard({ summary, detail, isOpen, onToggle, onDelete, locale }) {
         </div>
       )}
     </li>
+  )
+}
+
+/*
+  Umbrales de los modos nuevos. 72 h es la ventana clásica de recuperación
+  muscular después de un estímulo de fuerza moderado (el valor real depende
+  del grupo y el volumen; aquí aplicamos el mismo para todos como primera
+  iteración). 14 d es la frontera a partir de la cual "no has entrenado
+  este grupo" deja de ser una pausa normal y empieza a leerse como
+  descuido o desbalance.
+*/
+const RECOVERY_WINDOW_MS = 72 * 60 * 60 * 1000
+const NEGLECTED_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
+
+const MAP_MODES = ['volume', 'recovery', 'neglected']
+
+/*
+  Mapeo mode → { layers, legendItems, subtitle }. Función pura fuera del
+  componente: devuelve toda la configuración visual, aísla el switch y
+  facilita leer el contrato que recibe MuscleMap.
+*/
+function buildMapView(mode, weekMuscles, recovering, neglected, t) {
+  if (mode === 'volume') {
+    const worked = weekMuscles.primary.length + weekMuscles.secondary.length
+    return {
+      // Secundarios primero para que los primarios queden por encima si
+      // algún día un músculo aparece en ambas listas por error.
+      layers: [
+        { muscles: weekMuscles.secondary, color: 'var(--color-muscle)', opacity: 0.34 },
+        { muscles: weekMuscles.primary, color: 'var(--color-muscle)', opacity: 0.95 },
+      ],
+      legendItems: [
+        {
+          label: t('weekStats.muscleMap.legendVolumePrimary'),
+          color: 'var(--color-muscle)',
+        },
+        {
+          label: t('weekStats.muscleMap.legendVolumeSecondary'),
+          color: 'var(--color-muscle)',
+          opacity: 0.34,
+        },
+      ],
+      subtitle:
+        worked === 0
+          ? t('weekStats.muscleMapEmpty')
+          : t('weekStats.muscleMapSub', { count: worked }),
+    }
+  }
+  if (mode === 'recovery') {
+    return {
+      layers: [
+        { muscles: recovering, color: 'var(--color-warn)', opacity: 0.85 },
+      ],
+      legendItems: [
+        {
+          label: t('weekStats.muscleMap.legendRecovery'),
+          color: 'var(--color-warn)',
+          opacity: 0.85,
+        },
+      ],
+      subtitle:
+        recovering.length === 0
+          ? t('weekStats.muscleMap.emptyRecovery')
+          : t('weekStats.muscleMap.subRecovery', { count: recovering.length }),
+    }
+  }
+  // 'neglected'
+  return {
+    layers: [
+      { muscles: neglected, color: 'var(--color-text-muted)', opacity: 0.6 },
+    ],
+    legendItems: [
+      {
+        label: t('weekStats.muscleMap.legendNeglected'),
+        color: 'var(--color-text-muted)',
+        opacity: 0.6,
+      },
+    ],
+    subtitle:
+      neglected.length === 0
+        ? t('weekStats.muscleMap.emptyNeglected')
+        : t('weekStats.muscleMap.subNeglected', { count: neglected.length }),
+  }
+}
+
+function MuscleMapSection({ mode, onModeChange, weekMuscles, byMuscle, now }) {
+  const { t } = useTranslation()
+
+  // Para la clasificación recuperación/descuidado nos fiamos SOLO del `now`
+  // del servidor: evitamos que un reloj local desincronizado haga saltar
+  // "recuperación" al inicio o viceversa. Si el endpoint aún no respondió
+  // (o falló), los buckets quedan vacíos; la UI lo mostrará como empty
+  // state de cada modo.
+  const { recovering, neglected } = useMemo(() => {
+    if (!byMuscle || !now) {
+      return { recovering: [], neglected: [] }
+    }
+    const nowMs = Date.parse(now)
+    if (Number.isNaN(nowMs)) {
+      return { recovering: [], neglected: [] }
+    }
+    const rec = []
+    const neg = []
+    for (const [muscle, lastAt] of Object.entries(byMuscle)) {
+      if (lastAt == null) {
+        neg.push(muscle)
+        continue
+      }
+      const age = nowMs - Date.parse(lastAt)
+      if (age < RECOVERY_WINDOW_MS) rec.push(muscle)
+      else if (age >= NEGLECTED_WINDOW_MS) neg.push(muscle)
+    }
+    return { recovering: rec, neglected: neg }
+  }, [byMuscle, now])
+
+  const title = t('weekStats.muscleMap.title')
+  const { layers, legendItems, subtitle } = buildMapView(
+    mode,
+    weekMuscles,
+    recovering,
+    neglected,
+    t,
+  )
+
+  return (
+    <div className="flex flex-col gap-3">
+      <MuscleModeTabs mode={mode} onChange={onModeChange} />
+      <MuscleMap
+        title={title}
+        subtitle={subtitle}
+        layers={layers}
+        legendItems={legendItems}
+      />
+      {mode === 'volume' && (
+        <VolumeChipList
+          primary={weekMuscles.primary}
+          secondary={weekMuscles.secondary}
+        />
+      )}
+    </div>
+  )
+}
+
+/*
+  Segmented control de 3 modos. Tres botones de igual peso dentro de una
+  pill grande. El activo se levanta con bg-surface-2 + texto pleno; los
+  inactivos se quedan text-muted. aria-pressed por botón; el contenedor
+  no necesita role="tablist" porque los modos no están asociados a
+  tabpanels separados — es un switch sobre la misma vista.
+*/
+function MuscleModeTabs({ mode, onChange }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex items-center gap-1 rounded-control border border-border bg-surface p-1">
+      {MAP_MODES.map((m) => {
+        const active = mode === m
+        return (
+          <button
+            key={m}
+            type="button"
+            onClick={() => onChange(m)}
+            aria-pressed={active}
+            className={`press flex-1 rounded-control px-3 py-1.5 text-xs font-medium transition-[filter,transform,color,background-color] ${
+              active
+                ? 'bg-surface-2 text-text'
+                : 'text-text-muted hover:text-text'
+            }`}
+          >
+            {t(`weekStats.muscleMap.modes.${m}`)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/*
+  Lista plana de los músculos trabajados esta semana. Primarios en rojo
+  pleno, secundarios en rojo claro. No reusa MuscleChips porque ese pinta
+  en verde y vive en las sesiones expandidas. Solo se renderiza en modo
+  Volumen — en los otros, el chip equivale a la leyenda del mapa.
+*/
+function VolumeChipList({ primary, secondary }) {
+  const { t } = useTranslation()
+  if (primary.length === 0 && secondary.length === 0) return null
+  return (
+    <ul className="flex flex-wrap gap-1.5 px-1">
+      {primary.map((m) => (
+        <li
+          key={`p-${m}`}
+          className="rounded-pill px-2 py-0.5 text-[11px] font-medium"
+          style={{
+            backgroundColor:
+              'color-mix(in srgb, var(--color-muscle) 22%, transparent)',
+            color: 'var(--color-muscle)',
+          }}
+        >
+          {t(`catalog.muscles.${m}`, { defaultValue: m })}
+        </li>
+      ))}
+      {secondary.map((m) => (
+        <li
+          key={`s-${m}`}
+          className="rounded-pill px-2 py-0.5 text-[11px] font-medium text-text-muted"
+          style={{
+            backgroundColor:
+              'color-mix(in srgb, var(--color-muscle) 10%, transparent)',
+          }}
+        >
+          {t(`catalog.muscles.${m}`, { defaultValue: m })}
+        </li>
+      ))}
+    </ul>
   )
 }
 
