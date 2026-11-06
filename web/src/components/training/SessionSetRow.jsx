@@ -20,10 +20,17 @@ import RirInfoPopover from './RirInfoPopover.jsx'
     - Guardamos siempre weightKg total en estado (invariante spec §4).
 */
 
-function toNumber(v) {
+function toNumber(v, { min, max } = {}) {
   if (v === '' || v == null) return null
   const n = Number(v)
-  return Number.isNaN(n) ? null : n
+  if (Number.isNaN(n)) return null
+  // Los atributos HTML min/max solo marcan el input como :invalid, no impiden
+  // escribir fuera de rango. El backend sí valida (p.ej. RIR 0-5), así que
+  // clampamos aquí para que el PATCH nunca mande algo que sabemos que va a
+  // volver como 400.
+  if (max != null && n > max) return max
+  if (min != null && n < min) return min
+  return n
 }
 
 function NumberCell({
@@ -46,7 +53,7 @@ function NumberCell({
       value={value ?? ''}
       placeholder={placeholder ?? ''}
       aria-label={ariaLabel}
-      onChange={(e) => onChange(toNumber(e.target.value))}
+      onChange={(e) => onChange(toNumber(e.target.value, { min, max }))}
       className={`tabular ${className} rounded-control border border-border bg-bg px-2 py-2 text-center text-sm text-text focus:border-accent focus:outline-none`}
     />
   )

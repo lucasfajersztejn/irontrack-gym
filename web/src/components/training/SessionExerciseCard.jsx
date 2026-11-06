@@ -27,6 +27,7 @@ import { useExerciseName } from '../../lib/exerciseName.js'
 */
 export default function SessionExerciseCard({
   entry,
+  history,
   onAddSet,
   onUpdateSet,
   onUpdateEntry,
@@ -158,7 +159,7 @@ export default function SessionExerciseCard({
 
       <button
         type="button"
-        onClick={onAddSet}
+        onClick={() => onAddSet(resolveSeed(entry, history))}
         className="press self-start rounded-control border border-border bg-surface px-3 py-2 text-xs font-medium text-text transition-[filter,transform,background-color] hover:bg-surface-2"
       >
         + {t('training.addSet')}
@@ -223,4 +224,43 @@ function SetListHeader({ tracking }) {
       <span className="w-7 shrink-0" />
     </div>
   )
+}
+
+/*
+  Fuente del prefill al pulsar "+ Añadir serie" CUANDO el entry todavía no
+  tiene ninguna serie en esta sesión (si ya hay, useSessionLive.addSet copia
+  la última — flujo de "progresión intra-sesión").
+
+  Prioridad:
+    1) Última sesión REAL del usuario en este ejercicio (history.lastSession).
+       Devolvemos su primer set — las series posteriores se autorreplican.
+    2) Plantilla de la rutina (entry.plannedSets, sidecar del POST /sessions).
+    3) null → el caller deja los campos vacíos.
+
+  No mezclamos capas (no "si la rutina dice 100 pero la última vez fue 90
+  tómalo como 100"): la decisión es FUENTE, no media. "La última vez" gana
+  porque es dato real; la plantilla es plan, menos informativo.
+*/
+function resolveSeed(entry, history) {
+  const last = history?.lastSession?.sets?.[0]
+  if (last) {
+    return {
+      weightKg: last.weightKg ?? null,
+      reps: last.reps ?? null,
+      addedWeightKg: last.addedWeightKg ?? null,
+      durationSec: last.durationSec ?? null,
+      distanceM: last.distanceM ?? null,
+    }
+  }
+  const planned = entry.plannedSets?.[0]
+  if (planned) {
+    return {
+      weightKg: planned.weightKg ?? null,
+      reps: planned.reps ?? null,
+      addedWeightKg: null,
+      durationSec: planned.durationSec ?? null,
+      distanceM: planned.distanceM ?? null,
+    }
+  }
+  return null
 }

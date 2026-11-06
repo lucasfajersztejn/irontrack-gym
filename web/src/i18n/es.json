@@ -238,6 +238,13 @@
     "saving": "Guardando…",
     "saved": "Guardado",
     "saveError": "No se pudo guardar",
+    "pr": {
+      "title": "¡Nuevo récord!",
+      "heaviest": "{{kg}} kg",
+      "oneRm": "1RM estimado {{kg}} kg",
+      "reps": "{{n}} reps en una serie",
+      "dismiss": "Cerrar aviso"
+    },
     "setFields": {
       "weight": "Peso",
       "reps": "Reps",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SessionExerciseCard from './SessionExerciseCard.jsx'
 import SessionStatsCard from './SessionStatsCard.jsx'
@@ -6,7 +6,9 @@ import RestTimerBar from './RestTimerBar.jsx'
 import ExercisePickerSheet from '../routines/ExercisePickerSheet.jsx'
 import ConfirmModal from '../routines/ConfirmModal.jsx'
 import SupersetBlock from '../routines/SupersetBlock.jsx'
+import { PRToastStack } from '../ui/PRToast.jsx'
 import { useSessionLive } from '../../lib/useSessionLive.js'
+import { useExerciseHistory } from '../../lib/useExerciseHistory.js'
 import { groupEntries } from '../../lib/supersets.js'
 import { REST_DEFAULT_SEC, useSessionStore } from '../../stores/sessionStore.js'
 import { useUser } from '../../contexts/UserContext.jsx'
@@ -34,9 +36,42 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
     removeEntry,
     setEntries,
   } = useSessionLive(session)
+  const { history, detectPR } = useExerciseHistory(session)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [confirmFinishOpen, setConfirmFinishOpen] = useState(false)
+  const [toasts, setToasts] = useState([])
+  const toastIdRef = useRef(0)
   const stopRest = useSessionStore((s) => s.stopRest)
+
+  const pushToast = (toast) => {
+    toastIdRef.current += 1
+    setToasts((xs) => [...xs, { id: toastIdRef.current, ...toast }])
+  }
+  const dismissToast = (id) =>
+    setToasts((xs) => xs.filter((t) => t.id !== id))
+
+  /*
+    PR detection: wrapper del toggle de completar. Si pasa de "no completado"
+    a "completado" y la serie supera el baseline histórico, mostramos toast.
+    El baseline vive en el ref de useExerciseHistory, así que llamadas
+    sucesivas a detectPR con la misma marca devuelven null (no re-notifican).
+  */
+  const toggleSetCompleteWithPR = (entryIndex, setIndex, completed) => {
+    const entry = entries[entryIndex]
+    const set = entry?.sets?.[setIndex]
+    updateSet(entryIndex, setIndex, { completed })
+    if (!entry || !set || !completed || set.completed) return
+    const exerciseId =
+      typeof entry.exercise === 'string' ? entry.exercise : entry.exercise?._id
+    const hit = detectPR(exerciseId, entry.tracking, set)
+    if (hit) {
+      pushToast({
+        exerciseName: entry.exerciseName,
+        kind: hit.kind,
+        value: hit.value,
+      })
+    }
+  }
 
   /*
     Descanso por defecto del usuario. REST_DEFAULT_SEC solo cubre el hueco
@@ -95,20 +130,28 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
         */}
         {groupEntries(entries).map((block, bi) => {
           const isSuperset = block.items.length > 1
-          const rows = block.items.map(({ entry, index }) => (
-            <SessionExerciseCard
-              key={`${typeof entry.exercise === 'string' ? entry.exercise : entry.exercise?._id}-${index}`}
-              entry={entry}
-              onAddSet={() => addSet(index)}
-              onUpdateSet={(setIndex, patch) => updateSet(index, setIndex, patch)}
-              onUpdateEntry={(patch) => updateEntry(index, patch)}
-              onToggleSetComplete={(setIndex, completed) =>
-                updateSet(index, setIndex, { completed })
-              }
-              onRemoveSet={(setIndex) => removeSet(index, setIndex)}
-              onRemoveEntry={() => removeEntry(index)}
-            />
-          ))
+          const rows = block.items.map(({ entry, index }) => {
+            const exerciseId =
+              typeof entry.exercise === 'string'
+                ? entry.exercise
+                : entry.exercise?._id
+            const entryHistory = history[exerciseId] ?? null
+            return (
+              <SessionExerciseCard
+                key={`${exerciseId}-${index}`}
+                entry={entry}
+                history={entryHistory}
+                onAddSet={(seed) => addSet(index, seed)}
+                onUpdateSet={(setIndex, patch) => updateSet(index, setIndex, patch)}
+                onUpdateEntry={(patch) => updateEntry(index, patch)}
+                onToggleSetComplete={(setIndex, completed) =>
+                  toggleSetCompleteWithPR(index, setIndex, completed)
+                }
+                onRemoveSet={(setIndex) => removeSet(index, setIndex)}
+                onRemoveEntry={() => removeEntry(index)}
+              />
+            )
+          })
           if (isSuperset) {
             return (
               <SupersetBlock
@@ -186,6 +229,8 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
           <RestTimerBar restSec={restSec} />
         </>
       )}
+
+      <PRToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   )
 }

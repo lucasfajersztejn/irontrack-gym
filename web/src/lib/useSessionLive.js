@@ -50,6 +50,12 @@ function normalize(session) {
     barWeightKg: e.barWeightKg ?? null,
     notes: e.notes ?? '',
     sets: (e.sets ?? []).map((s) => ({ ...s })),
+    // Sidecar: viene en la respuesta de POST /sessions cuando la sesión
+    // sale de una rutina. Lo preservamos en estado local para que el
+    // prefill de "+ Añadir serie" lo consulte como fallback cuando el
+    // usuario nunca ha hecho el ejercicio. NO viaja en el PATCH (ver
+    // toApiEntries): es solo contexto de UI.
+    plannedSets: e.plannedSets ?? null,
   }))
 }
 
@@ -153,16 +159,19 @@ export function useSessionLive(initialSession) {
     ])
   }
 
-  const addSet = (entryIndex) =>
+  /*
+    `externalSeed` lo aporta el caller (SessionExerciseCard) cuando ya no hay
+    serie previa EN LA SESIÓN de la que copiar y quiere ofrecer "la última
+    vez que hiciste este ejercicio" o la plantilla de la rutina. Así este
+    hook sigue sin conocer history ni sidecar — solo recibe un seed opcional
+    y aplica la prioridad: serie previa de esta sesión > seed externo > vacío.
+  */
+  const addSet = (entryIndex, externalSeed = null) =>
     setEntries((es) =>
       es.map((e, j) => {
         if (j !== entryIndex) return e
-        // Prefill: copiar los valores de la última serie para acelerar el
-        // registro ("Hevy pattern"). Reps/weight normalmente se mantienen o
-        // bajan en la siguiente; copiar es un buen default. completed=false
-        // porque es una serie nueva.
         const last = e.sets[e.sets.length - 1]
-        const seed = last
+        const base = last
           ? {
               weightKg: last.weightKg ?? null,
               reps: last.reps ?? null,
@@ -170,10 +179,18 @@ export function useSessionLive(initialSession) {
               durationSec: last.durationSec ?? null,
               distanceM: last.distanceM ?? null,
             }
-          : {}
+          : externalSeed
+            ? {
+                weightKg: externalSeed.weightKg ?? null,
+                reps: externalSeed.reps ?? null,
+                addedWeightKg: externalSeed.addedWeightKg ?? null,
+                durationSec: externalSeed.durationSec ?? null,
+                distanceM: externalSeed.distanceM ?? null,
+              }
+            : {}
         return {
           ...e,
-          sets: [...e.sets, { ...seed, completed: false }],
+          sets: [...e.sets, { ...base, completed: false }],
         }
       }),
     )

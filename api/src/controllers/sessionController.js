@@ -452,6 +452,10 @@ export async function createSession(req, res, next) {
       routineName: null,
     }
 
+    // Guardamos los targets de la rutina para construir el sidecar plannedSets
+    // al final — así no re-leemos la rutina después del create().
+    let routinePlans = null
+
     if (parsed.data.routine) {
       // Doble filtro: id + user. Nadie arranca una sesión desde la rutina de
       // otro usuario; devolvemos 404 (no 403) para no filtrar la existencia.
@@ -465,6 +469,18 @@ export async function createSession(req, res, next) {
 
       doc.routine = routine._id
       doc.routineName = routine.name
+      routinePlans = new Map(
+        routine.exercises.map((re) => [
+          re.exercise._id.toString(),
+          {
+            targetSets: re.targetSets ?? 0,
+            targetReps: re.targetReps ?? null,
+            targetWeightKg: re.targetWeightKg ?? null,
+            targetDurationSec: re.targetDurationSec ?? null,
+            targetDistanceM: re.targetDistanceM ?? null,
+          },
+        ]),
+      )
       doc.entries = routine.exercises.map((re) => ({
         exercise: re.exercise._id,
         // Denormalización deliberada (ver comentario del modelo): el nombre
@@ -493,7 +509,37 @@ export async function createSession(req, res, next) {
     // barra y el popover de ajuste. Sin populate caerían en null y la UI
     // esperaría a un refetch para enterarse.
     await session.populate('entries.exercise')
-    res.status(201).json(session)
+
+    /*
+      Sidecar `plannedSets` por entry: el prefill del cliente usa la última
+      sesión real como primera fuente; la plantilla sirve de respaldo cuando
+      el usuario nunca ha hecho el ejercicio. En vez de pedirle otra vez la
+      rutina al frontend, se la adjuntamos al documento devuelto. No se
+      persiste — un `toObject()` + merge sobre la copia JSON evita contaminar
+      el modelo con un campo que solo vive el tiempo del handshake inicial.
+    */
+    const payload = session.toObject({ virtuals: true })
+    if (routinePlans) {
+      payload.entries = payload.entries.map((e) => {
+        const plan = routinePlans.get(
+          (e.exercise?._id ?? e.exercise).toString(),
+        )
+        if (!plan || !plan.targetSets) return e
+        // Expandimos targetSets copias con los mismos valores: la plantilla
+        // no diferencia serie a serie (todavía), así que todas arrancan
+        // iguales. El cliente las usa como SUGERENCIA; no viajan de vuelta
+        // en el PATCH a menos que el usuario las acepte o edite.
+        const plannedSets = Array.from({ length: plan.targetSets }, (_, i) => ({
+          order: i,
+          weightKg: plan.targetWeightKg,
+          reps: plan.targetReps,
+          durationSec: plan.targetDurationSec,
+          distanceM: plan.targetDistanceM,
+        }))
+        return { ...e, plannedSets }
+      })
+    }
+    res.status(201).json(payload)
   } catch (err) {
     next(err)
   }
