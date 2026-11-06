@@ -195,12 +195,15 @@ export default function ExercisePickerSheet({
           ) : (
             exercises.map((ex) => {
               const picked = alreadySet.has(ex._id)
+              const name = resolveExerciseName(ex, aliases, lang)
               return (
                 /*
-                  Dos botones hermanos: el grande cubre el 90% del área y
-                  dispara onPick; el (i) a la derecha abre el modal de info
-                  sin añadir el ejercicio. Separados a nivel DOM para no caer
-                  en el anti-patrón <button><button/></button>.
+                  Hermanos a nivel DOM: ExerciseRow (que ya se autogestiona
+                  como role="button" para no colisionar con el FavoriteButton
+                  que lleva dentro) + el (i) a la derecha + un checkmark
+                  flotante. Si envolviésemos el conjunto en un <button>, el
+                  <button> del favorito que vive en ExerciseRow dispararía el
+                  warning "<button> cannot be a descendant of <button>".
                 */
                 <div
                   key={ex._id}
@@ -208,21 +211,19 @@ export default function ExercisePickerSheet({
                     picked ? 'ring-1 ring-accent/40' : ''
                   }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => onPick(ex)}
-                    aria-pressed={picked}
-                    aria-label={(() => {
-                      const n = resolveExerciseName(ex, aliases, lang)
-                      return picked ? `${n} · ${t('routines.alreadyPicked')}` : n
-                    })()}
-                    className="press relative block flex-1 rounded-container text-left transition-[filter,transform] hover:brightness-[1.08]"
-                  >
-                    <ExerciseRow exercise={ex} />
+                  <div className="relative flex-1">
+                    <ExerciseRow
+                      exercise={ex}
+                      onClick={() => onPick(ex)}
+                      ariaLabel={
+                        picked ? `${name} · ${t('routines.alreadyPicked')}` : name
+                      }
+                      ariaPressed={picked}
+                    />
                     {picked && (
                       <span
                         aria-hidden
-                        className="absolute left-10 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-bg shadow-[0_0_12px_-2px_color-mix(in_srgb,var(--color-accent)_70%,transparent)]"
+                        className="pointer-events-none absolute left-10 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-bg shadow-[0_0_12px_-2px_color-mix(in_srgb,var(--color-accent)_70%,transparent)]"
                       >
                         <svg
                           width="12"
@@ -238,13 +239,11 @@ export default function ExercisePickerSheet({
                         </svg>
                       </span>
                     )}
-                  </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setInfoExercise(ex)}
-                    aria-label={t('routines.infoExercise', {
-                      name: resolveExerciseName(ex, aliases, lang),
-                    })}
+                    aria-label={t('routines.infoExercise', { name })}
                     className="press flex w-10 shrink-0 items-center justify-center rounded-container border border-border/60 bg-surface text-text-muted transition-[filter,transform,color,background-color] hover:bg-surface-2 hover:text-text"
                   >
                     <svg

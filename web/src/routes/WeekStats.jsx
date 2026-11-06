@@ -14,7 +14,7 @@ import { api } from '../lib/api.js'
 import ConfirmModal from '../components/routines/ConfirmModal.jsx'
 import MuscleChips from '../components/MuscleChips.jsx'
 import { ChevronRightIcon } from '../components/icons/NavIcons.jsx'
-import { resolveExerciseName } from '../lib/exerciseName.js'
+import ExerciseProgressRow from '../components/stats/ExerciseProgressRow.jsx'
 
 // Cuántas semanas atrás se puede navegar, tanto con las flechas como en el
 // salto rápido del desplegable (que lista TODAS estas semanas agrupadas por
@@ -637,31 +637,13 @@ function SessionCard({ summary, detail, isOpen, onToggle, onDelete, locale }) {
               />
               <ul className="flex flex-col gap-2">
                 {breakdown.exercises.map((ex, i) => (
-                  <li
-                    key={`${ex.name}-${i}`}
-                    className="rounded-card bg-surface-2 px-3 py-2.5"
-                  >
-                    <div className="flex items-baseline justify-between gap-3">
-                      <p className="truncate text-sm font-medium text-text">
-                        {resolveExerciseName(ex, aliases, aliasLang)}
-                      </p>
-                      <p className="tabular shrink-0 text-xs text-text-muted">
-                        {t('training.stats.setsCount', { count: ex.sets.length })}
-                      </p>
-                    </div>
-                    {ex.sets.length > 0 && (
-                      <ul className="tabular mt-1.5 flex flex-wrap gap-1.5 text-[11px] text-text-muted">
-                        {ex.sets.map((s, j) => (
-                          <li
-                            key={j}
-                            className="rounded-pill border border-border bg-bg px-2 py-0.5"
-                          >
-                            {formatDetail(s, ex.tracking)}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
+                  <ExerciseProgressRow
+                    key={`${ex.exerciseId ?? ex.name}-${i}`}
+                    ex={ex}
+                    aliases={aliases}
+                    aliasLang={aliasLang}
+                    formatDetail={formatDetail}
+                  />
                 ))}
               </ul>
             </>

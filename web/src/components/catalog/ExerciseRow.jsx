@@ -73,7 +73,12 @@ function Chip({ children, tone = 'default' }) {
   mantiene semántica article para usos decorativos (p. ej. dentro del picker
   donde el click lo gestiona el parent).
 */
-export default function ExerciseRow({ exercise, onClick }) {
+export default function ExerciseRow({
+  exercise,
+  onClick,
+  ariaLabel,
+  ariaPressed,
+}) {
   const { t } = useTranslation()
   const { name } = useExerciseName(exercise)
   const isCustom = Boolean(exercise.createdBy)
@@ -118,6 +123,8 @@ export default function ExerciseRow({ exercise, onClick }) {
         tabIndex={0}
         onClick={() => onClick(exercise)}
         onKeyDown={handleKey}
+        aria-label={ariaLabel}
+        aria-pressed={ariaPressed}
         className="card-liquid press group flex w-full cursor-pointer items-center gap-3 rounded-container p-3 text-left transition-[filter,transform] hover:brightness-[1.08]"
       >
         {content}

@@ -235,6 +235,12 @@
     "addSet": "Add set",
     "removeExercise": "Remove exercise",
     "setsProgress": "{{done}} / {{total}}",
+    "liveStats": {
+      "tonnage": "Tonnage",
+      "oneRm": "Est. 1RM",
+      "pr": "PR",
+      "prAria": "New personal record"
+    },
     "saving": "Saving…",
     "saved": "Saved",
     "saveError": "Couldn't save",
@@ -356,7 +362,20 @@
     "confirmDeleteTitle": "Delete this session?",
     "confirmDeleteSub": "The session disappears from your history. This can't be undone.",
     "emptyTitle": "Empty week",
-    "emptySub": "No completed sets this week yet. Finish your first session and it'll appear here."
+    "emptySub": "No completed sets this week yet. Finish your first session and it'll appear here.",
+    "exerciseCurve": {
+      "expandAria": "See progress for {{name}}",
+      "collapseAria": "Close progress for {{name}}",
+      "heaviest": "Top weight",
+      "best1rm": "Top 1RM",
+      "sessions": "Sessions",
+      "sessionsCount": "{{count}}",
+      "heaviestSeries": "Top weight",
+      "best1rmSeries": "Est. 1RM",
+      "empty": "No history for this exercise yet.",
+      "loadError": "Couldn't load the curve.",
+      "loading": "Loading progress…"
+    }
   },
   "favorites": {
     "add": "Add to favorites",
