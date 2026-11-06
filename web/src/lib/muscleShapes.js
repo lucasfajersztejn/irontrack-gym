@@ -119,11 +119,27 @@ export const MUSCLE_SHAPES = {
   },
 }
 
+/*
+  Veto por vista: musculos cuya silueta EXISTE para una cara pero que
+  anatomicamente pertenecen a la otra y no deberian pintarse ahi. Hoy
+  solo entran las pantorrillas: el script `segment.py` las captura en la
+  foto frontal (los lados de la tibia), pero son musculo posterior y
+  pintarlas de frente confunde al lector. El resto de compartidos
+  (abductores, aductores, deltoides, antebrazos, trapecios) si asoman por
+  ambos lados y se mantienen en los dos.
+*/
+const VIEW_VETOES = {
+  front: new Set(['calves']),
+  back: new Set(),
+}
+
 /** Trazados a pintar para un conjunto de musculos en una vista. */
 export function shapesFor(view, muscles) {
   const table = MUSCLE_SHAPES[view] ?? {}
+  const vetoed = VIEW_VETOES[view] ?? new Set()
   const out = []
   for (const muscle of muscles) {
+    if (vetoed.has(muscle)) continue
     for (const d of table[muscle] ?? []) out.push(d)
   }
   return out

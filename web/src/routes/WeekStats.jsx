@@ -804,6 +804,9 @@ function MuscleMapSection({ mode, onModeChange, weekMuscles, byMuscle, now }) {
           secondary={weekMuscles.secondary}
         />
       )}
+      {mode === 'neglected' && neglected.length > 0 && (
+        <MuscleChipList muscles={neglected} color="var(--color-neglected)" />
+      )}
     </div>
   )
 }
@@ -838,6 +841,34 @@ function MuscleModeTabs({ mode, onChange }) {
         )
       })}
     </div>
+  )
+}
+
+/*
+  Lista plana de músculos sueltos, todos del mismo color, para los modos
+  en los que el "qué ves" es una lista única (no dos niveles). Se usa en
+  Descuidado para que el usuario pueda LEER los 13 grupos azules que no
+  se han trabajado, además de verlos pintados — sobre el raster oscuro
+  algunos quedan solapados y la lista resuelve la ambigüedad.
+*/
+function MuscleChipList({ muscles, color }) {
+  const { t } = useTranslation()
+  if (muscles.length === 0) return null
+  return (
+    <ul className="flex flex-wrap gap-1.5 px-1">
+      {muscles.map((m) => (
+        <li
+          key={m}
+          className="rounded-pill px-2 py-0.5 text-[11px] font-medium"
+          style={{
+            backgroundColor: `color-mix(in srgb, ${color} 22%, transparent)`,
+            color,
+          }}
+        >
+          {t(`catalog.muscles.${m}`, { defaultValue: m })}
+        </li>
+      ))}
+    </ul>
   )
 }
 
