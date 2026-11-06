@@ -805,7 +805,11 @@ function MuscleMapSection({ mode, onModeChange, weekMuscles, byMuscle, now }) {
         />
       )}
       {mode === 'neglected' && neglected.length > 0 && (
-        <MuscleChipList muscles={neglected} color="var(--color-neglected)" />
+        <MuscleChipList
+          muscles={neglected}
+          color="var(--color-neglected)"
+          textColor="color-mix(in srgb, var(--color-neglected) 45%, white)"
+        />
       )}
     </div>
   )
@@ -851,9 +855,19 @@ function MuscleModeTabs({ mode, onChange }) {
   se han trabajado, además de verlos pintados — sobre el raster oscuro
   algunos quedan solapados y la lista resuelve la ambigüedad.
 */
-function MuscleChipList({ muscles, color }) {
+function MuscleChipList({ muscles, color, textColor }) {
   const { t } = useTranslation()
   if (muscles.length === 0) return null
+  /*
+    `color` es el pigmento de la capa pintada en el mapa. `textColor` es
+    opcional: cuando el `color` queda demasiado oscuro para leer sobre el
+    fondo de la card (p. ej. el azul saturado del modo Descuidado), el
+    llamador pasa una variante más clara de la misma familia para el texto
+    y el borde. El fondo del chip se mantiene como mezcla translúcida del
+    pigmento del mapa — así el chip sigue teniendo el mismo color que el
+    músculo pintado, no un azul random.
+  */
+  const fg = textColor ?? color
   return (
     <ul className="flex flex-wrap gap-1.5 px-1">
       {muscles.map((m) => (
@@ -862,7 +876,7 @@ function MuscleChipList({ muscles, color }) {
           className="rounded-pill px-2 py-0.5 text-[11px] font-medium"
           style={{
             backgroundColor: `color-mix(in srgb, ${color} 22%, transparent)`,
-            color,
+            color: fg,
           }}
         >
           {t(`catalog.muscles.${m}`, { defaultValue: m })}
