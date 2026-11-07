@@ -7,6 +7,7 @@ import {
   getExerciseById,
   getExercisesHistory,
   getExerciseProgress,
+  getRecentPrs,
   createExercise,
   updateExercise,
   deleteExercise,
@@ -26,6 +27,9 @@ router.get('/muscles', getMuscles)
 // "history" se interpretaría como un ObjectId, fallaría la validación y
 // devolveríamos 404 en vez de ejecutar el controller correcto.
 router.get('/history', getExercisesHistory)
+// Segmento fijo antes de /:id — mismo motivo que /history: si se coloca
+// después, Express intenta castear "recent-prs" como ObjectId.
+router.get('/recent-prs', getRecentPrs)
 // /:id/progress va antes del /:id solo para dejar claro el agrupamiento;
 // Express casa segmentos exactos antes de los params, así que el orden entre
 // estos dos no cambia el comportamiento — pero juntos se leen mejor.

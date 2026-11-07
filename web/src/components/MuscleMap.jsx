@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import bodyFront from '../assets/muscles/body-front.webp'
 import bodyBack from '../assets/muscles/body-back.webp'
-import { BODY_VIEWBOX, shapesFor } from '../lib/muscleShapes.js'
+import { BODY_VIEWBOX } from '../lib/muscleShapes.js'
+import BodyFace from './stats/BodyFace.jsx'
 
 /*
   Mapa corporal de la semana. Colorea los músculos sobre un render anatómico
@@ -42,45 +43,6 @@ import { BODY_VIEWBOX, shapesFor } from '../lib/muscleShapes.js'
   `prefers-reduced-motion` en index.css ya lleva toda transition-duration a 0,
   así que el cambio de cara se vuelve instantáneo sin código extra.
 */
-
-// Suelo de luminancia para que el pantalón del render acepte el tinte.
-const FLOOR_GRAY = '#787878'
-
-function HeatLayer({ view, layers, blend, forceColor }) {
-  return (
-    <svg
-      viewBox={`0 0 ${BODY_VIEWBOX.width} ${BODY_VIEWBOX.height}`}
-      preserveAspectRatio="none"
-      aria-hidden
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      style={{ mixBlendMode: blend }}
-    >
-      {layers.map((layer, i) => (
-        <g key={i} opacity={layer.opacity} fill={forceColor ?? layer.color}>
-          {shapesFor(view, layer.muscles).map((d, j) => (
-            <path key={j} d={d} />
-          ))}
-        </g>
-      ))}
-    </svg>
-  )
-}
-
-function BodyFace({ view, src, layers, alt, className }) {
-  return (
-    <div className={`${className} isolate overflow-hidden`}>
-      <img src={src} alt={alt} className="h-full w-full object-contain" />
-      {/*
-        Primera pasada: gris para iluminar píxeles oscuros. Todas las capas
-        van con el mismo gris; sus opacidades individuales todavía controlan
-        cuánto se aclara cada grupo.
-      */}
-      <HeatLayer view={view} layers={layers} blend="lighten" forceColor={FLOOR_GRAY} />
-      {/* Segunda pasada: el color real de cada capa. */}
-      <HeatLayer view={view} layers={layers} blend="multiply" />
-    </div>
-  )
-}
 
 export default function MuscleMap({ title, subtitle, layers = [], legendItems = [] }) {
   const { t } = useTranslation()

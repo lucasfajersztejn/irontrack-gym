@@ -96,6 +96,18 @@ const routineSchema = new mongoose.Schema({
   lastUsedAt: { type: Date, default: null },
 
   /**
+   * Posición manual dentro de "mis rutinas", cero-indexada. Lo fija el
+   * usuario arrastrando en /routines y lo consume Home para rotar: "la
+   * próxima" es la rutina en `(indexOf(última entrenada) + 1) mod N`.
+   *
+   * No se expone en create: el servidor lo asigna como `(max+1)` al dar de
+   * alta, para no dejar huecos ni depender de que el cliente lo mande.
+   * El endpoint PATCH /reorder es la única puerta para modificarlo desde
+   * fuera; así no se mezcla con los PATCH normales de nombre/descripción.
+   */
+  order: { type: Number, default: 0, min: 0 },
+
+  /**
    * Visibilidad de la rutina de cara al resto del mundo.
    *
    *   "private" (default) — solo la ve y usa su dueño. Es el estado hoy.
@@ -138,6 +150,12 @@ const routineSchema = new mongoose.Schema({
  * que se van a pedir.
  */
 routineSchema.index({ user: 1, lastUsedAt: -1 });
+
+/**
+ * Listado "mis rutinas" en el orden manual del usuario. Lo usa listRoutines
+ * y lo consume Home para elegir la siguiente de la rotación.
+ */
+routineSchema.index({ user: 1, order: 1 });
 
 /** Para cargar las plantillas del sistema en el onboarding. */
 routineSchema.index(

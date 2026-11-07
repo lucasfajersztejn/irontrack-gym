@@ -30,7 +30,8 @@ const Routines = lazy(() => import('./routes/Routines.jsx'))
 const RoutineEditor = lazy(() => import('./routes/RoutineEditor.jsx'))
 const Training = lazy(() => import('./routes/Training.jsx'))
 const Settings = lazy(() => import('./routes/Settings.jsx'))
-const WeekStats = lazy(() => import('./routes/WeekStats.jsx'))
+// WeekStats pasa a montarse dentro de Home como <WeekDashboard />; la ruta
+// /stats/week solo sobrevive como redirect a /home para no romper bookmarks.
 export default function App() {
   return (
     <Routes>
@@ -68,12 +69,12 @@ export default function App() {
         <Route path="/routines/:id" element={<RoutineEditor />} />
         <Route path="/training" element={<Training />} />
         {/*
-          El historial se fusionó en Semana (/stats/week): las sesiones y su
-          detalle viven allí. Mantenemos /history como redirect para que
-          bookmarks o enlaces antiguos no caigan en 404.
+          El dashboard semanal se fusionó en Home. Dejamos las dos rutas
+          históricas (/history y /stats/week) como redirects a /home para
+          que bookmarks antiguos sigan funcionando.
         */}
-        <Route path="/history" element={<Navigate to="/stats/week" replace />} />
-        <Route path="/stats/week" element={<WeekStats />} />
+        <Route path="/history" element={<Navigate to="/home" replace />} />
+        <Route path="/stats/week" element={<Navigate to="/home" replace />} />
         <Route path="/settings" element={<Settings />} />
         {/*
           El tab Perfil de la bottom-nav apunta a /profile para no acoplarse a

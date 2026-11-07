@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import StartRoutineCard from '../components/training/StartRoutineCard.jsx'
 import SessionLiveView from '../components/training/SessionLiveView.jsx'
 import { api } from '../lib/api.js'
+import { startSession as startSessionApi } from '../lib/startSession.js'
 import { useActiveSession } from '../lib/useActiveSession.js'
 import { useRoutines } from '../lib/useRoutines.js'
 
@@ -101,26 +102,12 @@ export default function Training() {
     setStarting(true)
     setError(null)
     try {
-      const created = await api('/api/sessions', {
-        method: 'POST',
-        body: routineId ? { routine: routineId } : {},
-      })
+      // La lógica real vive en lib/startSession.js para que Home (FAB,
+      // botón Empezar) dispare el mismo flujo con el mismo contrato de 409.
+      const created = await startSessionApi(routineId)
       setSession(created)
     } catch (err) {
-      // 409 significa "ya tenías una activa"; el backend adjunta activeId.
-      // Un refetch no sirve: puede ser que el estado local esté desincronizado
-      // (p. ej. otra pestaña abrió sesión). Rehidratamos con un GET /active
-      // en vez de reintentar POST, para no crear nunca una segunda sesión.
-      if (err?.status === 409) {
-        try {
-          const existing = await api('/api/sessions/active')
-          setSession(existing)
-        } catch {
-          setError(err)
-        }
-      } else {
-        setError(err)
-      }
+      setError(err)
     } finally {
       setStarting(false)
     }

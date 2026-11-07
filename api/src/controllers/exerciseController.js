@@ -581,6 +581,204 @@ export const getExerciseProgress = async (req, res, next) => {
   }
 }
 
+// ---------------------------------------------------------------------------
+// GET /api/exercises/recent-prs?sinceDays=30  -> récords del último mes
+// ---------------------------------------------------------------------------
+
+/**
+ * Devuelve récords personales conseguidos en los últimos `sinceDays` días.
+ *
+ * "Récord" aquí significa superar el máximo HISTÓRICO del usuario para esa
+ * métrica. No "mejor del mes": si levantaste 100 kg hace un año y 95 kg
+ * esta semana, no es PR. Si hace un año fue 90 kg y esta semana 95 kg, sí.
+ *
+ * Alcance: solo `weight_reps` (peso más alto, 1RM estimado) y `reps`
+ * (reps asistidas). Cardio queda fuera por la misma razón que /history:
+ * "mejor tiempo" en una cinta depende de distancia/intensidad y no es
+ * comparable entre sesiones sin un modelo que no existe todavía.
+ *
+ * Implementación en dos fases:
+ *
+ *   1) Baseline PRE-ventana: una aggregation calcula el máximo histórico
+ *      por ejercicio ANTES del cutoff. Es el "qué había que batir el día
+ *      que arrancó la ventana".
+ *
+ *   2) Walk cronológico dentro de la ventana en JS: por cada set completed
+ *      se compara con la baseline y se actualiza. Si lo bate, es PR; si no,
+ *      se descarta. Mantengo la baseline viva para que, si en el mismo mes
+ *      hay 80 kg y luego 85 kg, solo cuente 85 como PR final de ese tipo.
+ *
+ * ¿Por qué el walk en JS y no 100% aggregation? Porque Mongo no tiene un
+ * "running max con comparación contra baseline externa" natural sin $lookup
+ * por sesión, lo cual explota a O(N²). La ventana es pequeña (30 días ~ 30
+ * sesiones); procesarla en memoria es trivial y mucho más legible.
+ */
+const recentPrsQuerySchema = z.object({
+  sinceDays: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v == null ? 30 : Number(v)))
+    .refine((n) => Number.isFinite(n) && n >= 1 && n <= 365, {
+      message: 'sinceDays debe estar entre 1 y 365',
+    }),
+})
+
+export const getRecentPrs = async (req, res, next) => {
+  const parsed = recentPrsQuerySchema.safeParse(req.query)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Parámetros inválidos',
+      issues: parsed.error.issues,
+    })
+  }
+  const sinceDays = parsed.data.sinceDays
+  const cutoff = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000)
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.id)
+
+    const [preRows, windowSessions] = await Promise.all([
+      // Baseline: max histórico por ejercicio antes del cutoff.
+      Session.aggregate([
+        { $match: { user: userId, startedAt: { $lt: cutoff } } },
+        { $unwind: '$entries' },
+        { $unwind: '$entries.sets' },
+        { $match: { 'entries.sets.completed': true } },
+        {
+          $group: {
+            _id: '$entries.exercise',
+            heaviestKg: {
+              $max: {
+                $cond: [
+                  { $eq: ['$entries.tracking', 'weight_reps'] },
+                  '$entries.sets.weightKg',
+                  null,
+                ],
+              },
+            },
+            best1RM: {
+              $max: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ['$entries.tracking', 'weight_reps'] },
+                      { $gt: ['$entries.sets.weightKg', 0] },
+                      { $gt: ['$entries.sets.reps', 0] },
+                    ],
+                  },
+                  {
+                    $multiply: [
+                      '$entries.sets.weightKg',
+                      { $add: [1, { $divide: ['$entries.sets.reps', 30] }] },
+                    ],
+                  },
+                  null,
+                ],
+              },
+            },
+            bestReps: {
+              $max: {
+                $cond: [
+                  { $eq: ['$entries.tracking', 'reps'] },
+                  '$entries.sets.reps',
+                  null,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+      // Sesiones dentro de la ventana, en orden cronológico. Trae solo los
+      // campos que el walk consume.
+      Session.find({ user: userId, startedAt: { $gte: cutoff } })
+        .select('startedAt entries.exercise entries.exerciseName entries.tracking entries.sets')
+        .sort({ startedAt: 1 })
+        .lean(),
+    ])
+
+    const baseline = new Map()
+    for (const row of preRows) {
+      baseline.set(row._id.toString(), {
+        heaviestKg: row.heaviestKg ?? 0,
+        best1RM: row.best1RM ?? 0,
+        bestReps: row.bestReps ?? 0,
+      })
+    }
+
+    const prs = []
+    for (const session of windowSessions) {
+      for (const entry of session.entries ?? []) {
+        if (entry.tracking !== 'weight_reps' && entry.tracking !== 'reps') continue
+        const exId = entry.exercise.toString()
+        const base = baseline.get(exId) ?? {
+          heaviestKg: 0,
+          best1RM: 0,
+          bestReps: 0,
+        }
+
+        for (const set of entry.sets ?? []) {
+          if (!set.completed) continue
+
+          if (entry.tracking === 'weight_reps') {
+            const w = set.weightKg ?? 0
+            const r = set.reps ?? 0
+
+            if (w > base.heaviestKg) {
+              prs.push({
+                exerciseId: exId,
+                exerciseName: entry.exerciseName ?? null,
+                kind: 'heaviest',
+                value: w,
+                prevValue: base.heaviestKg || null,
+                achievedAt: session.startedAt,
+              })
+              base.heaviestKg = w
+            }
+
+            if (w > 0 && r > 0) {
+              const e1rm = Math.round(w * (1 + r / 30) * 10) / 10
+              if (e1rm > base.best1RM) {
+                prs.push({
+                  exerciseId: exId,
+                  exerciseName: entry.exerciseName ?? null,
+                  kind: '1rm',
+                  value: e1rm,
+                  prevValue: base.best1RM || null,
+                  achievedAt: session.startedAt,
+                })
+                base.best1RM = e1rm
+              }
+            }
+          } else if (entry.tracking === 'reps') {
+            const r = set.reps ?? 0
+            if (r > base.bestReps) {
+              prs.push({
+                exerciseId: exId,
+                exerciseName: entry.exerciseName ?? null,
+                kind: 'reps',
+                value: r,
+                prevValue: base.bestReps || null,
+                achievedAt: session.startedAt,
+              })
+              base.bestReps = r
+            }
+          }
+        }
+
+        baseline.set(exId, base)
+      }
+    }
+
+    // Más reciente primero. La UI se queda con los N que le interesen.
+    prs.sort((a, b) => new Date(b.achievedAt) - new Date(a.achievedAt))
+
+    res.json({ sinceDays, prs })
+  } catch (err) {
+    next(err)
+  }
+}
+
 export const deleteExercise = async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ message: 'Ejercicio no encontrado' })

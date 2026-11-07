@@ -38,6 +38,22 @@ export const useSessionStore = create((set) => ({
   // Duración pedida, necesaria para dibujar cuánto queda en proporción.
   restTotalSec: 0,
 
+  /*
+    Rutina pre-seleccionada en Home desde NextWorkoutCard. Es efímera: solo
+    vive en memoria del cliente; el backend no sabe nada. Sirve para que el
+    FAB del navbar (mobile) y el botón "Empezar" (desktop) disparen el flujo
+    con la rutina que el usuario tiene en pantalla. Al cambiar el <select>
+    de Next Workout se actualiza; al arrancar la sesión se puede limpiar
+    (no es obligatorio, porque el servidor ya devuelve la activa y la UI
+    deriva de ahí).
+
+    No persiste en localStorage a propósito: tras un refresh preferimos que
+    Home vuelva a calcular "next" según el estado real (última sesión en
+    el servidor), no una preferencia vieja.
+  */
+  selectedRoutineId: null,
+  setSelectedRoutineId: (id) => set({ selectedRoutineId: id }),
+
   startRest: (seconds) =>
     set({
       restEndsAt: Date.now() + seconds * 1000,

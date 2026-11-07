@@ -44,5 +44,28 @@ export function useRoutines() {
     }
   }, [state.routines])
 
-  return { ...state, refetch: fetchAll, remove }
+  /*
+    Reordena la lista de rutinas. Optimista: pintamos el nuevo orden en el
+    acto para que arrastrar se sienta inmediato, y disparamos PATCH /reorder.
+    Si el backend rechaza, revertimos al snapshot anterior.
+
+    No hacemos refetch al final: el backend confirma con 204 sin body, y
+    ya tenemos los documentos en memoria con el order nuevo asignado
+    posicionalmente — pedir otra vez la lista solo repintaría lo mismo.
+  */
+  const reorder = useCallback(async (nextRoutines) => {
+    const previous = state.routines
+    setState((s) => ({ ...s, routines: nextRoutines }))
+    try {
+      await api('/api/routines/reorder', {
+        method: 'PATCH',
+        body: { ids: nextRoutines.map((r) => r._id) },
+      })
+    } catch (err) {
+      setState((s) => ({ ...s, routines: previous, error: err }))
+      throw err
+    }
+  }, [state.routines])
+
+  return { ...state, refetch: fetchAll, remove, reorder }
 }
