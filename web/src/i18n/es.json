@@ -375,6 +375,22 @@
       "empty": "Todavía sin histórico para este ejercicio.",
       "loadError": "No se pudo cargar la curva.",
       "loading": "Cargando evolución…"
+    },
+    "muscleMap": {
+      "title": "Mapa muscular",
+      "modes": {
+        "volume": "Volumen",
+        "recovery": "Recuperación",
+        "neglected": "Descuidado"
+      },
+      "subRecovery": "{{count}} grupos en recuperación · últimas 72 h",
+      "subNeglected": "{{count}} grupos sin estímulo desde hace 14 días o más",
+      "emptyRecovery": "Sin músculos en ventana de recuperación. Buen momento para la próxima sesión.",
+      "emptyNeglected": "Cobertura completa en las últimas dos semanas.",
+      "legendVolumePrimary": "Objetivo principal",
+      "legendVolumeSecondary": "Secundario",
+      "legendRecovery": "En recuperación (<72 h)",
+      "legendNeglected": "Descuidado (≥14 d o nunca)"
     }
   },
   "favorites": {

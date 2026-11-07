@@ -1,94 +1,130 @@
-"""Segmenta cada musculo del render anatomico y exporta trazados SVG.
+"""Segmenta por MASCARA de referencia + reparto elipse.
 
-Idea: el dibujo ya separa los musculos con pliegues oscuros. Creciendo una
-region desde el centro de cada musculo y aceptando solo pixeles claros, el
-relleno se detiene SOLO en esos pliegues y toma la forma real del musculo.
-La elipse que antes se pintaba encima pasa a ser solo el limite maximo de
-crecimiento, para que un relleno que se escape por un hueco del contorno no
-se coma media pierna.
+Idea: el artista ya proporciona una imagen con TODOS los musculos pintados
+(painted-{view}.png). Extraemos el conjunto exacto de pixeles "musculo" del
+rojo del painting; luego, por cada musculo, lo partimos usando elipses de
+seed. Cada pixel rojo se asigna al musculo cuya elipse lo contiene MEJOR
+(distancia normalizada minima). Asi dos elipses solapadas no pintan dos
+veces: el musculo mas cercano se lo lleva.
 
-Pillow puro (sin numpy: el entorno no permite instalar paquetes). Se trabaja
-a media resolucion para que el BFS en Python sea rapido; los trazados se
-escalan despues al viewBox de 680x1200.
+Ventajas sobre el region-growing viejo:
+  - La silueta sale directamente del arte, no de BFS sobre luminancia -->
+    cada musculo queda con su forma anatomica real.
+  - Elipses amplias no desbordan: el pixel debe estar ADEMAS pintado de
+    rojo. Si una elipse incluye el pantalon, el pantalon no es rojo y no
+    se pinta.
+  - Musculos adyacentes (pec/delt, quads/abductors) se separan limpiamente.
 """
 import json
 import sys
-from collections import deque
 from PIL import Image, ImageFilter
 
-SCALE = 2  # el fuente es 680x1200; segmentamos a 340x600
-VIEW_W, VIEW_H = 680, 1200
+TARGET_W, TARGET_H = 680, 1200
+SCALE = 2  # segmentamos a mitad de resolucion, final se escala x SCALE
 
 
-def load(path):
-    im = Image.open(path).convert("LA").resize(
-        (VIEW_W // SCALE, VIEW_H // SCALE), Image.LANCZOS
+def load_mask(painted_path):
+    """Pixeles donde domina el rojo del pintado. Trabaja a mitad de res."""
+    im = Image.open(painted_path).convert("RGB").resize(
+        (TARGET_W // SCALE, TARGET_H // SCALE), Image.LANCZOS
     )
-    gray = im.getchannel(0).filter(ImageFilter.MedianFilter(3))
-    return gray.load(), im.getchannel(1).load(), im.size
+    px = im.load()
+    w, h = im.size
+    mask = Image.new("L", (w, h), 0)
+    mpx = mask.load()
+    for y in range(h):
+        for x in range(w):
+            r, g, b = px[x, y]
+            # Rojo dominante + suficientemente luminoso. Los umbrales
+            # soportan matices entre rojo intenso (R~220) y rosa suave de
+            # las zonas sombreadas (R~140).
+            if r > 100 and r > g * 1.35 and r > b * 1.35:
+                mpx[x, y] = 255
+    return mask, (w, h)
 
 
-def grow(gray, alpha, size, seeds, bound, tol, floor):
-    """BFS desde los centros, limitado a la elipse `bound` y a pixeles claros."""
+def ellipse_assign(mask, size, spec):
+    """Para cada pixel rojo, encuentra el (muscle, part_index) duena.
+
+    Devuelve dict: muscle -> lista de pixeles. Reparto por distancia
+    normalizada en espacio eliptico: d = (x-cx)^2/rx^2 + (y-cy)^2/ry^2.
+    Un pixel queda huerfano (no asignado) si no esta dentro de ninguna
+    elipse (d > 1 para todas).
+    """
     w, h = size
-    cx, cy, rx, ry = bound
-    seen = set()
-    out = set()
-    q = deque()
-    ref = 0
-    for sx, sy in seeds:
-        sx, sy = int(sx), int(sy)
-        if 0 <= sx < w and 0 <= sy < h:
-            ref = max(ref, gray[sx, sy])
-            q.append((sx, sy))
-            seen.add((sx, sy))
-    lo = max(floor, ref - tol)
-    while q:
-        x, y = q.popleft()
-        if alpha[x, y] < 140 or gray[x, y] < lo:
-            continue
-        # Dentro de la elipse de crecimiento maximo
-        dx = (x - cx) / rx
-        dy = (y - cy) / ry
-        if dx * dx + dy * dy > 1:
-            continue
-        out.add((x, y))
-        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in seen:
-                seen.add((nx, ny))
-                q.append((nx, ny))
+    mpx = mask.load()
+    # Listamos todas las partes con su elipse ya en coord de trabajo (SCALE).
+    parts = []
+    for muscle, cfg in spec.items():
+        for cx, cy, rx, ry in cfg["parts"]:
+            parts.append(
+                (muscle, cx / SCALE, cy / SCALE, rx / SCALE, ry / SCALE)
+            )
+    out = {m: [] for m in spec}
+    for y in range(h):
+        for x in range(w):
+            if mpx[x, y] < 128:
+                continue
+            best = None
+            best_d = 1.0
+            for muscle, cx, cy, rx, ry in parts:
+                dx = (x - cx) / rx
+                dy = (y - cy) / ry
+                d = dx * dx + dy * dy
+                if d < best_d:
+                    best_d = d
+                    best = muscle
+            if best is not None:
+                out[best].append((x, y))
     return out
 
 
-def seed_grid(cx, cy, rx, ry):
-    """Varias semillas por region.
-
-    Con una sola, un musculo dibujado por bloques (el recto abdominal) se
-    rellenaria solo el bloque de la semilla: el pliegue INTERNO entre bloques
-    frena el crecimiento igual que el externo. Sembrando en varios puntos se
-    cubren todos los bloques y el cierre morfologico los une despues.
-    """
-    pts = [(cx, cy)]
-    for f in (0.45, 0.78):
-        pts += [
-            (cx + rx * f, cy), (cx - rx * f, cy),
-            (cx, cy + ry * f), (cx, cy - ry * f),
-        ]
-    return pts
-
-
-def to_mask(pixels, size, close):
+def to_mask_img(pixels, size, close):
     m = Image.new("L", size, 0)
     px = m.load()
     for x, y in pixels:
         px[x, y] = 255
-    # Cierre morfologico: une los bloques vecinos y tapa las estriaciones
-    # internas, sin desbordar el contorno exterior del musculo.
+    # Cierre morfologico para unir bloques (p.ej. abs tiene estriaciones)
     return m.filter(ImageFilter.MaxFilter(close)).filter(ImageFilter.MinFilter(close))
 
 
+def largest_component(mask):
+    """BFS -> devuelve mascara con solo el componente mayor.
+
+    Un musculo pintado puede tener varias "islas" (dos glúteos, dos lados
+    del abs) dentro de UNA elipse; si queremos un path por parte hay que
+    tratarlas aparte. En este flow las "parts" ya son los dos lados, asi
+    que dentro de cada part esperamos UN componente — con el close
+    morfologico encima nos quedamos con el mayor.
+    """
+    w, h = mask.size
+    px = mask.load()
+    best = []
+    seen = [[False] * h for _ in range(w)]
+    for y0 in range(h):
+        for x0 in range(w):
+            if px[x0, y0] < 128 or seen[x0][y0]:
+                continue
+            stack = [(x0, y0)]
+            seen[x0][y0] = True
+            comp = []
+            while stack:
+                x, y = stack.pop()
+                comp.append((x, y))
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and not seen[nx][ny] and px[nx, ny] >= 128:
+                        seen[nx][ny] = True
+                        stack.append((nx, ny))
+            if len(comp) > len(best):
+                best = comp
+    out = Image.new("L", (w, h), 0)
+    opx = out.load()
+    for x, y in best:
+        opx[x, y] = 255
+    return out
+
+
 def trace(mask):
-    """Contorno exterior por seguimiento de borde (Moore), el mayor componente."""
     w, h = mask.size
     px = mask.load()
     start = None
@@ -105,7 +141,7 @@ def trace(mask):
     contour = [start]
     cur = start
     d = 0
-    for _ in range(20000):
+    for _ in range(40000):
         found = False
         for k in range(8):
             i = (d + 6 + k) % 8
@@ -122,7 +158,6 @@ def trace(mask):
 
 
 def rdp(pts, eps):
-    """Ramer-Douglas-Peucker: quita vertices que no cambian la silueta."""
     if len(pts) < 3:
         return pts
     a, b = pts[0], pts[-1]
@@ -140,13 +175,6 @@ def rdp(pts, eps):
 
 
 def rdp_closed(pts, eps):
-    """RDP sobre un contorno CERRADO.
-
-    Aplicado tal cual, el primer y el ultimo punto de un contorno cerrado son
-    el mismo: la recta base es degenerada, todas las distancias salen 0 y la
-    simplificacion devuelve dos puntos. Se parte el anillo por el vertice mas
-    lejano al inicio y se simplifica cada arco por separado.
-    """
     if len(pts) > 1 and pts[0] == pts[-1]:
         pts = pts[:-1]
     if len(pts) < 4:
@@ -159,7 +187,6 @@ def rdp_closed(pts, eps):
 
 
 def smooth_path(pts):
-    """Polilinea cerrada -> path SVG con curvas por puntos medios."""
     if len(pts) < 3:
         return ""
     p = [(x * SCALE, y * SCALE) for x, y in pts]
@@ -175,45 +202,54 @@ def smooth_path(pts):
     return "".join(d)
 
 
+def segment_part(pixels, size, close, eps):
+    """Pipeline per-part: mask -> cerrado -> mayor componente -> trazo -> simplifica -> path."""
+    if len(pixels) < 20:
+        return None
+    m = to_mask_img(pixels, size, close)
+    m = largest_component(m)
+    c = trace(m)
+    if len(c) < 8:
+        return None
+    simple = rdp_closed(c, eps)
+    if len(simple) < 4:
+        return None
+    return smooth_path(simple)
+
+
 def main():
     out_dir, spec_path = sys.argv[1], sys.argv[2]
     spec = json.load(open(spec_path, encoding="utf-8"))
     result = {}
-    debug = {}
     for view in ("front", "back"):
-        gray, alpha, size = load(f"{out_dir}/body-{view}.webp")
+        painted = f"{out_dir}/painted-{view}.png"
+        mask, size = load_mask(painted)
         result[view] = {}
-        debug[view] = {}
+        # Reparto PIXEL -> MUSCLE usando todas las elipses del view.
+        assigned = ellipse_assign(mask, size, spec[view])
+        # Pero necesitamos path POR PART (izq + der). Re-asignamos pixeles
+        # por part concreta DENTRO del pool ya ganado por el musculo.
         for muscle, cfg in spec[view].items():
-            paths = []
-            masks = []
-            for part in cfg["parts"]:
-                cx, cy, rx, ry = [v / SCALE for v in part]
-                g = cfg.get("grow", 1.45)
-                pix = grow(
-                    gray, alpha, size,
-                    seed_grid(cx, cy, rx * 0.9, ry * 0.9),
-                    (cx, cy, rx * g, ry * g),
-                    cfg.get("tol", 60),
-                    cfg.get("floor", 70),
+            muscle_pix = set(assigned[muscle])
+            parts_paths = []
+            for cx, cy, rx, ry in cfg["parts"]:
+                cx_, cy_, rx_, ry_ = cx / SCALE, cy / SCALE, rx / SCALE, ry / SCALE
+                owned = []
+                for (x, y) in muscle_pix:
+                    dx = (x - cx_) / rx_
+                    dy = (y - cy_) / ry_
+                    if dx * dx + dy * dy <= 1.0:
+                        owned.append((x, y))
+                path = segment_part(
+                    owned, size, cfg.get("close", 5), cfg.get("eps", 1.4)
                 )
-                if len(pix) < 20:
-                    continue
-                m = to_mask(pix, size, cfg.get("close", 5))
-                masks.append(m)
-                c = trace(m)
-                if len(c) > 8:
-                    simple = rdp_closed(c, cfg.get("eps", 1.6))
-                    if len(simple) > 3:
-                        paths.append(smooth_path(simple))
-            if paths:
-                result[view][muscle] = paths
-                debug[view][muscle] = sum(
-                    sum(1 for v in m.getdata() if v > 127) for m in masks
-                )
+                if path:
+                    parts_paths.append(path)
+            if parts_paths:
+                result[view][muscle] = parts_paths
     json.dump(result, open(f"{out_dir}/paths.json", "w", encoding="utf-8"))
-    for v in debug:
-        print(v, {k: val for k, val in sorted(debug[v].items())})
+    print("front:", sorted(result["front"].keys()))
+    print("back:", sorted(result["back"].keys()))
 
 
 if __name__ == "__main__":

@@ -44,6 +44,17 @@
   --color-muscle: #f85149;
 
   /*
+    "Descuidado" en el mapa corporal de /stats/week: músculos sin estímulo
+    primario desde hace ≥14 días (o nunca). Se pinta vía multiply blend
+    sobre la piel oscura del render; un azul saturado y "frío" como este
+    sobrevive al multiply (un gris muted apenas desplazaba el tono y
+    quedaba invisible). La semántica —azul = inactivo/dormido— es el otro
+    motivo para separarlo de --color-link (que significa "navegable"): un
+    cambio futuro en el link no debería arrastrar la intensidad del mapa.
+  */
+  --color-neglected: #0f47ff;
+
+  /*
     Dos familias: Space Grotesk para títulos y cifras grandes (geométrica,
     con carácter), Inter para texto corrido. Nada de monoespaciada
     (spec §7): los números se alinean con tabular-nums, no con una fuente
