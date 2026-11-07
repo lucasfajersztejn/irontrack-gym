@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import StartRoutineCard from '../components/training/StartRoutineCard.jsx'
 import SessionLiveView from '../components/training/SessionLiveView.jsx'
@@ -92,10 +93,12 @@ function Picker({ routines, loadingRoutines, onStart, starting }) {
 
 export default function Training() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { loading, session, setSession } = useActiveSession()
   const { loading: loadingRoutines, routines } = useRoutines()
   const [starting, setStarting] = useState(false)
   const [finishing, setFinishing] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [error, setError] = useState(null)
 
   async function startSession(routineId) {
@@ -125,10 +128,34 @@ export default function Training() {
       // una navegación futura cuando tengamos vista de resumen.
       void closed
       setSession(null)
+      // Vuelta a Home para que useHomeData refetche y la rotación avance
+      // ("próximo entreno" ya debería pasar a la siguiente).
+      navigate('/home')
     } catch (err) {
       setError(err)
     } finally {
       setFinishing(false)
+    }
+  }
+
+  /*
+    Cancelar sesión: borra el documento sin dejar histórico. Es la salida
+    de emergencia para el FAB pulsado por accidente — sin esto, un toque
+    equivocado crea un entreno que luego ensucia la racha y la rotación.
+    DELETE /api/sessions/:id existe desde Fase 1; aquí solo lo conectamos
+    al botón + ConfirmModal destructivo que vive en SessionLiveView.
+  */
+  async function cancelSession() {
+    if (!session?._id) return
+    setCancelling(true)
+    try {
+      await api(`/api/sessions/${session._id}`, { method: 'DELETE' })
+      setSession(null)
+      navigate('/home')
+    } catch (err) {
+      setError(err)
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -151,7 +178,9 @@ export default function Training() {
         <SessionLiveView
           session={session}
           onFinish={finishSession}
+          onCancel={cancelSession}
           finishing={finishing}
+          cancelling={cancelling}
         />
       ) : (
         <Picker

@@ -23,7 +23,7 @@ import { useUser } from '../../contexts/UserContext.jsx'
   PATCH, y el prop `onFinish` dispara el cierre arriba (Training.jsx) para
   que la navegación vuelva al picker con un solo setSession(null).
 */
-export default function SessionLiveView({ session, onFinish, finishing }) {
+export default function SessionLiveView({ session, onFinish, onCancel, finishing, cancelling }) {
   const { t } = useTranslation()
   const {
     entries,
@@ -39,6 +39,7 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
   const { history, detectPR } = useExerciseHistory(session)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [confirmFinishOpen, setConfirmFinishOpen] = useState(false)
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false)
   const [toasts, setToasts] = useState([])
   const toastIdRef = useRef(0)
   const stopRest = useSessionStore((s) => s.stopRest)
@@ -178,14 +179,34 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
         + {t('training.addExercise')}
       </button>
 
-      <button
-        type="button"
-        onClick={() => setConfirmFinishOpen(true)}
-        disabled={finishing}
-        className="press rounded-control bg-accent px-5 py-3 text-sm font-semibold text-bg transition-[filter,transform] hover:brightness-[1.08] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {finishing ? t('training.finishing') : t('training.finish')}
-      </button>
+      {/*
+        Finalizar vs Cancelar: dos acciones de cierre con pesos distintos.
+        Finalizar guarda la sesión como entreno real. Cancelar la borra
+        sin dejar rastro — es la salida para cuando el usuario arranca
+        por error (toca el FAB sin querer, equivoca la rutina). Separadas
+        visualmente: finalizar en acento, cancelar como texto discreto
+        destructivo. Las dos pasan por ConfirmModal.
+      */}
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => setConfirmFinishOpen(true)}
+          disabled={finishing || cancelling}
+          className="press rounded-control bg-accent px-5 py-3 text-sm font-semibold text-bg transition-[filter,transform] hover:brightness-[1.08] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {finishing ? t('training.finishing') : t('training.finish')}
+        </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={() => setConfirmCancelOpen(true)}
+            disabled={finishing || cancelling}
+            className="press self-center rounded-control px-4 py-2 text-xs font-medium text-text-muted transition-colors hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {cancelling ? t('training.cancelling') : t('training.cancel')}
+          </button>
+        )}
+      </div>
 
       <SessionStatsCard entries={entries} startedAt={session.startedAt} />
 
@@ -210,6 +231,19 @@ export default function SessionLiveView({ session, onFinish, finishing }) {
         }}
         onCancel={() => setConfirmFinishOpen(false)}
         destructive={false}
+      />
+
+      <ConfirmModal
+        open={confirmCancelOpen}
+        title={t('training.confirmCancelTitle')}
+        description={t('training.confirmCancelSub')}
+        confirmLabel={t('training.cancel')}
+        onConfirm={() => {
+          setConfirmCancelOpen(false)
+          onCancel?.()
+        }}
+        onCancel={() => setConfirmCancelOpen(false)}
+        destructive
       />
 
       {/*

@@ -1,11 +1,14 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../../contexts/UserContext.jsx'
 import { useRoutine } from '../../lib/useRoutine.js'
 import { useSessionStore } from '../../stores/sessionStore.js'
+import { startSession } from '../../lib/startSession.js'
 import { resolveExerciseName } from '../../lib/exerciseName.js'
 import { routineMuscles } from '../../lib/exerciseMuscles.js'
 import MuscleChips from '../MuscleChips.jsx'
+import { PlayIcon } from '../icons/NavIcons.jsx'
 
 /*
   "Próximo entreno" en Home.
@@ -30,9 +33,10 @@ import MuscleChips from '../MuscleChips.jsx'
     - Sesión activa → aviso discreto arriba ("Tienes una sesión en marcha"),
       el FAB reconoce el 409 y la retoma.
 
-  Sin botón Play en la card: la acción vive en el FAB central y en el
-  botón Empezar del sidebar, ambos atados al mismo `selectedRoutineId`.
-  Dos entradas al mismo flujo desde la misma vista confundirían.
+  Botón Play en la card: el FAB central solo vive en mobile. En desktop
+  esta era la única superficie natural para arrancar, así que el botón
+  se renderiza siempre y en mobile queda como alternativa al FAB —
+  ambos disparan el mismo `startSession` sobre `effectiveId`.
 */
 
 const MAX_PREVIEW = 5
@@ -65,25 +69,45 @@ export default function NextWorkoutCard({
   const { user } = useUser()
   const lang = i18n.language?.startsWith('en') ? 'en' : 'es'
 
+  const navigate = useNavigate()
   const selectedRoutineId = useSessionStore((s) => s.selectedRoutineId)
   const setSelectedRoutineId = useSessionStore((s) => s.setSelectedRoutineId)
+  const [starting, setStarting] = useState(false)
 
-  // Sincroniza la selección con la sugerencia cuando cambia (p.ej. tras
-  // terminar una sesión, "next" se mueve a la siguiente). Si el usuario ya
-  // había elegido otra rutina a mano para esta vista y sigue existiendo
-  // en la lista, respetamos su elección.
+  // Mantén la selección sincronizada con la sugerencia cuando ESTA cambia.
+  // Antes solo reseteábamos si la seleccionada desaparecía de la lista —
+  // eso dejaba fija la rutina recién entrenada aunque el backend ya
+  // apuntara a la siguiente de la rotación. Guardamos la última
+  // sugerencia vista en un ref; cuando cambia, snap-to-new. Un cambio
+  // manual del <select> persiste hasta el siguiente update del servidor
+  // (terminar una sesión), que es exactamente lo que el usuario espera:
+  // "elegí piernas en vez de espalda; cuando acabe, mañana que me
+  // proponga la siguiente".
+  const prevSuggestedId = useRef(null)
   useEffect(() => {
-    if (!routines?.length) return
-    const stillValid = routines.some(
-      (r) => String(r._id) === String(selectedRoutineId),
-    )
-    if (!stillValid && suggestedRoutine) {
-      setSelectedRoutineId(suggestedRoutine._id)
+    const nextId = suggestedRoutine?._id ?? null
+    if (nextId && String(nextId) !== String(prevSuggestedId.current)) {
+      setSelectedRoutineId(nextId)
+      prevSuggestedId.current = nextId
     }
-  }, [routines, suggestedRoutine, selectedRoutineId, setSelectedRoutineId])
+  }, [suggestedRoutine, setSelectedRoutineId])
 
   const effectiveId = selectedRoutineId ?? suggestedRoutine?._id ?? null
   const { routine, loading } = useRoutine(effectiveId)
+
+  async function handleStart() {
+    if (starting) return
+    setStarting(true)
+    try {
+      await startSession(effectiveId)
+    } catch {
+      // Dejamos que /training pinte el error en su catch propio para no
+      // duplicar mensajes aquí.
+    } finally {
+      setStarting(false)
+      navigate('/training')
+    }
+  }
 
   const muscles = useMemo(
     () => (routine ? routineMuscles(routine.exercises ?? []) : { primary: [], secondary: [] }),
@@ -184,6 +208,23 @@ export default function NextWorkoutCard({
           primary={muscles.primary}
           secondary={muscles.secondary}
         />
+
+        {/*
+          Botón primario de arranque. Vive en la card para ser alcanzable
+          en desktop (el FAB solo existe en mobile). En mobile queda como
+          segunda vía al mismo flujo — el FAB sigue siendo la principal,
+          pero este botón deja el CTA visible mientras el usuario lee la
+          lista de ejercicios sin tener que ir al borde de la pantalla.
+        */}
+        <button
+          type="button"
+          onClick={handleStart}
+          disabled={starting}
+          className="press flex items-center justify-center gap-2 rounded-control bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast transition-[filter,transform] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <PlayIcon className="h-4 w-4" />
+          {t(activeSession ? 'home.resumeCta' : 'home.startCta')}
+        </button>
       </div>
     </section>
   )
