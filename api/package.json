@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "seed": "node src/scripts/seedExercises.js"
   },
   "dependencies": {
@@ -20,8 +21,9 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "jest": "^29.0.0",
+    "mongodb-memory-server": "^11.3.0",
     "nodemon": "^3.0.0",
-    "supertest": "^6.0.0"
+    "supertest": "^6.0.0",
+    "vitest": "^5.1.0"
   }
 }
