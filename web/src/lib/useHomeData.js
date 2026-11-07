@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { computeStreak, countThisWeek, latest1RM } from './stats.js'
+import { pickNextRoutine } from './nextRoutine.js'
 
 /*
   Home sacará todos sus números del endpoint existente GET /api/sessions
@@ -90,13 +91,14 @@ export function useHomeData() {
   const sessions = state.sessions
   const today = new Date()
 
-  const suggestedRoutine = state.routines
-    .slice()
-    .sort((a, b) => {
-      const ta = a.lastUsedAt ? new Date(a.lastUsedAt).getTime() : 0
-      const tb = b.lastUsedAt ? new Date(b.lastUsedAt).getTime() : 0
-      return tb - ta
-    })[0]
+  // "Lo que toca": siguiente en el orden manual del usuario después de
+  // la última sesión no-activa (si la última fue "pecho A", toca "espalda").
+  // El backend ya devuelve routines ordenadas por `order`, así que no
+  // reordenamos aquí: pickNextRoutine confía en esa invariante.
+  const lastFinishedSession = sessions.find(
+    (s) => !state.activeSession || s._id !== state.activeSession._id,
+  )
+  const suggestedRoutine = pickNextRoutine(state.routines, lastFinishedSession)
 
   const oneRm = latest1RM(state.latestDetail)
 
@@ -109,6 +111,7 @@ export function useHomeData() {
     weekly: countThisWeek(sessions, today),
     oneRm,
     routinesCount: state.routines.length,
+    routines: state.routines,
     activeSession: state.activeSession,
     suggestedRoutine,
   }

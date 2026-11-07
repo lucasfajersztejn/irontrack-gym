@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import StartRoutineCard from '../components/training/StartRoutineCard.jsx'
 import SessionLiveView from '../components/training/SessionLiveView.jsx'
 import { api } from '../lib/api.js'
+import { startSession as startSessionApi } from '../lib/startSession.js'
 import { useActiveSession } from '../lib/useActiveSession.js'
 import { useRoutines } from '../lib/useRoutines.js'
 
@@ -91,36 +93,24 @@ function Picker({ routines, loadingRoutines, onStart, starting }) {
 
 export default function Training() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { loading, session, setSession } = useActiveSession()
   const { loading: loadingRoutines, routines } = useRoutines()
   const [starting, setStarting] = useState(false)
   const [finishing, setFinishing] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [error, setError] = useState(null)
 
   async function startSession(routineId) {
     setStarting(true)
     setError(null)
     try {
-      const created = await api('/api/sessions', {
-        method: 'POST',
-        body: routineId ? { routine: routineId } : {},
-      })
+      // La lógica real vive en lib/startSession.js para que Home (FAB,
+      // botón Empezar) dispare el mismo flujo con el mismo contrato de 409.
+      const created = await startSessionApi(routineId)
       setSession(created)
     } catch (err) {
-      // 409 significa "ya tenías una activa"; el backend adjunta activeId.
-      // Un refetch no sirve: puede ser que el estado local esté desincronizado
-      // (p. ej. otra pestaña abrió sesión). Rehidratamos con un GET /active
-      // en vez de reintentar POST, para no crear nunca una segunda sesión.
-      if (err?.status === 409) {
-        try {
-          const existing = await api('/api/sessions/active')
-          setSession(existing)
-        } catch {
-          setError(err)
-        }
-      } else {
-        setError(err)
-      }
+      setError(err)
     } finally {
       setStarting(false)
     }
@@ -138,10 +128,34 @@ export default function Training() {
       // una navegación futura cuando tengamos vista de resumen.
       void closed
       setSession(null)
+      // Vuelta a Home para que useHomeData refetche y la rotación avance
+      // ("próximo entreno" ya debería pasar a la siguiente).
+      navigate('/home')
     } catch (err) {
       setError(err)
     } finally {
       setFinishing(false)
+    }
+  }
+
+  /*
+    Cancelar sesión: borra el documento sin dejar histórico. Es la salida
+    de emergencia para el FAB pulsado por accidente — sin esto, un toque
+    equivocado crea un entreno que luego ensucia la racha y la rotación.
+    DELETE /api/sessions/:id existe desde Fase 1; aquí solo lo conectamos
+    al botón + ConfirmModal destructivo que vive en SessionLiveView.
+  */
+  async function cancelSession() {
+    if (!session?._id) return
+    setCancelling(true)
+    try {
+      await api(`/api/sessions/${session._id}`, { method: 'DELETE' })
+      setSession(null)
+      navigate('/home')
+    } catch (err) {
+      setError(err)
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -164,7 +178,9 @@ export default function Training() {
         <SessionLiveView
           session={session}
           onFinish={finishSession}
+          onCancel={cancelSession}
           finishing={finishing}
+          cancelling={cancelling}
         />
       ) : (
         <Picker

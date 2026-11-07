@@ -6,13 +6,12 @@ import Avatar from './Avatar.jsx'
 import Logo from './icons/Logo.jsx'
 import RouteFallback from './RouteFallback.jsx'
 import {
-  CalendarIcon,
   CatalogIcon,
   HomeIcon,
-  KettlebellIcon,
   ProfileIcon,
   RoutinesIcon,
 } from './icons/NavIcons.jsx'
+import StartSessionFab from './StartSessionFab.jsx'
 
 /*
   Layout real de la zona autenticada.
@@ -40,20 +39,26 @@ import {
   bookmark antiguo no caiga en 404.
 */
 /*
-  Seis destinos en el nav: Home / Rutinas / Entrenar / Semana / Catálogo /
-  Perfil. Rutinas → Entrenar → Semana es la "cadena del entreno": preparar,
-  hacer, revisar — y Semana es además el historial de sesiones, que se fusionó
-  ahí (no hay tab Historial separado). Con `text-[11px]` caben de sobra en
-  móvil desde 360 px.
+  Cuatro destinos: Home / Rutinas / Catálogo / Perfil. En Home vive el
+  dashboard entero (lo que antes era /stats/week) + la card "Next workout"
+  que elige la rutina a entrenar; /training ya no tiene sitio en el nav
+  porque se arranca desde el FAB central (mobile) o el botón "Empezar" del
+  sidebar (desktop). La ruta /training sigue existiendo para la pantalla
+  viva de la sesión, solo no se enlaza desde aquí.
 */
 const TABS = [
   { to: '/home', labelKey: 'nav.home', Icon: HomeIcon },
   { to: '/routines', labelKey: 'nav.routines', Icon: RoutinesIcon },
-  { to: '/training', labelKey: 'nav.training', Icon: KettlebellIcon },
-  { to: '/stats/week', labelKey: 'nav.week', Icon: CalendarIcon },
   { to: '/catalog', labelKey: 'nav.catalog', Icon: CatalogIcon },
   { to: '/settings', labelKey: 'nav.profile', Icon: ProfileIcon },
 ]
+
+/*
+  Mobile: cuatro tabs + FAB central. El FAB no es un tab (no hay destino de
+  navegación simple), vive en el medio geométrico del nav con z-index por
+  encima para que no lo tape el borde superior del propio navbar. Lo
+  renderiza StartSessionFab con variant="fab".
+*/
 
 function sidebarLinkClass({ isActive }) {
   const base =
@@ -88,7 +93,12 @@ export default function AppShell() {
   const provider = providerLabel(linkedProviders)
 
   return (
-    <div className="min-h-screen md:flex">
+    // overflow-x-hidden es un seguro global: si una card interior se le
+    // va de ancho en móvil (p.ej. una fila con muchos shrink-0), el scroll
+    // horizontal del viewport se traga el fixed bottom-nav y se siente
+    // como si la nav "no estuviera fija". Cortar en seco aquí evita ese
+    // efecto sin tener que perseguir el overflow en cada hija.
+    <div className="min-h-screen overflow-x-hidden md:flex">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
         <div className="px-2 pb-6">
           <Logo />
@@ -126,17 +136,49 @@ export default function AppShell() {
       </main>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-surface/85 backdrop-blur-md md:hidden"
+        // pb con env(safe-area-inset-bottom) para que en iPhones con
+        // home-indicator la nav no quede pisada por el gesto; min
+        // backup para Androids que no tienen la env var.
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
+        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-border bg-surface/90 backdrop-blur-md md:hidden"
         aria-label={t('nav.primaryAria')}
       >
-        {TABS.map(({ to, labelKey, Icon }) => (
+        {/*
+          Repartimos los 4 tabs a ambos lados del FAB: 2 a la izquierda, 2 a
+          la derecha. El FAB queda flotando sobre el navbar, elevado unos px
+          para que se lea como un "botón físico" independiente, no como un
+          tab más. No usa NavLink: no es un destino de navegación, es la
+          acción de arrancar sesión.
+        */}
+        {TABS.slice(0, 2).map(({ to, labelKey, Icon }) => (
           <NavLink key={to} to={to} className={bottomLinkClass}>
             {({ isActive }) => (
               <>
                 {isActive && (
                   <span
                     aria-hidden
-                    className="pointer-events-none absolute inset-x-8 top-0 h-[2px] rounded-full bg-accent"
+                    className="pointer-events-none absolute inset-x-6 top-0 h-[2px] rounded-full bg-accent"
+                  />
+                )}
+                <Icon className="h-5 w-5" />
+                <span>{t(labelKey)}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
+
+        <div className="flex flex-1 items-start justify-center">
+          <StartSessionFab />
+        </div>
+
+        {TABS.slice(2).map(({ to, labelKey, Icon }) => (
+          <NavLink key={to} to={to} className={bottomLinkClass}>
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-6 top-0 h-[2px] rounded-full bg-accent"
                   />
                 )}
                 <Icon className="h-5 w-5" />

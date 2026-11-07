@@ -113,7 +113,10 @@ export async function listRoutines(req, res, next) {
           exerciseCount: { $size: { $ifNull: ['$exercises', []] } },
         },
       },
-      { $sort: { lastUsedAt: -1, createdAt: -1 } },
+      // Orden manual: lo decide el usuario arrastrando en /routines. El
+      // createdAt como desempate deja las nuevas detrás de las existentes
+      // cuando dos comparten `order` tras una migración (default 0).
+      { $sort: { order: 1, createdAt: 1 } },
     ])
     res.json(result)
   } catch (err) {
@@ -134,13 +137,90 @@ export async function createRoutine(req, res, next) {
     })
   }
   try {
+    // Asigna la posición al final de la lista del usuario. Hacemos un
+    // findOne proyectando solo `order` (más barato que aggregate) y
+    // sumamos 1. Entre este read y el create no hay transacción: si dos
+    // creates concurrentes caen con el mismo max, ambos quedan en la misma
+    // posición y el usuario reordena. No vale la pena pagar una txn para
+    // un contador cosmético.
+    const last = await Routine.findOne({ user: req.user.id })
+      .sort({ order: -1 })
+      .select('order')
+      .lean()
+    const nextOrder = (last?.order ?? -1) + 1
+
     const routine = await Routine.create({
       ...parsed.data,
       // Fuerza el owner desde la sesión: nunca de req.body. Si lo leyéramos
       // del body, un cliente podría crear rutinas en nombre de otro user.
       user: req.user.id,
+      order: nextOrder,
     })
     res.status(201).json(routine)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/routines/reorder  -> reordena las rutinas del usuario
+// ---------------------------------------------------------------------------
+
+const reorderSchema = z.object({
+  // Array de ObjectIds en el orden final deseado. El índice en el array
+  // pasa a ser el `order` del documento.
+  ids: z
+    .array(objectIdSchema)
+    .min(1, 'Al menos una rutina')
+    .max(200, 'Demasiadas rutinas'),
+})
+
+export async function reorderRoutines(req, res, next) {
+  const parsed = reorderSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Payload inválido',
+      issues: parsed.error.issues,
+    })
+  }
+  const { ids } = parsed.data
+
+  // Duplicados en el array = payload inconsistente. Mejor 400 explícito
+  // que dejar que el bulkWrite deje una rutina en dos órdenes distintos
+  // (último gana, pero el estado final es ambiguo para el cliente).
+  if (new Set(ids).size !== ids.length) {
+    return res.status(400).json({ message: 'IDs duplicados' })
+  }
+
+  try {
+    // Invariante 3 (CLAUDE.md): toda consulta filtra por usuario. Antes
+    // de escribir, comprobamos que TODOS los ids son del usuario. Si
+    // falta alguno, 403 sin tocar nada — así un cliente con un id ajeno
+    // no reordena la rutina de otro.
+    const owned = await Routine.find({
+      _id: { $in: ids },
+      user: req.user.id,
+    })
+      .select('_id')
+      .lean()
+
+    if (owned.length !== ids.length) {
+      return res.status(403).json({ message: 'IDs no pertenecen al usuario' })
+    }
+
+    // bulkWrite: un round-trip, N updateOnes. Cada update lleva el filtro
+    // por user para defensa en profundidad (si el array llegara con un id
+    // migrado entre el check y el write, el filtro lo bloquea).
+    await Routine.bulkWrite(
+      ids.map((id, index) => ({
+        updateOne: {
+          filter: { _id: id, user: req.user.id },
+          update: { $set: { order: index } },
+        },
+      })),
+    )
+
+    res.status(204).send()
   } catch (err) {
     next(err)
   }

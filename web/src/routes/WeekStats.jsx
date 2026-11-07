@@ -24,9 +24,13 @@ import { useMuscleRecency } from '../lib/useMuscleRecency.js'
 const MAX_WEEKS_BACK = 52
 
 /*
-  /stats/week — vista detalle de la semana actual.
+  Dashboard semanal — se monta como panel dentro de Home y (temporalmente)
+  bajo /stats/week para no romper bookmarks. Antes era su propia ruta con
+  header + outlet; al fundir /stats/week dentro de Home dejamos el cuerpo
+  igual y envolvemos con un wrapper que no añade spacing externo (Home ya
+  compone el ritmo vertical entre bloques).
 
-  Composición (iteración actual, pedida por el usuario):
+  Composición (sin cambios respecto a la versión previa):
     1. Progress card (objetivo editable).
     2. Lista de sesiones. Cada sesión es colapsable; al desplegar muestra:
        - Chips de grupos trabajados (primarios con verde, secundarios en
@@ -58,7 +62,13 @@ function fmtDuration(seconds, t) {
   return t('weekStats.minutes', { m })
 }
 
-export default function WeekStats() {
+/*
+  Prop `embedded`: cuando viene desde Home el wrapper externo no debe
+  acotar ancho (Home ya decide `max-w-6xl`) ni mostrar el título "Semana
+  N" ni el enlace "← volver". Fuera de ese caso (si volviéramos a
+  exponer la ruta /stats/week) el wrapper vuelve al formato standalone.
+*/
+export default function WeekDashboard({ embedded = false }) {
   const { t, i18n } = useTranslation()
   const { user, refetch: refetchUser } = useUser()
 
@@ -145,17 +155,30 @@ export default function WeekStats() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-5 md:gap-6">
-      <header>
-        <Link to="/home" className="text-xs text-text-muted hover:text-text">
-          ← {t('weekStats.back')}
-        </Link>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-text md:text-4xl">
+    <div
+      className={`flex flex-col gap-5 md:gap-6 ${
+        embedded ? 'w-full' : 'mx-auto max-w-3xl'
+      }`}
+    >
+      {!embedded && (
+        <header>
+          <Link to="/home" className="text-xs text-text-muted hover:text-text">
+            ← {t('weekStats.back')}
+          </Link>
+          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-text md:text-4xl">
+            {weekOffset === 0
+              ? t('weekStats.title')
+              : t('weekStats.weekLabel', { week: weekNumber })}
+          </h1>
+        </header>
+      )}
+      {embedded && (
+        <h2 className="font-display text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">
           {weekOffset === 0
             ? t('weekStats.title')
             : t('weekStats.weekLabel', { week: weekNumber })}
-        </h1>
-      </header>
+        </h2>
+      )}
 
       <WeekNavigator
         weekStart={weekStart}

@@ -1,19 +1,45 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import RoutineCard from '../components/routines/RoutineCard.jsx'
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
+import SortableRoutineCard from '../components/routines/SortableRoutineCard.jsx'
 import { useRoutines } from '../lib/useRoutines.js'
 
 /*
-  Pantalla "Mis rutinas". Grid de 1 a 3 columnas con las rutinas del usuario.
-  Botón primario en la cabecera para crear una nueva: navega al editor con
-  /routines/new, porque el backend no admite rutina vacía y necesitamos
-  recoger nombre + al menos un ejercicio en el mismo paso.
+  "Mis rutinas". Grid 1 → 2 → 3 columnas con orden MANUAL (drag-sort):
+  la posición manda sobre cualquier otro criterio porque la rotación de
+  Home → NextWorkout se guía por este orden, no por `lastUsedAt`.
+
+  dnd-kit setup:
+    - PointerSensor con activation distance 6 px: así un tap normal en la
+      card (que lleva al editor) nunca dispara drag por error; hay que
+      moverse 6 px para activar.
+    - TouchSensor con delay 150 ms: en móvil distingue scroll vertical del
+      inicio de drag. Sin delay, cualquier roce horizontal engancharía la
+      card y el listado se sentiría "resbaladizo".
+    - KeyboardSensor para accesibilidad: tab al grip + espacio empieza
+      drag, flechas desplazan, espacio confirma.
+    - rectSortingStrategy porque el layout es grid 2D (no lista vertical);
+      verticalListSortingStrategy daría animaciones raras al cruzar filas.
+
+  Optimismo + rollback: `reorder` del hook actualiza local primero y revierte
+  si el PATCH falla. No bloqueamos la UI con un spinner — una barra de red
+  caída haría que el usuario sintiera la app "pegada" en una acción barata.
 */
 
-/*
-  CTA único reutilizable para "Nueva rutina" — se usa en el header y en el
-  empty state. Una sola fuente de verdad para el estilo, el icono y la copy.
-*/
 function NewRoutineButton() {
   const { t } = useTranslation()
   return (
@@ -54,7 +80,25 @@ function Skeleton() {
 
 export default function Routines() {
   const { t } = useTranslation()
-  const { loading, error, routines } = useRoutines()
+  const { loading, error, routines, reorder } = useRoutines()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  function handleDragEnd(event) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = routines.findIndex((r) => r._id === active.id)
+    const newIndex = routines.findIndex((r) => r._id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    const next = arrayMove(routines, oldIndex, newIndex)
+    // No await: el hook se encarga de revertir si falla. El DragEnd handler
+    // debe ser síncrono para que dnd-kit asiente la animación de cierre.
+    reorder(next).catch(() => {})
+  }
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-5 md:gap-6">
@@ -99,11 +143,31 @@ export default function Routines() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {routines.map((r) => (
-            <RoutineCard key={r._id} routine={r} />
-          ))}
-        </div>
+        <>
+          <p className="text-xs text-text-muted">
+            {t('routines.reorderHint')}
+          </p>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={routines.map((r) => r._id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {routines.map((r, idx) => (
+                  <SortableRoutineCard
+                    key={r._id}
+                    routine={r}
+                    position={idx}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </>
       )}
     </div>
   )

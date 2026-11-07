@@ -22,7 +22,7 @@ function relativeDate(dateIso, locale) {
   return fmt.format(Math.round(diffDays / 365), 'year')
 }
 
-export default function RoutineCard({ routine }) {
+export default function RoutineCard({ routine, flatLeft = false }) {
   const { t, i18n } = useTranslation()
   const lastUsed = relativeDate(routine.lastUsedAt, i18n.language)
   // listRoutines ya hace $lookup + $setUnion, así que llega único y ordenable;
@@ -32,10 +32,18 @@ export default function RoutineCard({ routine }) {
   const visibleMuscles = muscles.slice(0, 4)
   const extraMuscles = muscles.length - visibleMuscles.length
 
+  // flatLeft: cuando SortableRoutineCard envuelve esta card pegada a su
+  // franja numerada, la esquina redondeada del lado izquierdo deja un
+  // arco visible entre strip y card. Con el borde recto a la izquierda
+  // las dos superficies encajan como un solo "slot".
+  const radiusClass = flatLeft
+    ? 'rounded-r-container rounded-l-none'
+    : 'rounded-container'
+
   return (
     <Link
       to={`/routines/${routine._id}`}
-      className="card-liquid press group flex flex-col gap-3 rounded-container p-4 transition-[filter,transform] hover:brightness-[1.08] md:p-5"
+      className={`card-liquid press group flex h-full flex-col gap-3 ${radiusClass} p-4 transition-[filter,transform] hover:brightness-[1.08] md:p-5`}
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="line-clamp-2 font-display text-lg font-semibold tracking-tight text-text">

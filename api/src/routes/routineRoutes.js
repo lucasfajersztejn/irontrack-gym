@@ -6,6 +6,7 @@ import {
   getRoutine,
   updateRoutine,
   deleteRoutine,
+  reorderRoutines,
 } from '../controllers/routineController.js'
 
 const router = express.Router()
@@ -18,6 +19,8 @@ router.use(requireSession)
 
 router.get('/', listRoutines)
 router.post('/', createRoutine)
+// /reorder va antes que /:id para que no caiga en el handler dinámico.
+router.patch('/reorder', reorderRoutines)
 router.get('/:id', getRoutine)
 router.patch('/:id', updateRoutine)
 router.delete('/:id', deleteRoutine)

@@ -9,26 +9,7 @@ import SupersetBlock from '../components/routines/SupersetBlock.jsx'
 import { useRoutine } from '../lib/useRoutine.js'
 import { api } from '../lib/api.js'
 import { groupEntries, mergeWithNext, unmergeAt } from '../lib/supersets.js'
-
-/*
-  Deriva los grupos trabajados por una rutina a partir del array populado de
-  ejercicios: primarios únicos + secundarios únicos (quitando los que ya son
-  primarios para no duplicar el chip bajo las dos variantes). Vive aquí
-  (y no en MuscleChips) para no acoplar la pieza visual a esta estructura
-  concreta — en /stats/week el equivalente lo calcula breakdownForSession.
-*/
-function routineMuscles(entries) {
-  const primary = new Set()
-  const secondary = new Set()
-  for (const e of entries) {
-    const ex = e.exercise
-    if (!ex || typeof ex !== 'object') continue
-    if (ex.muscle) primary.add(ex.muscle)
-    for (const sec of ex.secondaryMuscles ?? []) secondary.add(sec)
-  }
-  for (const p of primary) secondary.delete(p)
-  return { primary: Array.from(primary), secondary: Array.from(secondary) }
-}
+import { routineMuscles } from '../lib/exerciseMuscles.js'
 
 /*
   Editor único para crear y editar rutinas. La ruta /routines/new monta sin
