@@ -327,6 +327,16 @@
       "setsCount_other": "{{count}} sets",
       "maxShort": "max {{kg}} kg"
     },
+    "progression": {
+      "title": "Suggested",
+      "apply": "Apply",
+      "reason": {
+        "addWeight": "last time was easy",
+        "addRep": "nailed it, try one more rep",
+        "deload": "fell short, ease back",
+        "repeat": "repeat and log RIR"
+      }
+    },
     "confirmRemoveExerciseTitle": "Remove \"{{name}}\"?",
     "confirmRemoveExerciseSub": "The completed sets for this exercise in this session will also be removed.",
     "finish": "Finish session",

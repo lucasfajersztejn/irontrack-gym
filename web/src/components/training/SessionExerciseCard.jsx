@@ -8,6 +8,7 @@ import { useUser } from '../../contexts/UserContext.jsx'
 import { barWeightFor } from '../../lib/weight.js'
 import { useExerciseName } from '../../lib/exerciseName.js'
 import { estimate1RM } from '../../lib/stats.js'
+import { suggestWeightRepsProgression } from '../../lib/suggestProgression.js'
 
 // Tolerancia para la comparación de 1RM contra el récord histórico. El
 // backend guarda el PR redondeado a 1 decimal (ver exerciseController.js
@@ -201,6 +202,22 @@ export default function SessionExerciseCard({
         </div>
       )}
 
+      {/*
+        Sugerencia de progresión: solo aparece para `weight_reps`, cuando el
+        entry aún no tiene series en esta sesión Y hay datos reales en los
+        que apoyarse (última sesión o plantilla). La decisión vive en
+        suggestWeightRepsProgression; aquí solo elegimos cuándo ofrecerla.
+        Una vez el usuario añade la primera serie, el flujo intra-sesión
+        (addSet copia la última) toma el relevo y el chip desaparece.
+      */}
+      {entry.tracking === 'weight_reps' && entry.sets.length === 0 && (
+        <SuggestionChip
+          entry={entry}
+          history={history}
+          onApply={(seed) => onAddSet(seed)}
+        />
+      )}
+
       <button
         type="button"
         onClick={() => onAddSet(resolveSeed(entry, history))}
@@ -340,6 +357,62 @@ function SetListHeader({ tracking }) {
   tómalo como 100"): la decisión es FUENTE, no media. "La última vez" gana
   porque es dato real; la plantilla es plan, menos informativo.
 */
+/*
+  Chip visual con el seed sugerido por suggestWeightRepsProgression. Solo se
+  monta cuando hay sugerencia válida: una regla "+2.5 kg · reason" sin peso
+  concreto no aporta nada y confunde más que ayuda. Es botón, no decoración:
+  tap aplica el seed llamando al mismo onAddSet que el botón "+ Añadir
+  serie" — así usar la sugerencia y ignorarla llevan al mismo sitio desde
+  el POV del store.
+*/
+function SuggestionChip({ entry, history, onApply }) {
+  const { t } = useTranslation()
+  const exerciseObj =
+    entry.exercise && typeof entry.exercise === 'object' ? entry.exercise : null
+  const seed = suggestWeightRepsProgression({
+    lastSession: history?.lastSession ?? null,
+    plannedSets: entry.plannedSets ?? null,
+    equipment: exerciseObj?.equipment ?? null,
+  })
+  if (!seed || seed.weightKg == null || seed.reps == null) return null
+
+  const reasonLabel = t(`training.progression.reason.${seed.reason}`, {
+    defaultValue: '',
+  })
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        onApply({
+          weightKg: seed.weightKg,
+          reps: seed.reps,
+          addedWeightKg: null,
+          durationSec: null,
+          distanceM: null,
+        })
+      }
+      className="press group flex items-center justify-between gap-3 self-stretch rounded-control border border-accent/25 bg-accent/5 px-3 py-2 text-left transition-[filter,transform,background-color] hover:bg-accent/10"
+    >
+      <span className="flex min-w-0 flex-col">
+        <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-accent/80">
+          {t('training.progression.title')}
+        </span>
+        <span className="tabular font-display text-sm font-semibold text-text">
+          {formatKg(seed.weightKg)} kg × {seed.reps}
+          {reasonLabel && (
+            <span className="ml-1.5 text-xs font-normal text-text-muted">
+              · {reasonLabel}
+            </span>
+          )}
+        </span>
+      </span>
+      <span className="text-xs font-medium text-accent">
+        {t('training.progression.apply')}
+      </span>
+    </button>
+  )
+}
+
 function resolveSeed(entry, history) {
   const last = history?.lastSession?.sets?.[0]
   if (last) {
