@@ -203,20 +203,23 @@ export default function SessionExerciseCard({
       )}
 
       {/*
-        Sugerencia de progresión: solo aparece para `weight_reps`, cuando el
-        entry aún no tiene series en esta sesión Y hay datos reales en los
-        que apoyarse (última sesión o plantilla). La decisión vive en
-        suggestWeightRepsProgression; aquí solo elegimos cuándo ofrecerla.
-        Una vez el usuario añade la primera serie, el flujo intra-sesión
-        (addSet copia la última) toma el relevo y el chip desaparece.
+        Sugerencia de progresión: solo aparece para `weight_reps` y mientras
+        NINGUNA serie del ejercicio esté completada en esta sesión. Antes
+        condicionábamos a `sets.length === 0`, pero bastaba una fila en
+        blanco (toque accidental a "+ Añadir", o prefill vacío del picker)
+        para que el chip desapareciera sin que el usuario hubiera registrado
+        nada todavía. El dato que de verdad marca "ya decidí qué cargar hoy"
+        es la primera serie marcada con ✓; hasta entonces la sugerencia
+        sigue teniendo sentido.
       */}
-      {entry.tracking === 'weight_reps' && entry.sets.length === 0 && (
-        <SuggestionChip
-          entry={entry}
-          history={history}
-          onApply={(seed) => onAddSet(seed)}
-        />
-      )}
+      {entry.tracking === 'weight_reps' &&
+        !entry.sets.some((s) => s.completed) && (
+          <SuggestionChip
+            entry={entry}
+            history={history}
+            onApply={(seed) => onAddSet(seed)}
+          />
+        )}
 
       <button
         type="button"
