@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import GreetingHeader from '../components/home/GreetingHeader.jsx'
 import NextWorkoutCard from '../components/home/NextWorkoutCard.jsx'
 import RecentPrsCard from '../components/home/RecentPrsCard.jsx'
+import RecordsCard from '../components/home/RecordsCard.jsx'
 import SelectedWorkoutCard from '../components/home/SelectedWorkoutCard.jsx'
 import StatTile from '../components/home/StatTile.jsx'
 import ActivityHeatmap from '../components/home/ActivityHeatmap.jsx'
@@ -142,6 +143,19 @@ export default function Home() {
             </>
           )}
         </div>
+      </section>
+
+      {/* Bloque Récords — all-time PRs por ejercicio, agrupados por
+          músculo. Vive debajo del bloque Rendimiento (que mira a los
+          últimos 30d) porque responde a una pregunta distinta: "cuál
+          es tu mejor marca histórica", no "qué cayó este mes". */}
+      <section className="flex flex-col gap-3">
+        <SectionHeading>{t('home.records')}</SectionHeading>
+        {data.loading ? (
+          <Skeleton className="h-48" />
+        ) : (
+          <RecordsCard />
+        )}
       </section>
 
       {/* Bloque 3 — Actividad: tiles grandes + dashboard semanal embebido.
