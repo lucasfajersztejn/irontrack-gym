@@ -251,6 +251,13 @@
     "saving": "Guardando…",
     "saved": "Guardado",
     "saveError": "No se pudo guardar",
+    "queued": "Guardado localmente",
+    "offline": "Sin conexión",
+    "offlineWithPending_one": "Sin conexión · {{count}} cambio pendiente",
+    "offlineWithPending_other": "Sin conexión · {{count}} cambios pendientes",
+    "syncing_one": "Sincronizando {{count}} cambio",
+    "syncing_other": "Sincronizando {{count}} cambios",
+    "finishBlockedOffline": "Terminar necesita conexión. Se habilitará al sincronizar los cambios.",
     "pr": {
       "title": "¡Nuevo récord!",
       "heaviest": "{{kg}} kg",

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
+import { enqueueSessionPatch } from './offlineQueue.js'
 
 /*
   Estado "live" de la sesión activa: toma el documento inicial del backend,
@@ -99,7 +100,11 @@ function cleanSet(s, order) {
 
 export function useSessionLive(initialSession) {
   const [entries, setEntries] = useState(() => normalize(initialSession))
-  const [status, setStatus] = useState('idle') // idle | saving | saved | error
+  // idle | saving | saved | queued | error
+  // `queued` = el PATCH falló por falta de red y se guardó en la cola
+  // offline; se reenviará solo al volver la conexión. La UI lo pinta
+  // distinto de `error`: no es un fallo del usuario ni del backend.
+  const [status, setStatus] = useState('idle')
   const sessionIdRef = useRef(initialSession?._id)
   const timerRef = useRef(null)
   const tokenRef = useRef(0)
@@ -117,14 +122,24 @@ export function useSessionLive(initialSession) {
     setStatus('saving')
     timerRef.current = setTimeout(async () => {
       const myToken = ++tokenRef.current
+      const body = { entries: toApiEntries(entries) }
       try {
         await api(`/api/sessions/${sessionIdRef.current}`, {
           method: 'PATCH',
-          body: { entries: toApiEntries(entries) },
+          body,
         })
         if (myToken === tokenRef.current) setStatus('saved')
-      } catch {
-        if (myToken === tokenRef.current) setStatus('error')
+      } catch (err) {
+        // Error de red (fetch rechaza antes de ver respuesta) = sin status.
+        // Lo mandamos a la cola offline; el PATCH se reintentará solo
+        // cuando vuelva la conexión. Un 4xx/5xx real lo tratamos como
+        // `error` porque reencolarlo sería bucle de payload inválido.
+        if (err?.status == null) {
+          await enqueueSessionPatch(sessionIdRef.current, body)
+          if (myToken === tokenRef.current) setStatus('queued')
+        } else if (myToken === tokenRef.current) {
+          setStatus('error')
+        }
       }
     }, DEBOUNCE_MS)
     return () => clearTimeout(timerRef.current)
