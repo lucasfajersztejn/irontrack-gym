@@ -251,6 +251,13 @@
     "saving": "Saving…",
     "saved": "Saved",
     "saveError": "Couldn't save",
+    "queued": "Saved locally",
+    "offline": "Offline",
+    "offlineWithPending_one": "Offline · {{count}} change pending",
+    "offlineWithPending_other": "Offline · {{count}} changes pending",
+    "syncing_one": "Syncing {{count}} change",
+    "syncing_other": "Syncing {{count}} changes",
+    "finishBlockedOffline": "Finishing needs a connection. It will unlock once changes sync.",
     "pr": {
       "title": "New PR!",
       "heaviest": "{{kg}} kg",

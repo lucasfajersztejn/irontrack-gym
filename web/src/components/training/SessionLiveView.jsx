@@ -12,6 +12,8 @@ import { useExerciseHistory } from '../../lib/useExerciseHistory.js'
 import { groupEntries } from '../../lib/supersets.js'
 import { REST_DEFAULT_SEC, useSessionStore } from '../../stores/sessionStore.js'
 import { useUser } from '../../contexts/UserContext.jsx'
+import { useAutoFlush, useOfflineState } from '../../lib/offlineQueue.js'
+import { api } from '../../lib/api.js'
 
 /*
   Vista "live" de la sesión activa. Compone el header (nombre + cronómetro
@@ -83,6 +85,14 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
   const { user } = useUser()
   const restSec = user?.settings?.restTimerSec ?? REST_DEFAULT_SEC
 
+  // Cola offline: drena al montar y en cada evento `online`. El indicador
+  // `offline` + pendientes se pinta en el header; mientras haya cola en vuelo,
+  // el botón de terminar sesión queda deshabilitado (ver más abajo) para
+  // evitar que el usuario crea cerrada una sesión cuyo último PATCH no ha
+  // viajado todavía.
+  useAutoFlush(api)
+  const { online, pending } = useOfflineState()
+
   // Al salir de la vista (terminar sesión, navegar fuera) no queremos que el
   // store se quede con un descanso a medias que reaparezca en la próxima.
   // Esto cubre también el caso de ir a Ajustes y poner el descanso en Off:
@@ -108,7 +118,12 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
 
   return (
     <div className="flex flex-col gap-4">
-      <SessionHeader session={session} status={status} />
+      <SessionHeader
+        session={session}
+        status={status}
+        online={online}
+        pending={pending}
+      />
 
       <div className="flex flex-col gap-3">
         {entries.length === 0 && (
@@ -188,14 +203,28 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
         destructivo. Las dos pasan por ConfirmModal.
       */}
       <div className="flex flex-col gap-2">
+        {/*
+          Terminar sesión requiere red: `POST /:id/finish` no está en la cola
+          offline (necesita respuesta inmediata del backend que incrementa
+          timesUsed en la rutina y marca endedAt). Si el usuario pulsa sin
+          conexión perderíamos la intención; mejor desactivarlo y explicarlo.
+          El `pending > 0` cubre el caso raro de "ya tengo red pero queda un
+          PATCH en vuelo": cerrar ahí cerraría una sesión antes de que el
+          último cambio viaje.
+        */}
         <button
           type="button"
           onClick={() => setConfirmFinishOpen(true)}
-          disabled={finishing || cancelling}
+          disabled={finishing || cancelling || !online || pending > 0}
           className="press rounded-control bg-accent px-5 py-3 text-sm font-semibold text-bg transition-[filter,transform] hover:brightness-[1.08] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {finishing ? t('training.finishing') : t('training.finish')}
         </button>
+        {(!online || pending > 0) && (
+          <p className="self-center text-[11px] text-text-muted">
+            {t('training.finishBlockedOffline')}
+          </p>
+        )}
         {onCancel && (
           <button
             type="button"
@@ -275,19 +304,52 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
   (decisión de UX: durante el entreno el reloj no aporta cada vez que miras
   — como información de contexto en el panel de stats sí).
 */
-function SessionHeader({ session, status }) {
+function SessionHeader({ session, status, online, pending }) {
   const { t } = useTranslation()
   const subtitle = session.routineName ?? t('training.resumeSubFree')
 
   return (
     <header className="card-liquid flex items-center justify-between gap-3 rounded-container p-4">
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <h2 className="truncate font-display text-base font-semibold tracking-tight text-text">
           {subtitle}
         </h2>
         <StatusDot status={status} />
       </div>
+      {/*
+        Badge offline. Solo aparece cuando hay algo que contar — sin red o
+        con cola pendiente. Se elige deliberadamente discreto: no es un
+        error, es información de contexto. Si el usuario quiere terminar
+        verá el mensaje explícito debajo del botón.
+      */}
+      {(!online || pending > 0) && (
+        <OfflineBadge online={online} pending={pending} />
+      )}
     </header>
+  )
+}
+
+function OfflineBadge({ online, pending }) {
+  const { t } = useTranslation()
+  const label = !online
+    ? pending > 0
+      ? t('training.offlineWithPending', { count: pending })
+      : t('training.offline')
+    : t('training.syncing', { count: pending })
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+        online ? 'bg-accent/15 text-accent' : 'bg-surface text-text-muted'
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`inline-block h-1.5 w-1.5 rounded-full ${
+          online ? 'bg-accent animate-pulse' : 'bg-text-muted'
+        }`}
+      />
+      {label}
+    </span>
   )
 }
 
@@ -297,6 +359,9 @@ function StatusDot({ status }) {
   const map = {
     saving: { label: t('training.saving'), color: 'bg-text-muted' },
     saved: { label: t('training.saved'), color: 'bg-accent' },
+    // `queued` no es error: el PATCH quedó en IndexedDB y saldrá al volver
+    // la red. Usamos el mismo tono muted que `saving` para no alarmar.
+    queued: { label: t('training.queued'), color: 'bg-text-muted' },
     error: { label: t('training.saveError'), color: 'bg-error' },
   }
   const { label, color } = map[status] ?? map.saving
