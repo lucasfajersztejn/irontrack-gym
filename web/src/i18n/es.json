@@ -333,6 +333,16 @@
     },
     "confirmRemoveExerciseTitle": "¿Quitar «{{name}}»?",
     "confirmRemoveExerciseSub": "Se eliminarán también las series marcadas de este ejercicio en esta sesión.",
+    "progression": {
+      "title": "Sugerido",
+      "apply": "Aplicar",
+      "reason": {
+        "addWeight": "ibas sobrado la última vez",
+        "addRep": "clavado, prueba una rep más",
+        "deload": "te quedaste corto, baja un poco",
+        "repeat": "repite y mide el RIR"
+      }
+    },
     "finish": "Terminar sesión",
     "cancel": "Cancelar sesión",
     "cancelling": "Cancelando…",
