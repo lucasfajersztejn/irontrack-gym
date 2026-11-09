@@ -267,6 +267,33 @@ input[type="number"] {
 }
 
 /*
+  Utility scrollbar-thin: barra lateral fina, integrada con la paleta.
+  La barra nativa del navegador (anchura por defecto 14–17 px, gris
+  claro en Chrome/macOS) rompe la estética oscura cuando aparece
+  dentro de una card. Con 6 px y un thumb en --color-border el
+  scrollbar se lee como parte del panel. En Firefox `scrollbar-color`
+  pide `thumb track`; en WebKit redefinimos las pseudo-reglas.
+*/
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 999px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+  }
+}
+
+/*
   Focus visible global sobre acento verde. Solo aparece con navegación por
   teclado (:focus-visible, no :focus), así que no ensucia el click con ratón.
   outline-offset separa el halo del elemento para que no se confunda con el
