@@ -85,6 +85,7 @@ const settingsSchema = z.object({
   defaultBarWeightKg: z.number().min(0).max(50).optional(),
   restTimerSec: z.number().int().min(0).max(600).optional(),
   weeklyGoal: z.number().int().min(1).max(14).optional(),
+  suggestProgression: z.boolean().optional(),
 }).refine((v) => Object.keys(v).length > 0, {
   message: 'Al menos un campo',
 })

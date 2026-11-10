@@ -155,6 +155,7 @@ export default function SessionSetRow({
   usesBar = false,
   barInputMode = 'total',
   barKg = 0,
+  suggestion = null,
   onChange,
   onToggleComplete,
   onDelete,
@@ -165,6 +166,25 @@ export default function SessionSetRow({
   const showPlates =
     tracking === 'weight_reps' && usesBar && barInputMode === 'plates'
   const perSide = showPlates ? perSideFromTotal(set.weightKg, barKg) : null
+
+  /*
+    Placeholders de sugerencia. Llega YA en la unidad de este input (por
+    lado en modo discos, total si no): la conversión la hace el card, que
+    es quien sabe el peso de la barra. Aquí solo se pinta.
+
+    Si no hay sugerencia se cae al placeholder genérico de siempre.
+  */
+  const weightPlaceholder =
+    suggestion?.weightKg != null
+      ? String(suggestion.weightKg)
+      : showPlates
+        ? t('training.setFields.perSide')
+        : 'kg'
+
+  const repsPlaceholder =
+    suggestion?.reps != null
+      ? String(suggestion.reps)
+      : t('training.setFields.reps')
 
   const onWeightChange = (val) => {
     if (showPlates) {
@@ -184,14 +204,14 @@ export default function SessionSetRow({
               value={showPlates ? perSide : set.weightKg}
               onChange={onWeightChange}
               step={0.5}
-              placeholder={showPlates ? t('training.setFields.perSide') : 'kg'}
+              placeholder={weightPlaceholder}
               ariaLabel={t('training.setFields.weightAria', { n: num })}
             />
             <NumberCell
               value={set.reps}
               onChange={(reps) => onChange({ reps })}
               step={1}
-              placeholder={t('training.setFields.reps')}
+              placeholder={repsPlaceholder}
               ariaLabel={t('training.setFields.repsAria', { n: num })}
             />
             <RirCell

@@ -492,6 +492,12 @@
       "dec": "Quitar {{n}} kilos al peso de la barra",
       "inc": "Añadir {{n}} kilos al peso de la barra"
     },
+    "progression": {
+      "label": "Progresión sugerida",
+      "helper": "Al entrenar, proponemos peso y reps de la siguiente serie usando el RIR que apuntaste la última vez. Si sigues un programa cerrado, apágalo: no se borra nada, solo dejamos de sugerir.",
+      "on": "Sí",
+      "off": "No"
+    },
     "weeklyGoal": {
       "label": "Objetivo semanal",
       "helper": "Sesiones por semana. Es el objetivo del progreso de Inicio y de Semana.",

@@ -153,6 +153,7 @@ export default function Settings() {
           'barInputMode',
           'defaultBarWeightKg',
           'weeklyGoal',
+          'suggestProgression',
         ])}
       >
         <SegmentedField
@@ -203,6 +204,27 @@ export default function Settings() {
           incLabel={t('settings.weeklyGoal.inc')}
           onChange={(value) => save('weeklyGoal', value)}
           error={fieldError('weeklyGoal')}
+        />
+
+        {/*
+          Segmentado de dos opciones en vez de un switch: esta pantalla no
+          tiene ningún interruptor todavía, y añadir un patrón de control
+          nuevo para un solo ajuste obliga a mantener dos lenguajes de
+          "activado". El segmentado ya está aquí y dice lo mismo.
+          `?? true` espeja el default del modelo: mientras /api/me no ha
+          respondido el control no debe pintar "No" y luego saltar a "Sí".
+        */}
+        <SegmentedField
+          name="suggestProgression"
+          label={t('settings.progression.label')}
+          helper={t('settings.progression.helper')}
+          value={settings.suggestProgression ?? true}
+          options={[
+            { value: true, label: t('settings.progression.on') },
+            { value: false, label: t('settings.progression.off') },
+          ]}
+          onChange={(value) => save('suggestProgression', value)}
+          error={fieldError('suggestProgression')}
         />
       </SettingsSection>
 

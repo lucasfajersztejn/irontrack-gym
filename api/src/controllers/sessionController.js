@@ -335,6 +335,63 @@ export async function getHeatmap(req, res, next) {
   }
 }
 
+/*
+  Targets de una rutina indexados por ejercicio. Devuelve null sin rutina
+  (sesión libre), que es lo que `withPlannedSets` interpreta como "no hay
+  plantilla que adjuntar".
+*/
+function plansFromRoutine(routine) {
+  if (!routine) return null
+  return new Map(
+    routine.exercises.map((re) => [
+      re.exercise._id.toString(),
+      {
+        targetSets: re.targetSets ?? 0,
+        targetReps: re.targetReps ?? null,
+        targetWeightKg: re.targetWeightKg ?? null,
+        targetDurationSec: re.targetDurationSec ?? null,
+        targetDistanceM: re.targetDistanceM ?? null,
+      },
+    ]),
+  )
+}
+
+/*
+  Sidecar `plannedSets` por entry: el cliente lo usa como respaldo del
+  prefill y como objetivo de reps de la progresión sugerida cuando el
+  ejercicio es nuevo o cuando la sesión anterior no deja claro el target.
+
+  No se persiste — un `toObject()` + merge sobre la copia JSON evita
+  contaminar el modelo con un campo derivado de la rutina, que es su única
+  fuente de verdad.
+
+  Se adjunta tanto al crear la sesión como al recuperarla con /active. Solo
+  en el create era un bug silencioso: al recargar la página o volver a la
+  pantalla, la vista live perdía la plantilla y el objetivo de reps pasaba a
+  deducirse de lo que el usuario hubiera hecho la última vez.
+*/
+function withPlannedSets(session, routinePlans) {
+  const payload = session.toObject({ virtuals: true })
+  if (!routinePlans) return payload
+  payload.entries = payload.entries.map((e) => {
+    const plan = routinePlans.get((e.exercise?._id ?? e.exercise).toString())
+    if (!plan || !plan.targetSets) return e
+    // Expandimos targetSets copias con los mismos valores: la plantilla no
+    // diferencia serie a serie (todavía), así que todas arrancan iguales. El
+    // cliente las usa como SUGERENCIA; no viajan de vuelta en el PATCH a
+    // menos que el usuario las acepte o edite.
+    const plannedSets = Array.from({ length: plan.targetSets }, (_, i) => ({
+      order: i,
+      weightKg: plan.targetWeightKg,
+      reps: plan.targetReps,
+      durationSec: plan.targetDurationSec,
+      distanceM: plan.targetDistanceM,
+    }))
+    return { ...e, plannedSets }
+  })
+  return payload
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/sessions/active  -> la sesión abierta del usuario, o null
 // ---------------------------------------------------------------------------
@@ -363,7 +420,18 @@ export async function getActiveSession(req, res, next) {
     }).populate('entries.exercise')
     // 200 con null (no 404): "no hay activa" es una respuesta normal, no un
     // error. El frontend tiene que distinguir "ruta rota" de "nada abierto".
-    res.json(session || null)
+    if (!session) return res.json(null)
+
+    // Releemos la rutina para reconstruir el sidecar `plannedSets`. Es una
+    // lectura extra solo cuando la sesión salió de una rutina; sin ella el
+    // cliente pierde los targets al reanudar (ver withPlannedSets).
+    const routine = session.routine
+      ? await Routine.findOne({
+          _id: session.routine,
+          user: req.user.id,
+        }).populate('exercises.exercise')
+      : null
+    res.json(withPlannedSets(session, plansFromRoutine(routine)))
   } catch (err) {
     next(err)
   }
@@ -454,7 +522,7 @@ export async function createSession(req, res, next) {
 
     // Guardamos los targets de la rutina para construir el sidecar plannedSets
     // al final — así no re-leemos la rutina después del create().
-    let routinePlans = null
+    let routinePlans = plansFromRoutine(null)
 
     if (parsed.data.routine) {
       // Doble filtro: id + user. Nadie arranca una sesión desde la rutina de
@@ -469,18 +537,7 @@ export async function createSession(req, res, next) {
 
       doc.routine = routine._id
       doc.routineName = routine.name
-      routinePlans = new Map(
-        routine.exercises.map((re) => [
-          re.exercise._id.toString(),
-          {
-            targetSets: re.targetSets ?? 0,
-            targetReps: re.targetReps ?? null,
-            targetWeightKg: re.targetWeightKg ?? null,
-            targetDurationSec: re.targetDurationSec ?? null,
-            targetDistanceM: re.targetDistanceM ?? null,
-          },
-        ]),
-      )
+      routinePlans = plansFromRoutine(routine)
       doc.entries = routine.exercises.map((re) => ({
         exercise: re.exercise._id,
         // Denormalización deliberada (ver comentario del modelo): el nombre
@@ -510,36 +567,7 @@ export async function createSession(req, res, next) {
     // esperaría a un refetch para enterarse.
     await session.populate('entries.exercise')
 
-    /*
-      Sidecar `plannedSets` por entry: el prefill del cliente usa la última
-      sesión real como primera fuente; la plantilla sirve de respaldo cuando
-      el usuario nunca ha hecho el ejercicio. En vez de pedirle otra vez la
-      rutina al frontend, se la adjuntamos al documento devuelto. No se
-      persiste — un `toObject()` + merge sobre la copia JSON evita contaminar
-      el modelo con un campo que solo vive el tiempo del handshake inicial.
-    */
-    const payload = session.toObject({ virtuals: true })
-    if (routinePlans) {
-      payload.entries = payload.entries.map((e) => {
-        const plan = routinePlans.get(
-          (e.exercise?._id ?? e.exercise).toString(),
-        )
-        if (!plan || !plan.targetSets) return e
-        // Expandimos targetSets copias con los mismos valores: la plantilla
-        // no diferencia serie a serie (todavía), así que todas arrancan
-        // iguales. El cliente las usa como SUGERENCIA; no viajan de vuelta
-        // en el PATCH a menos que el usuario las acepte o edite.
-        const plannedSets = Array.from({ length: plan.targetSets }, (_, i) => ({
-          order: i,
-          weightKg: plan.targetWeightKg,
-          reps: plan.targetReps,
-          durationSec: plan.targetDurationSec,
-          distanceM: plan.targetDistanceM,
-        }))
-        return { ...e, plannedSets }
-      })
-    }
-    res.status(201).json(payload)
+    res.status(201).json(withPlannedSets(session, routinePlans))
   } catch (err) {
     next(err)
   }

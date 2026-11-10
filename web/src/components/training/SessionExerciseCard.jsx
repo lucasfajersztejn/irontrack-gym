@@ -5,9 +5,13 @@ import ExerciseHelpSheet from './ExerciseHelpSheet.jsx'
 import BarWeightPopover from './BarWeightPopover.jsx'
 import ConfirmModal from '../routines/ConfirmModal.jsx'
 import { useUser } from '../../contexts/UserContext.jsx'
-import { barWeightFor } from '../../lib/weight.js'
+import { barWeightFor, perSideFromTotal } from '../../lib/weight.js'
 import { useExerciseName } from '../../lib/exerciseName.js'
 import { estimate1RM } from '../../lib/stats.js'
+import {
+  suggestFirstSetOfDay,
+  suggestNextSetInSession,
+} from '../../lib/suggestProgression.js'
 
 // Tolerancia para la comparación de 1RM contra el récord histórico. El
 // backend guarda el PR redondeado a 1 decimal (ver exerciseController.js
@@ -85,6 +89,11 @@ export default function SessionExerciseCard({
   const { name: displayName } = useExerciseName(exerciseObj ?? entry)
   const usesBar = Boolean(exerciseObj?.usesBar)
   const barInputMode = user?.settings?.barInputMode ?? 'plates'
+  // Preferencia del usuario (Ajustes → Tu entreno). `!== false` y no `?? true`
+  // para que el chip aparezca también si `settings` aún no ha llegado: el
+  // default del modelo es true, y ocultar algo que va a aparecer un tick
+  // después se lee como un parpadeo.
+  const suggestProgression = user?.settings?.suggestProgression !== false
   const userBarKg = user?.settings?.defaultBarWeightKg ?? 20
   // Override per-sesión (entry.barWeightKg) tiene prioridad sobre el default
   // del catálogo y la preferencia global del usuario. Ver lib/weight.js.
@@ -92,6 +101,21 @@ export default function SessionExerciseCard({
     ? barWeightFor(exerciseObj, entry.barWeightKg, userBarKg)
     : 0
   const showBarSettings = exerciseObj?.equipment === 'barbell'
+
+  /*
+    La DB guarda kilos totales (spec §1) pero la progresión razona en la
+    unidad que el usuario teclea: por lado cuando la barra está en modo
+    discos, el peso tal cual en el resto. Sin esta conversión un salto de
+    2.5 "por lado" se convertía en 1.25 real, que no se puede montar.
+  */
+  const showPlatesInput =
+    entry.tracking === 'weight_reps' && usesBar && barInputMode === 'plates'
+  const toDisplayKg = (totalKg) =>
+    totalKg == null
+      ? null
+      : showPlatesInput
+        ? perSideFromTotal(totalKg, barKg)
+        : totalKg
 
   return (
     <article className="card-liquid flex flex-col gap-3 rounded-container p-3 md:p-4">
@@ -191,6 +215,13 @@ export default function SessionExerciseCard({
               usesBar={usesBar}
               barInputMode={barInputMode}
               barKg={barKg}
+              suggestion={suggestionForSet(
+                entry,
+                history,
+                i,
+                suggestProgression,
+                toDisplayKg,
+              )}
               onChange={(patch) => onUpdateSet(i, patch)}
               onToggleComplete={() =>
                 onToggleSetComplete(i, !set.completed)
@@ -203,7 +234,7 @@ export default function SessionExerciseCard({
 
       <button
         type="button"
-        onClick={() => onAddSet(resolveSeed(entry, history))}
+        onClick={() => onAddSet()}
         className="press self-start rounded-control border border-border bg-surface px-3 py-2 text-xs font-medium text-text transition-[filter,transform,background-color] hover:bg-surface-2"
       >
         + {t('training.addSet')}
@@ -326,40 +357,54 @@ function SetListHeader({ tracking }) {
 }
 
 /*
-  Fuente del prefill al pulsar "+ Añadir serie" CUANDO el entry todavía no
-  tiene ninguna serie en esta sesión (si ya hay, useSessionLive.addSet copia
-  la última — flujo de "progresión intra-sesión").
+  Sugerencia que se pinta como PLACEHOLDER en los inputs de una serie.
 
   Prioridad:
-    1) Última sesión REAL del usuario en este ejercicio (history.lastSession).
-       Devolvemos su primer set — las series posteriores se autorreplican.
-    2) Plantilla de la rutina (entry.plannedSets, sidecar del POST /sessions).
-    3) null → el caller deja los campos vacíos.
+    1) Serie i > 0 → la anterior de HOY, por la escala de RIR. Se recalcula
+       en cada render, así que anotar el RIR de la serie 1 actualiza al
+       instante el placeholder de la serie 2.
+    2) Serie 0 (o serie anterior aún en blanco) → primera serie de la última
+       vez + un escalón, con la plantilla de la rutina como respaldo.
+    3) null → el input se queda con su placeholder genérico ("kg", "Reps").
 
-  No mezclamos capas (no "si la rutina dice 100 pero la última vez fue 90
-  tómalo como 100"): la decisión es FUENTE, no media. "La última vez" gana
-  porque es dato real; la plantilla es plan, menos informativo.
+  `toDisplay` convierte los kilos TOTALES que guarda la DB a la unidad en la
+  que escribe el usuario (por lado si la barra está en modo discos). Las
+  reglas trabajan en esa unidad y devuelven en esa unidad, así que lo que
+  sale se pinta tal cual.
+
+  Es SUGERENCIA, no dato: viaja como `placeholder`, nunca como `value`. La
+  serie nace vacía y solo se persiste cuando el usuario escribe (toApiEntries
+  filtra las incompletas), así que nada se guarda por proponerlo.
+
+  Devuelve null si el usuario apagó la progresión en Ajustes, o si el
+  tracking no es `weight_reps`: las reglas son de fuerza con peso externo, y
+  cardio e isométricos progresan por tiempo/distancia, que no está modelado.
 */
-function resolveSeed(entry, history) {
-  const last = history?.lastSession?.sets?.[0]
-  if (last) {
-    return {
-      weightKg: last.weightKg ?? null,
-      reps: last.reps ?? null,
-      addedWeightKg: last.addedWeightKg ?? null,
-      durationSec: last.durationSec ?? null,
-      distanceM: last.distanceM ?? null,
-    }
+function suggestionForSet(entry, history, index, suggestProgression, toDisplay) {
+  if (!suggestProgression || entry.tracking !== 'weight_reps') return null
+
+  if (index > 0) {
+    const prev = entry.sets[index - 1]
+    const next = suggestNextSetInSession({
+      lastSet: {
+        weightKg: toDisplay(prev?.weightKg),
+        reps: prev?.reps ?? null,
+        rir: prev?.rir ?? null,
+      },
+    })
+    // Si la serie anterior sigue en blanco no hay de dónde encadenar: caemos
+    // a la sugerencia de entrada para no dejar la fila muda.
+    if (next) return next
   }
-  const planned = entry.plannedSets?.[0]
-  if (planned) {
-    return {
-      weightKg: planned.weightKg ?? null,
-      reps: planned.reps ?? null,
-      addedWeightKg: null,
-      durationSec: planned.durationSec ?? null,
-      distanceM: planned.distanceM ?? null,
-    }
-  }
-  return null
+
+  const firstLastTime = history?.lastSession?.sets?.[0] ?? null
+  const planned = entry.plannedSets?.[0] ?? null
+  return suggestFirstSetOfDay({
+    firstSetLastTime: firstLastTime
+      ? { weightKg: toDisplay(firstLastTime.weightKg), reps: firstLastTime.reps ?? null }
+      : null,
+    plannedSet: planned
+      ? { weightKg: toDisplay(planned.weightKg), reps: planned.reps ?? null }
+      : null,
+  })
 }

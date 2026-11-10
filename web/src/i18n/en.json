@@ -492,6 +492,12 @@
       "dec": "Take {{n}} kilos off the bar weight",
       "inc": "Add {{n}} kilos to the bar weight"
     },
+    "progression": {
+      "label": "Suggested progression",
+      "helper": "While training, we propose weight and reps for your next set from the RIR you logged last time. Following a fixed program? Turn it off: nothing is deleted, we just stop suggesting.",
+      "on": "Yes",
+      "off": "No"
+    },
     "weeklyGoal": {
       "label": "Weekly goal",
       "helper": "Sessions per week. It's the target behind the progress on Home and Week.",
