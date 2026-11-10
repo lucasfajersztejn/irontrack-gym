@@ -48,6 +48,20 @@ const settingsSchema = new mongoose.Schema({
    * ambicioso. Fuera de eso probablemente es error del dedo.
    */
   weeklyGoal: { type: Number, default: 4, min: 1, max: 14 },
+
+  /**
+   * Progresión sugerida en la pantalla de entrenar: el chip que propone
+   * peso y reps de la siguiente serie a partir del RIR de la última sesión
+   * (ver web/src/lib/suggestProgression.js).
+   *
+   * Default `true` porque es la razón de registrar el RIR: si el dato no
+   * vuelve como consejo, apuntarlo es trabajo sin recompensa. Pero es una
+   * opinión del sistema sobre cómo debes entrenar, y hay gente que sigue un
+   * programa cerrado (5/3/1, un plan de su entrenador) donde una sugerencia
+   * ajena es ruido. De ahí el interruptor: apagarlo no borra el RIR ni las
+   * estadísticas, solo deja de proponer.
+   */
+  suggestProgression: { type: Boolean, default: true },
 }, { _id: false });
 
 const userSchema = new mongoose.Schema({

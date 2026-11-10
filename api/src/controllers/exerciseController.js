@@ -406,13 +406,36 @@ export const getExercisesHistory = async (req, res, next) => {
         },
       ]),
       Session.aggregate([
-        { $match: { user: userId, 'entries.exercise': { $in: ids } } },
+        {
+          $match: {
+            user: userId,
+            // `endedAt: { $ne: null }` excluye la sesión EN CURSO. Sin este
+            // filtro la sesión activa es, por definición, la más reciente, y
+            // el $first de abajo devolvía sus propios sets (vacíos al
+            // arrancar) como "la última vez". Eso dejaba `lastSession.sets`
+            // en [] y tumbaba a la vez el prefill de "+ Añadir serie" y la
+            // sugerencia de progresión: la sesión en la que estás no es tu
+            // historial.
+            endedAt: { $ne: null },
+            'entries.exercise': { $in: ids },
+          },
+        },
         // $sort ANTES del $unwind: así el $first en el $group respeta el
         // orden por sesión más reciente, no por el orden intrínseco del
         // array entries dentro del documento.
         { $sort: { startedAt: -1 } },
         { $unwind: '$entries' },
-        { $match: { 'entries.exercise': { $in: ids } } },
+        {
+          $match: {
+            'entries.exercise': { $in: ids },
+            // Y además que esa entry tenga series. Un ejercicio añadido a una
+            // sesión y nunca registrado deja `sets: []`, y sin este filtro el
+            // $first de abajo se quedaba con esa sesión vacía en vez de con
+            // la última en que SÍ levantaste algo. Queremos "la última vez
+            // que lo hiciste", no "la última sesión que lo mencionaba".
+            'entries.sets.0': { $exists: true },
+          },
+        },
         {
           $group: {
             _id: '$entries.exercise',

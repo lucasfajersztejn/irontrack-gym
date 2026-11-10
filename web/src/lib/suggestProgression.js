@@ -2,132 +2,130 @@
   Progresión sugerida para ejercicios `weight_reps`.
   ---------------------------------------------------------------------------
 
-  Función pura: entra la última sesión real del usuario (del endpoint
-  /api/exercises/history), la plantilla de la rutina (sidecar `plannedSets`)
-  y el equipamiento del ejercicio, y sale un seed `{ weightKg, reps, reason }`
-  que el frontend aplica al pulsar un chip.
+  Dos funciones puras, una por horizonte:
 
-  Por qué cliente y no servidor:
-    - Los datos (lastSession + plannedSets) ya viajan al montar la vista
+    suggestFirstSetOfDay   -> qué cargar al empezar el ejercicio hoy.
+    suggestNextSetInSession -> qué cargar en la serie siguiente de hoy.
+
+  UNIDADES: las dos trabajan sobre EL NÚMERO QUE EL USUARIO ESCRIBE, no
+  sobre el peso total. En un ejercicio con barra en modo "discos por lado"
+  ese número son los kilos por lado; en mancuerna, polea o máquina es el
+  peso tal cual. El caller (SessionExerciseCard) convierte el total que
+  guarda la DB a esa unidad antes de llamar, y lo que sale se pinta
+  directamente como placeholder.
+
+  Es deliberado: el usuario razona en la unidad en la que carga la barra
+  ("le meto un disco de 2.5 más por lado"), no en el total. Aplicar el
+  incremento al total daba saltos de 1.25 por lado, que no se pueden
+  montar. La invariante de la spec §1 no se toca: la DB sigue guardando
+  kilos totales, esto es capa de presentación.
+
+  Por qué en cliente y no en servidor:
+    - Los datos (última sesión + plantilla) ya viajan al montar la vista
       live. Un endpoint nuevo duplicaría trabajo.
-    - La lógica es trivial y explicable (es su único argumento en contra
-      de un algoritmo "serio" tipo 5/3/1): se defiende en entrevista
-      diciendo exactamente qué regla aplica y cuándo.
-    - Testearla es test unitario de función pura — no requiere Mongo.
-
-  Algoritmo (nombres igual que en el código):
-
-    addWeight: todas las series de trabajo llegaron a target reps Y el
-               RIR medio fue >= 2 → súbele peso. Incremento: 2.5 kg para
-               ejercicios con barra olímpica, 1 kg para el resto (dumbbell,
-               cable, máquina, cuerpo). 2.5 es el disco más pequeño común
-               en un gym; 1 cubre mancuernas y selectorizadas.
-
-    addRep:    llegaste a target pero apretaste (RIR 0-1) → mantén peso y
-               pide una rep más. Esto evita saltar peso mientras el sistema
-               nervioso aún está adaptándose.
-
-    deload:    alguna serie de trabajo quedó >= 2 reps por debajo del
-               target → bajar 5 %, redondeado al 0.5 kg más cercano.
-               Reason: si no bajamos, la siguiente sesión es la misma
-               escena y el usuario se queda atascado.
-
-    repeat:    cualquier otro caso (p. ej. RIR no registrado y reps a
-               target): misma carga. Sin datos para subir, no inventamos.
-
-  Decisiones de alcance:
-    - SOLO `weight_reps`. Para `reps` (dominadas, flexiones) tendría que
-      vivir una regla paralela (+1 rep); isométricos y cardio tienen su
-      propia progresión por duración/distancia. Un solo PR, un solo caso.
-    - Target reps viene de la plantilla (plannedSets[0].reps). Sin
-      plantilla, el objetivo implícito es "lo que hiciste la última vez"
-      — no se puede sugerir subir si no hay techo.
-    - No tocamos series de calentamiento porque el modelo no distingue
-      "trabajo" vs "warmup" (spec §7, decisión deliberada). Consideramos
-      "series de trabajo" las que cargan el PESO MÁXIMO de la sesión; el
-      resto se ignora para el diagnóstico. Es la aproximación que casa
-      con la práctica real del usuario.
+    - Son funciones puras: se testean sin Mongo y se explican en voz alta,
+      que es más de lo que se puede decir de un 5/3/1 embebido en una
+      aggregation.
 */
 
-const WEIGHT_PROGRESSION_KG_COMPOUND = 2.5
-const WEIGHT_PROGRESSION_KG_ISOLATION = 1
-const DELOAD_FACTOR = 0.95
-const MIN_RIR_TO_ADD_WEIGHT = 2
+/*
+  Rejilla universal del gimnasio: 2.5 kg. Con barra son discos de 1.25 por
+  lado; las mancuernas y las selectorizadas suben de 2.5 en 2.5 (por eso no
+  existe una mancuerna de 14: se pasa de 12.5 a 15). Todas las cargas que
+  proponemos se cuadran a esta rejilla, no solo el incremento: si no, un
+  redondeo previo arrastra la sugerencia fuera de la cuadrícula para
+  siempre.
+*/
+const STEP_KG = 2.5
 
-// Equipment que usa barra olímpica/EZ/smith — el incremento mínimo de la
-// cartela es 2.5 kg (disco de 1.25 por lado). Mancuernas, máquinas y
-// bodyweight-con-lastre saltan de 1 en 1 kg.
-const COMPOUND_EQUIPMENT = new Set(['barbell', 'ez-bar', 'smith'])
+// Salto doble cuando sobró mucho margen. Un solo disco se queda corto y
+// tardarías semanas en llegar a tu carga real.
+const BIG_STEP_KG = 5
 
-function roundToHalfKg(kg) {
-  return Math.round(kg * 2) / 2
-}
+// RIR a partir del cual el salto es doble.
+const BIG_STEP_RIR = 3
 
-function mean(xs) {
-  if (xs.length === 0) return null
-  return xs.reduce((a, b) => a + b, 0) / xs.length
+function snapToStep(kg) {
+  if (kg == null) return null
+  return Math.max(0, Math.round(kg / STEP_KG) * STEP_KG)
 }
 
 /**
+ * Primera serie del ejercicio HOY.
+ *
+ * Ancla: la PRIMERA serie de la última vez que hiciste este ejercicio, no
+ * la última. Si la semana pasada abriste con 20 y acabaste en 25 × 4 tras
+ * encadenar subidas, hoy se abre en 22.5 — el final de aquella sesión fue
+ * fatiga acumulada, no tu punto de partida. Abrir donde acabaste convierte
+ * cada semana en un máximo y el ejercicio deja de poder empezarse.
+ *
+ * Incremento fijo de un escalón, mismas reps: progresión lineal. No mira
+ * el RIR porque el ancla es la serie fresca del día, donde por definición
+ * aún no hay fatiga que interpretar; la lectura fina del RIR ocurre dentro
+ * de la sesión, que es donde hay series que comparar entre sí.
+ *
  * @param {object} params
- * @param {object|null} params.lastSession  { startedAt, sets[] } del backend
- * @param {Array|null}  params.plannedSets  sidecar del POST /sessions
- * @param {string|null} params.equipment    'barbell' | 'dumbbell' | ...
- * @returns {{ weightKg: number|null, reps: number|null, reason: string } | null}
+ * @param {object|null} params.firstSetLastTime  primera serie de la última
+ *   sesión con este ejercicio, YA en la unidad que escribe el usuario.
+ * @param {object|null} params.plannedSet  primera serie de la plantilla de
+ *   la rutina, misma unidad. Respaldo si el ejercicio es nuevo.
+ * @returns {{ weightKg: number, reps: number|null } | null}
  */
-export function suggestWeightRepsProgression({ lastSession, plannedSets, equipment } = {}) {
-  const isCompound = equipment == null || COMPOUND_EQUIPMENT.has(equipment)
-  const increment = isCompound
-    ? WEIGHT_PROGRESSION_KG_COMPOUND
-    : WEIGHT_PROGRESSION_KG_ISOLATION
-
-  const planned = plannedSets?.[0] ?? null
-  const plannedSeed = planned
-    ? { weightKg: planned.weightKg ?? null, reps: planned.reps ?? null, reason: 'planned' }
-    : null
-
-  const sets = (lastSession?.sets ?? []).filter(
-    (s) => s.weightKg != null && s.reps != null,
-  )
-  if (sets.length === 0) return plannedSeed
-
-  // Series de trabajo: las que cargan el peso MÁXIMO de la sesión. Al tipo
-  // le interesa progresar sobre su carga real, no sobre el calentamiento.
-  const topWeight = Math.max(...sets.map((s) => s.weightKg))
-  const workingSets = sets.filter((s) => s.weightKg === topWeight)
-
-  const targetReps = planned?.reps ?? Math.max(...workingSets.map((s) => s.reps))
-
-  const rirs = workingSets.map((s) => s.rir).filter((r) => r != null)
-  const avgRir = mean(rirs)
-
-  const hitTarget = workingSets.every((s) => s.reps >= targetReps)
-  const missedBadly = workingSets.some((s) => s.reps <= targetReps - 2)
-
-  if (hitTarget && avgRir != null && avgRir >= MIN_RIR_TO_ADD_WEIGHT) {
+export function suggestFirstSetOfDay({ firstSetLastTime, plannedSet } = {}) {
+  if (firstSetLastTime?.weightKg != null) {
     return {
-      weightKg: roundToHalfKg(topWeight + increment),
-      reps: targetReps,
-      reason: 'addWeight',
+      weightKg: snapToStep(firstSetLastTime.weightKg + STEP_KG),
+      reps: firstSetLastTime.reps ?? null,
     }
   }
-  if (hitTarget && (avgRir == null || avgRir < MIN_RIR_TO_ADD_WEIGHT)) {
+  // Sin historial, la plantilla manda tal cual: es el peso de arranque que
+  // el usuario eligió al crear la rutina, no hay nada que progresar aún.
+  if (plannedSet?.weightKg != null) {
     return {
-      weightKg: topWeight,
-      reps: targetReps + 1,
-      reason: 'addRep',
+      weightKg: snapToStep(plannedSet.weightKg),
+      reps: plannedSet.reps ?? null,
     }
   }
-  if (missedBadly) {
-    return {
-      weightKg: roundToHalfKg(topWeight * DELOAD_FACTOR),
-      reps: targetReps,
-      reason: 'deload',
-    }
+  return null
+}
+
+/**
+ * Serie siguiente DENTRO de la sesión, a partir de la anterior de hoy.
+ *
+ * Escala por el RIR que anotaste en esa serie:
+ *
+ *   RIR >= 3  -> +5 kg y dos reps menos. Te sobraron 3 o más: el salto
+ *                grande se paga con reps, que es como funciona la fuerza.
+ *   RIR 1-2   -> +2.5 kg y la mitad de las reps. Subes un escalón y
+ *                asumes que a esa carga no repites el mismo volumen.
+ *   RIR 0     -> mismo peso y mismas reps. Llegaste al fallo: subir ahí
+ *                es pedir una serie que no va a salir.
+ *   sin RIR   -> mismo peso y mismas reps. Sin el dato no inventamos.
+ *
+ * Las reps nunca bajan de 1: media de 1 es 0.5, y proponer cero series de
+ * nada no es una sugerencia.
+ *
+ * @param {object} params
+ * @param {object|null} params.lastSet  serie anterior de HOY, YA en la
+ *   unidad que escribe el usuario.
+ * @returns {{ weightKg: number, reps: number|null } | null}
+ */
+export function suggestNextSetInSession({ lastSet } = {}) {
+  if (lastSet?.weightKg == null) return null
+  const { weightKg, reps = null, rir } = lastSet
+
+  if (rir == null || rir === 0) {
+    return { weightKg, reps }
   }
+
+  const isBigStep = rir >= BIG_STEP_RIR
+  const nextReps =
+    reps == null
+      ? null
+      : Math.max(1, isBigStep ? reps - 2 : Math.round(reps / 2))
+
   return {
-    weightKg: topWeight,
-    reps: targetReps,
-    reason: 'repeat',
+    weightKg: snapToStep(weightKg + (isBigStep ? BIG_STEP_KG : STEP_KG)),
+    reps: nextReps,
   }
 }

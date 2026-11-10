@@ -175,39 +175,20 @@ export function useSessionLive(initialSession) {
   }
 
   /*
-    `externalSeed` lo aporta el caller (SessionExerciseCard) cuando ya no hay
-    serie previa EN LA SESIÓN de la que copiar y quiere ofrecer "la última
-    vez que hiciste este ejercicio" o la plantilla de la rutina. Así este
-    hook sigue sin conocer history ni sidecar — solo recibe un seed opcional
-    y aplica la prioridad: serie previa de esta sesión > seed externo > vacío.
+    La serie nace VACÍA. Antes se copiaban los valores de la anterior, pero
+    eso escribe en la sesión números que el usuario no ha levantado: si se
+    olvida de corregirlos, se guardan como si los hubiera hecho. Ahora la
+    referencia viaja como placeholder (ver suggestionForSet en
+    SessionExerciseCard) y solo se persiste lo que teclea — toApiEntries
+    filtra las series incompletas, así que una fila intacta no llega a DB.
   */
-  const addSet = (entryIndex, externalSeed = null) =>
+  const addSet = (entryIndex) =>
     setEntries((es) =>
-      es.map((e, j) => {
-        if (j !== entryIndex) return e
-        const last = e.sets[e.sets.length - 1]
-        const base = last
-          ? {
-              weightKg: last.weightKg ?? null,
-              reps: last.reps ?? null,
-              addedWeightKg: last.addedWeightKg ?? null,
-              durationSec: last.durationSec ?? null,
-              distanceM: last.distanceM ?? null,
-            }
-          : externalSeed
-            ? {
-                weightKg: externalSeed.weightKg ?? null,
-                reps: externalSeed.reps ?? null,
-                addedWeightKg: externalSeed.addedWeightKg ?? null,
-                durationSec: externalSeed.durationSec ?? null,
-                distanceM: externalSeed.distanceM ?? null,
-              }
-            : {}
-        return {
-          ...e,
-          sets: [...e.sets, { ...base, completed: false }],
-        }
-      }),
+      es.map((e, j) =>
+        j === entryIndex
+          ? { ...e, sets: [...e.sets, { completed: false }] }
+          : e,
+      ),
     )
 
   const updateSet = (entryIndex, setIndex, patch) =>

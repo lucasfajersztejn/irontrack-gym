@@ -157,7 +157,7 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
                 key={`${exerciseId}-${index}`}
                 entry={entry}
                 history={entryHistory}
-                onAddSet={(seed) => addSet(index, seed)}
+                onAddSet={() => addSet(index)}
                 onUpdateSet={(setIndex, patch) => updateSet(index, setIndex, patch)}
                 onUpdateEntry={(patch) => updateEntry(index, patch)}
                 onToggleSetComplete={(setIndex, completed) =>

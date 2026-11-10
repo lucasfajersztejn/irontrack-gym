@@ -333,16 +333,6 @@
     },
     "confirmRemoveExerciseTitle": "¿Quitar «{{name}}»?",
     "confirmRemoveExerciseSub": "Se eliminarán también las series marcadas de este ejercicio en esta sesión.",
-    "progression": {
-      "title": "Sugerido",
-      "apply": "Aplicar",
-      "reason": {
-        "addWeight": "ibas sobrado la última vez",
-        "addRep": "clavado, prueba una rep más",
-        "deload": "te quedaste corto, baja un poco",
-        "repeat": "repite y mide el RIR"
-      }
-    },
     "finish": "Terminar sesión",
     "cancel": "Cancelar sesión",
     "cancelling": "Cancelando…",
@@ -501,6 +491,12 @@
       "helper": "Tu barra olímpica. La estándar pesa 20 kg, pero hay gimnasios con barras de 15. La barra Z y la Smith traen el suyo.",
       "dec": "Quitar {{n}} kilos al peso de la barra",
       "inc": "Añadir {{n}} kilos al peso de la barra"
+    },
+    "progression": {
+      "label": "Progresión sugerida",
+      "helper": "Al entrenar, proponemos peso y reps de la siguiente serie usando el RIR que apuntaste la última vez. Si sigues un programa cerrado, apágalo: no se borra nada, solo dejamos de sugerir.",
+      "on": "Sí",
+      "off": "No"
     },
     "weeklyGoal": {
       "label": "Objetivo semanal",

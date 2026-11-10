@@ -331,16 +331,6 @@
       "setsCount_other": "{{count}} sets",
       "maxShort": "max {{kg}} kg"
     },
-    "progression": {
-      "title": "Suggested",
-      "apply": "Apply",
-      "reason": {
-        "addWeight": "last time was easy",
-        "addRep": "nailed it, try one more rep",
-        "deload": "fell short, ease back",
-        "repeat": "repeat and log RIR"
-      }
-    },
     "confirmRemoveExerciseTitle": "Remove \"{{name}}\"?",
     "confirmRemoveExerciseSub": "The completed sets for this exercise in this session will also be removed.",
     "finish": "Finish session",
@@ -501,6 +491,12 @@
       "helper": "Your olympic bar. The standard one is 20 kg, but some gyms run 15. EZ and Smith bars bring their own.",
       "dec": "Take {{n}} kilos off the bar weight",
       "inc": "Add {{n}} kilos to the bar weight"
+    },
+    "progression": {
+      "label": "Suggested progression",
+      "helper": "While training, we propose weight and reps for your next set from the RIR you logged last time. Following a fixed program? Turn it off: nothing is deleted, we just stop suggesting.",
+      "on": "Yes",
+      "off": "No"
     },
     "weeklyGoal": {
       "label": "Weekly goal",
