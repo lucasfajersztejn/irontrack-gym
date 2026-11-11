@@ -35,29 +35,30 @@ export default function StalledCard() {
   if (!loading && stalled.length === 0) return null
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
+    // Card suelto que se auto-titula, igual que RecordsCard y
+    // SelectedWorkoutCard: header dentro del propio card-liquid, sin la
+    // barra de acento (ese tratamiento es el de los títulos de GRUPO que
+    // agrupan varias cards, no el de un card standalone).
+    <section className="card-liquid flex flex-col gap-3 rounded-container p-4 md:p-5">
+      <header className="flex items-center gap-2">
         <h2 className="font-display text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">
           {t('home.stalled.title')}
         </h2>
-        <span aria-hidden className="h-[2px] w-10 rounded-full bg-accent/70" />
-      </div>
+      </header>
 
-      <div className="card-liquid flex flex-col gap-2 rounded-container p-3 md:p-5">
-        {loading ? (
-          <ul className="flex flex-col gap-2">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <li key={i} className="h-16 animate-pulse rounded-card bg-surface-2" />
-            ))}
-          </ul>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {stalled.map((ex) => (
-              <StalledLiftRow key={ex.exerciseId} ex={ex} />
-            ))}
-          </ul>
-        )}
-      </div>
+      {loading ? (
+        <ul className="flex flex-col gap-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <li key={i} className="h-16 animate-pulse rounded-card bg-surface-2" />
+          ))}
+        </ul>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {stalled.map((ex) => (
+            <StalledLiftRow key={ex.exerciseId} ex={ex} />
+          ))}
+        </ul>
+      )}
     </section>
   )
 }

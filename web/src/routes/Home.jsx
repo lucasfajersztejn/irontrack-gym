@@ -149,15 +149,11 @@ export default function Home() {
       {/* Bloque Récords — all-time PRs por ejercicio, agrupados por
           músculo. Vive debajo del bloque Rendimiento (que mira a los
           últimos 30d) porque responde a una pregunta distinta: "cuál
-          es tu mejor marca histórica", no "qué cayó este mes". */}
-      <section className="flex flex-col gap-3">
-        <SectionHeading>{t('home.records')}</SectionHeading>
-        {data.loading ? (
-          <Skeleton className="h-48" />
-        ) : (
-          <RecordsCard />
-        )}
-      </section>
+          es tu mejor marca histórica", no "qué cayó este mes".
+          Card suelto: se auto-titula (como Estancados y Detalle), sin
+          SectionHeading — el `home.records` duplicaba el header del card.
+          RecordsCard trae su propio loading, así que no lo envolvemos. */}
+      <RecordsCard />
 
       {/* Bloque Estancados — ejercicios sin PR hace tiempo + plan de deload.
           Se auto-oculta cuando no hay ninguno, así que no reserva hueco en
