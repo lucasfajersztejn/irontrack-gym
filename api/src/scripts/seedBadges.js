@@ -249,6 +249,93 @@ const BADGES = [
     tier: 'oro',
     rule: { type: 'maxWeightSingleKg', operator: 'gte', value: 100 },
   },
+
+  // === Wave 2: calendario (requiere timeZone por sesión + weeklyGoal) ===
+
+  // --- Ritmo semanal: semanas CONSECUTIVAS cumpliendo la meta (weeklyGoal) ---
+  {
+    slug: 'goal-week-1',
+    name: { es: 'Semana completa', en: 'Full week' },
+    description: {
+      es: 'Cumpliste tu meta semanal una semana.',
+      en: 'You hit your weekly goal for a week.',
+    },
+    category: 'constancia',
+    tier: 'bronce',
+    rule: { type: 'maxGoalWeekStreak', operator: 'gte', value: 1 },
+  },
+  {
+    slug: 'goal-week-4',
+    name: { es: 'Ritmo perfecto', en: 'Perfect pace' },
+    description: {
+      es: 'Cuatro semanas seguidas cumpliendo tu meta.',
+      en: 'Four weeks in a row hitting your goal.',
+    },
+    category: 'constancia',
+    tier: 'plata',
+    rule: { type: 'maxGoalWeekStreak', operator: 'gte', value: 4 },
+  },
+  {
+    slug: 'goal-week-12',
+    name: { es: 'Trimestre perfecto', en: 'Perfect quarter' },
+    description: {
+      es: 'Doce semanas seguidas cumpliendo tu meta.',
+      en: 'Twelve weeks in a row hitting your goal.',
+    },
+    category: 'constancia',
+    tier: 'oro',
+    rule: { type: 'maxGoalWeekStreak', operator: 'gte', value: 12 },
+  },
+
+  // --- Meses naturales con al menos una sesión ---
+  {
+    slug: 'months-active-6',
+    name: { es: 'Medio año activo', en: 'Half a year active' },
+    description: {
+      es: 'Entrenaste en seis meses distintos.',
+      en: 'You trained across six different months.',
+    },
+    category: 'constancia',
+    tier: 'plata',
+    rule: { type: 'distinctActiveMonths', operator: 'gte', value: 6 },
+  },
+  {
+    slug: 'months-active-12',
+    name: { es: 'Año de hierro', en: 'Iron year' },
+    description: {
+      es: 'Entrenaste en doce meses distintos.',
+      en: 'You trained across twelve different months.',
+    },
+    category: 'constancia',
+    tier: 'oro',
+    rule: { type: 'distinctActiveMonths', operator: 'gte', value: 12 },
+  },
+
+  // --- Fin de semana (día local, por eso necesita timeZone) ---
+  {
+    slug: 'weekend-10',
+    name: { es: 'Fin de semana guerrero', en: 'Weekend warrior' },
+    description: {
+      es: 'Diez sesiones en sábado o domingo.',
+      en: 'Ten sessions on a Saturday or Sunday.',
+    },
+    category: 'rareza',
+    tier: 'plata',
+    rule: { type: 'weekendSessions', operator: 'gte', value: 10 },
+  },
+
+  // --- Antigüedad de la cuenta (concepto y nombre nuevos; no toca 'Veterano') ---
+  {
+    slug: 'account-age-365',
+    name: { es: 'Aniversario', en: 'Anniversary' },
+    description: {
+      es: 'Un año desde que creaste tu cuenta.',
+      en: 'One year since you created your account.',
+    },
+    category: 'hitos',
+    tier: 'oro',
+    rule: { type: 'accountAgeDays', operator: 'gte', value: 365 },
+  },
 ]
 
 async function run() {

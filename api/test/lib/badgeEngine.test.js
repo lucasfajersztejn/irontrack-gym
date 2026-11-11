@@ -108,6 +108,77 @@ describe('computeUserMetrics', () => {
   })
 })
 
+describe('computeUserMetrics — calendario consciente de zona', () => {
+  const BA = 'America/Argentina/Buenos_Aires' // UTC-3, sin DST
+
+  function s(startedAt, timeZone) {
+    return { startedAt: new Date(startedAt), timeZone, entries: [] }
+  }
+
+  it('el día lo decide la zona local, no UTC (racha)', () => {
+    // Las dos caen el 1 de enero en UTC, pero en Buenos Aires la primera fue el
+    // 31 de diciembre a las 23:00. Local => dos días consecutivos => racha 2.
+    const sessions = [
+      s('2026-01-01T02:00:00Z', BA), // local 2025-12-31
+      s('2026-01-01T12:00:00Z', BA), // local 2026-01-01
+    ]
+    expect(computeUserMetrics(sessions).maxStreak).toBe(2)
+  })
+
+  it('cuenta fin de semana por el día LOCAL', () => {
+    const sessions = [
+      s('2026-01-10T12:00:00Z', 'UTC'), // sábado en UTC -> cuenta
+      s('2026-01-10T02:00:00Z', BA), // local viernes 23:00 -> NO cuenta
+    ]
+    expect(computeUserMetrics(sessions).weekendSessions).toBe(1)
+  })
+
+  it('mide semanas CONSECUTIVAS que cumplen la meta', () => {
+    const sessions = [
+      // Semana A (lun 05 / mar 06 ene): 2 sesiones
+      s('2026-01-05T10:00:00Z', 'UTC'),
+      s('2026-01-06T10:00:00Z', 'UTC'),
+      // Semana B (lun 12 / mar 13 ene): 2 sesiones -> consecutiva con A
+      s('2026-01-12T10:00:00Z', 'UTC'),
+      s('2026-01-13T10:00:00Z', 'UTC'),
+      // Semana D (lun 26 / mar 27 ene): 2 sesiones, pero se saltó la semana C
+      s('2026-01-26T10:00:00Z', 'UTC'),
+      s('2026-01-27T10:00:00Z', 'UTC'),
+    ]
+    const m = computeUserMetrics(sessions, { weeklyGoal: 2 })
+    expect(m.maxGoalWeekStreak).toBe(2) // A-B seguidas; D rompe
+  })
+
+  it('una semana por debajo de la meta no cuenta', () => {
+    const sessions = [s('2026-01-05T10:00:00Z', 'UTC')] // 1 sesión
+    expect(computeUserMetrics(sessions, { weeklyGoal: 2 }).maxGoalWeekStreak).toBe(0)
+  })
+
+  it('cuenta meses naturales distintos', () => {
+    const sessions = [
+      s('2026-01-10T10:00:00Z', 'UTC'),
+      s('2026-01-20T10:00:00Z', 'UTC'), // mismo mes
+      s('2026-02-02T10:00:00Z', 'UTC'),
+    ]
+    expect(computeUserMetrics(sessions).distinctActiveMonths).toBe(2)
+  })
+
+  it('deriva la antigüedad de la cuenta en días', () => {
+    const m = computeUserMetrics([], {
+      createdAt: new Date('2025-01-01T00:00:00Z'),
+      now: new Date('2026-01-01T00:00:00Z'),
+    })
+    expect(m.accountAgeDays).toBe(365)
+  })
+
+  it('sin timeZone cae a UTC sin romper', () => {
+    const sessions = [{ startedAt: new Date('2026-03-01T10:00:00Z'), entries: [] }]
+    const m = computeUserMetrics(sessions)
+    expect(m.sessionCount).toBe(1)
+    expect(m.distinctActiveMonths).toBe(1)
+  })
+})
+
 describe('evaluateBadges', () => {
   const metrics = { maxStreak: 7, sessionCount: 12, totalVolumeKg: 15000 }
 

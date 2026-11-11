@@ -21,23 +21,67 @@
 import Session from '../models/session.model.js'
 import Badge from '../models/badge.model.js'
 import UserBadge from '../models/userBadge.model.js'
+import User from '../models/user.model.js'
 
 // ---------------------------------------------------------------------------
 // Métricas derivadas de las sesiones
 // ---------------------------------------------------------------------------
 
 /**
- * Clave de día en UTC (YYYY-MM-DD). La racha se mide sobre días naturales y,
- * sin zona horaria del usuario guardada, UTC es la referencia determinista.
- * Una sesión a las 23:30 hora local junto a otra a las 00:30 podría caer en el
- * mismo día UTC o en días distintos; para una racha de 7/30/100 días el margen
- * es irrelevante, y es coherente con no inventar una zona que no tenemos.
+ * Partes de calendario LOCAL de una sesión, en la zona en la que se entrenó.
+ *
+ * `startedAt` es un instante absoluto; la zona (`timeZone`, IANA) se guardó al
+ * crear la sesión. Con las dos cosas derivamos el día, el mes, la semana ISO y
+ * el día de la semana TAL COMO los vivió el usuario, no como caen en UTC ni en
+ * la zona de quien mira la pantalla después. Una sesión a las 02:00Z en
+ * Argentina (UTC-3) fue a las 23:00 del día ANTERIOR: eso es lo que cuenta para
+ * la racha y el fin de semana.
+ *
+ * Sin `timeZone` (datos viejos, backfill) el fallback es UTC: determinista y
+ * equivalente al comportamiento anterior, en vez de inventar una zona.
+ *
+ * Devuelve también `weekStartMs`: el lunes 00:00 (como instante UTC construido
+ * desde la fecha local) de la semana ISO. Sirve para medir semanas consecutivas
+ * sin volver a mezclar zonas.
  */
-function toUtcDayKey(dateLike) {
+function localParts(dateLike, timeZone) {
   const d = new Date(dateLike)
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(
-    d.getUTCDate(),
-  ).padStart(2, '0')}`
+  let parts
+  try {
+    parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d)
+  } catch {
+    // Zona inválida -> UTC. No debería ocurrir (se valida al crear), pero el
+    // motor nunca debe romper por un dato sucio.
+    parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d)
+  }
+  const get = (t) => parts.find((p) => p.type === t).value
+  const year = Number(get('year'))
+  const month = Number(get('month'))
+  const day = Number(get('day'))
+
+  // La fecha local se trata como un instante UTC para derivar día de semana e
+  // ISO week de forma determinista (ya no hay zona de por medio: es una fecha).
+  const localUtc = new Date(Date.UTC(year, month - 1, day))
+  const weekday = localUtc.getUTCDay() // 0=domingo … 6=sábado
+  const mondayOffset = (weekday + 6) % 7 // lunes=0 … domingo=6
+  const weekStartMs = Date.UTC(year, month - 1, day - mondayOffset)
+
+  return {
+    dayKey: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+    monthKey: `${year}-${String(month).padStart(2, '0')}`,
+    weekday,
+    weekStartMs,
+  }
 }
 
 function dayKeyToUtcMs(key) {
@@ -65,23 +109,59 @@ function maxConsecutiveDays(dayKeys) {
 }
 
 /**
+ * Máxima tira de valores CONSECUTIVOS separados exactamente por `step` ms.
+ * Mismo patrón que maxConsecutiveDays pero sobre instantes (lo usamos para
+ * semanas: cada entrada es el lunes de una semana que cumplió la meta, y
+ * "consecutivas" = lunes separados por 7 días).
+ */
+function maxConsecutiveSteps(msValues, step) {
+  if (msValues.length === 0) return 0
+  const sorted = [...new Set(msValues)].sort((a, b) => a - b)
+  let best = 1
+  let run = 1
+  for (let i = 1; i < sorted.length; i += 1) {
+    run = sorted[i] - sorted[i - 1] === step ? run + 1 : 1
+    if (run > best) best = run
+  }
+  return best
+}
+
+/**
  * Convierte las sesiones cerradas en las métricas que el motor compara.
- * Entrada: documentos de sesión (lean) con startedAt y entries[].sets[].
+ * Entrada: documentos de sesión (lean) con startedAt, timeZone y entries[].sets[].
  * Solo cuentan las series `completed` con peso y reps > 0 para el volumen,
  * mismo criterio que el resto de agregaciones (una serie a medio escribir no
  * mueve nada).
+ *
+ * `opts` trae datos que NO viven en las sesiones:
+ *  - `weeklyGoal`: sesiones/semana que el usuario se fijó (user.weeklyGoal). Es
+ *    el umbral de "semana cumplida".
+ *  - `createdAt`: alta de la cuenta, para la antigüedad.
+ *  - `now`: inyectable para tests deterministas.
  */
-export function computeUserMetrics(sessions = []) {
+export function computeUserMetrics(
+  sessions = [],
+  { weeklyGoal = 4, createdAt = null, now = new Date() } = {},
+) {
   let totalVolumeKg = 0
   let totalReps = 0
   let totalSets = 0
   let maxSessionVolumeKg = 0
   let maxSetsInSession = 0
   let maxWeightSingleKg = 0
+  let weekendSessions = 0
   const dayKeys = []
+  const monthKeys = new Set()
+  // weekStartMs (lunes local) -> nº de sesiones de esa semana.
+  const weekCounts = new Map()
 
   for (const s of sessions) {
-    dayKeys.push(toUtcDayKey(s.startedAt))
+    // Día, mes, semana y día-de-semana en la zona donde se entrenó.
+    const { dayKey, monthKey, weekday, weekStartMs } = localParts(s.startedAt, s.timeZone)
+    dayKeys.push(dayKey)
+    monthKeys.add(monthKey)
+    weekCounts.set(weekStartMs, (weekCounts.get(weekStartMs) ?? 0) + 1)
+    if (weekday === 0 || weekday === 6) weekendSessions += 1 // domingo o sábado
 
     // Acumuladores POR sesión, para derivar los máximos "en una sola sesión"
     // sin un segundo recorrido. El volumen de sesión usa el mismo criterio que
@@ -119,6 +199,15 @@ export function computeUserMetrics(sessions = []) {
     if (sessionSets > maxSetsInSession) maxSetsInSession = sessionSets
   }
 
+  // Semanas que cumplieron la meta, por su lunes. "Ritmo perfecto" pide que
+  // sean CONSECUTIVAS (decisión de producto), así que medimos la mayor tira de
+  // lunes separados por 7 días exactos.
+  const goalWeekMondays = []
+  for (const [weekStartMs, count] of weekCounts) {
+    if (count >= weeklyGoal) goalWeekMondays.push(weekStartMs)
+  }
+  const WEEK = 7 * 24 * 60 * 60 * 1000
+
   return {
     sessionCount: sessions.length,
     totalVolumeKg,
@@ -128,6 +217,12 @@ export function computeUserMetrics(sessions = []) {
     maxSetsInSession,
     maxWeightSingleKg,
     maxStreak: maxConsecutiveDays(dayKeys),
+    maxGoalWeekStreak: maxConsecutiveSteps(goalWeekMondays, WEEK),
+    distinctActiveMonths: monthKeys.size,
+    weekendSessions,
+    accountAgeDays: createdAt
+      ? Math.max(0, Math.floor((now - new Date(createdAt)) / (24 * 60 * 60 * 1000)))
+      : 0,
   }
 }
 
@@ -158,6 +253,14 @@ function metricForRuleType(type, metrics) {
       return metrics.maxSetsInSession
     case 'maxWeightSingleKg':
       return metrics.maxWeightSingleKg
+    case 'maxGoalWeekStreak':
+      return metrics.maxGoalWeekStreak
+    case 'distinctActiveMonths':
+      return metrics.distinctActiveMonths
+    case 'weekendSessions':
+      return metrics.weekendSessions
+    case 'accountAgeDays':
+      return metrics.accountAgeDays
     default:
       return null
   }
@@ -235,17 +338,24 @@ export function badgeProgress(badge, metrics) {
  * mostrarlas — p.ej. el "recién desbloqueado" del muro.
  */
 export async function evaluateAndPersist(userId) {
-  const [sessions, badges, existing] = await Promise.all([
+  const [sessions, badges, existing, user] = await Promise.all([
     // Solo sesiones cerradas: una sesión en curso no cuenta como entreno hecho
-    // ni para el conteo ni para la racha.
+    // ni para el conteo ni para la racha. timeZone entra porque el día/semana
+    // local de cada sesión se deriva de ella.
     Session.find({ user: userId, endedAt: { $ne: null } })
-      .select('startedAt entries.tracking entries.sets.weightKg entries.sets.reps entries.sets.completed')
+      .select('startedAt timeZone entries.tracking entries.sets.weightKg entries.sets.reps entries.sets.completed')
       .lean(),
     Badge.find().lean(),
     UserBadge.find({ user: userId }).select('badge').lean(),
+    // weeklyGoal (umbral de semana cumplida) y createdAt (antigüedad) no viven
+    // en las sesiones.
+    User.findById(userId).select('weeklyGoal createdAt').lean(),
   ])
 
-  const metrics = computeUserMetrics(sessions)
+  const metrics = computeUserMetrics(sessions, {
+    weeklyGoal: user?.weeklyGoal,
+    createdAt: user?.createdAt,
+  })
   const unlockedBadgeIds = new Set(existing.map((ub) => ub.badge.toString()))
   const newlyUnlocked = evaluateBadges(badges, metrics, unlockedBadgeIds)
 

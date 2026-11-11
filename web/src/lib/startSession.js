@@ -18,9 +18,14 @@ import { api } from './api.js'
 */
 export async function startSession(routineId) {
   try {
+    // Zona horaria del dispositivo AHORA, al arrancar. El backend la congela en
+    // la sesión para derivar el día/semana local del entreno (medallas de
+    // calendario), independiente de desde dónde se consulte luego.
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
     const created = await api('/api/sessions', {
       method: 'POST',
-      body: routineId ? { routine: routineId } : {},
+      body: routineId ? { routine: routineId, timeZone } : { timeZone },
     })
     return created
   } catch (err) {

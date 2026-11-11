@@ -122,6 +122,17 @@ const sessionSchema = new mongoose.Schema({
   endedAt:   { type: Date, default: null },
 
   /**
+   * Zona horaria IANA del dispositivo al EMPEZAR la sesión (p.ej.
+   * "America/Argentina/Buenos_Aires"). `startedAt` es el instante absoluto;
+   * esta zona lo ancla al día/semana/día-de-semana LOCAL en que se entrenó, y
+   * ese anclaje no cambia aunque luego se mire desde otro huso. De ella salen
+   * las medallas de calendario (semana, fin de semana, meses activos).
+   *
+   * null = sesión antigua o cliente que no la envió: el motor cae a UTC.
+   */
+  timeZone: { type: String, default: null, trim: true, maxlength: 64 },
+
+  /**
    * true = la sesión se cerró sola porque el usuario se olvidó de darle a
    * "terminar". Un job detrás cierra las sesiones abiertas > MAX_SESSION_HOURS,
    * fija endedAt y marca este flag para que el usuario sepa que esa duración

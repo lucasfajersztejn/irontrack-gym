@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import Badge from '../models/badge.model.js'
 import UserBadge from '../models/userBadge.model.js'
 import Session from '../models/session.model.js'
+import User from '../models/user.model.js'
 import { computeUserMetrics, badgeProgress } from '../lib/badgeEngine.js'
 import { BADGE_CATEGORIES, BADGE_TIERS } from '../models/constants.js'
 
@@ -25,15 +26,19 @@ export const getBadges = async (req, res, next) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user.id)
 
-    const [badges, userBadges, sessions] = await Promise.all([
+    const [badges, userBadges, sessions, user] = await Promise.all([
       Badge.find().lean(),
       UserBadge.find({ user: userId }).select('badge unlockedAt progress').lean(),
       Session.find({ user: userId, endedAt: { $ne: null } })
-        .select('startedAt entries.tracking entries.sets.weightKg entries.sets.reps entries.sets.completed')
+        .select('startedAt timeZone entries.tracking entries.sets.weightKg entries.sets.reps entries.sets.completed')
         .lean(),
+      User.findById(userId).select('weeklyGoal createdAt').lean(),
     ])
 
-    const metrics = computeUserMetrics(sessions)
+    const metrics = computeUserMetrics(sessions, {
+      weeklyGoal: user?.weeklyGoal,
+      createdAt: user?.createdAt,
+    })
     const unlockedByBadge = new Map(userBadges.map((ub) => [ub.badge.toString(), ub]))
 
     const catIndex = (c) => {

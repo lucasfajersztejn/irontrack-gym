@@ -52,8 +52,27 @@ const createSchema = z.object({
   // null explícito = sesión libre. Omitir también = sesión libre.
   routine: objectIdSchema.nullable().optional(),
   startedAt: z.coerce.date().optional(),
+  // Zona IANA del dispositivo al empezar. Zod solo valida forma (string corto);
+  // que sea una zona REAL se comprueba abajo con Intl, porque la lista válida
+  // la conoce el runtime, no el esquema.
+  timeZone: z.string().trim().max(64).optional(),
   notes: z.string().trim().max(1000).optional(),
 })
+
+/**
+ * ¿Es `tz` una zona IANA que el runtime reconoce? Construir un
+ * Intl.DateTimeFormat con una zona inválida lanza RangeError; lo usamos como
+ * validador en vez de mantener una lista a mano.
+ */
+function isValidTimeZone(tz) {
+  if (!tz) return false
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: tz })
+    return true
+  } catch {
+    return false
+  }
+}
 
 const updateSchema = z.object({
   entries: z.array(entrySchema).optional(),
@@ -515,6 +534,10 @@ export async function createSession(req, res, next) {
     const doc = {
       user: req.user.id,
       startedAt: parsed.data.startedAt || new Date(),
+      // Zona válida -> se guarda; inválida o ausente -> null (el motor cae a
+      // UTC). Nunca rechazamos el create por una zona rara: perder el entreno
+      // sería peor que perder la precisión de una medalla de calendario.
+      timeZone: isValidTimeZone(parsed.data.timeZone) ? parsed.data.timeZone : null,
       notes: parsed.data.notes,
       entries: [],
       routine: null,
