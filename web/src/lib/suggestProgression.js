@@ -129,3 +129,32 @@ export function suggestNextSetInSession({ lastSet } = {}) {
     reps: nextReps,
   }
 }
+
+// Recorte del deload. 10% es el estándar de libro: suficiente para romper la
+// fatiga acumulada sin perder tanto que la vuelta se haga eterna.
+const DELOAD_FRACTION = 0.1
+
+/**
+ * Peso de arranque sugerido para romper una meseta: baja ~10% desde el pico y
+ * cuadra a la rejilla de 2.5 kg. A partir de ahí la rampa es el +2.5 por
+ * sesión que ya aplica suggestFirstSetOfDay — el deload solo decide DÓNDE
+ * reempezar, no cambia cómo se sube.
+ *
+ * A diferencia de las otras dos funciones, trabaja sobre el PESO TOTAL que
+ * muestra la curva (kg), no sobre el número por lado: vive en el dashboard,
+ * junto al gráfico que ya habla en totales, no en el input de la sesión viva.
+ * La conversión fina por lado sigue siendo trabajo de la pantalla de entrenar.
+ *
+ * @param {object} params
+ * @param {number|null} params.peakKg  mayor peso real levantado en el ejercicio.
+ * @returns {number|null}  peso de arranque, o null si no hay pico que recortar.
+ */
+export function suggestDeload({ peakKg } = {}) {
+  if (peakKg == null || peakKg <= 0) return null
+  const target = snapToStep(peakKg * (1 - DELOAD_FRACTION))
+  // Si el redondeo devuelve el propio pico (pesos pequeños donde el 10% no
+  // llega a un escalón), bajamos un escalón a mano: un "deload" que no baja
+  // nada no es un deload.
+  if (target >= peakKg) return Math.max(0, snapToStep(peakKg - STEP_KG))
+  return target
+}

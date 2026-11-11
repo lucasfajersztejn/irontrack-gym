@@ -77,6 +77,16 @@
     "prHeaviest": "Top set",
     "prOneRm": "Est. 1RM",
     "prReps": "Reps",
+    "stalled": {
+      "title": "Stalled",
+      "empty": "Nothing stalled — you're still progressing everywhere.",
+      "since_one": "No PR in {{count}} session",
+      "since_other": "No PR in {{count}} sessions",
+      "peak": "Peak {{weight}} kg",
+      "plan": "Try dropping to {{weight}} kg and adding 2.5 kg per session.",
+      "expandAria": "Show {{name}} progress",
+      "collapseAria": "Hide {{name}} progress"
+    },
     "streak": "Current streak",
     "days": "days",
     "thisWeek": "This week",

@@ -5,6 +5,7 @@ import NextWorkoutCard from '../components/home/NextWorkoutCard.jsx'
 import RecentPrsCard from '../components/home/RecentPrsCard.jsx'
 import RecordsCard from '../components/home/RecordsCard.jsx'
 import SelectedWorkoutCard from '../components/home/SelectedWorkoutCard.jsx'
+import StalledCard from '../components/home/StalledCard.jsx'
 import StatTile from '../components/home/StatTile.jsx'
 import ActivityHeatmap from '../components/home/ActivityHeatmap.jsx'
 import WeekDashboard from './WeekStats.jsx'
@@ -157,6 +158,12 @@ export default function Home() {
           <RecordsCard />
         )}
       </section>
+
+      {/* Bloque Estancados — ejercicios sin PR hace tiempo + plan de deload.
+          Se auto-oculta cuando no hay ninguno, así que no reserva hueco en
+          el Home de un usuario que progresa en todo. Vive tras Récords
+          porque responde a "dónde atascarte", no a "cuál es tu techo". */}
+      <StalledCard />
 
       {/* Bloque 3 — Actividad: tiles grandes + dashboard semanal embebido.
           Las tiles usan size="lg" para equiparar peso visual al bloque

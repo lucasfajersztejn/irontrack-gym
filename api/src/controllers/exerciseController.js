@@ -802,6 +802,153 @@ export const getRecentPrs = async (req, res, next) => {
   }
 }
 
+// ---------------------------------------------------------------------------
+// GET /api/exercises/stalled  -> ejercicios en los que no mejoras hace tiempo
+// ---------------------------------------------------------------------------
+
+/**
+ * Detecta ejercicios ESTANCADOS: aquellos en los que el usuario no bate su
+ * mejor 1RM estimado desde hace unas cuantas sesiones, pero que sigue
+ * entrenando de forma activa.
+ *
+ * Es el negativo de /recent-prs. Aquel lista lo que SÍ mejoró; este, lo que
+ * lleva tiempo plano. Juntos cuentan la historia completa: dónde progresas y
+ * dónde conviene cambiar de estrategia.
+ *
+ * Reglas (fijadas por el usuario, ver memoria progression-rules):
+ *
+ *   - Métrica: mejor 1RM estimado (Epley) del día. Captura tanto subir peso
+ *     como subir reps — 100×5 supera a 100×4 aunque la carga no cambie —, que
+ *     es más justo que mirar solo el peso máximo.
+ *   - Umbral: >= 6 sesiones del ejercicio sin batir el 1RM. Una serie plana
+ *     corta es ruido normal; seis sesiones ya es una meseta.
+ *   - Ventana de actividad: la última sesión del ejercicio debe ser de las
+ *     últimas 8 semanas. Un ejercicio que dejaste hace meses no está
+ *     "estancado", está abandonado; marcarlo sería ruido en la tarjeta.
+ *
+ * Implementación: un solo barrido cronológico en JS, igual que /recent-prs.
+ * Mongo no expresa bien un "running max con índice del pico" sin pipelines
+ * frágiles, y el historial de un usuario cabe de sobra en memoria.
+ *
+ * Solo `weight_reps`: ni el cardio ni los asistidos tienen un "1RM" que
+ * signifique lo mismo, misma frontera que el resto de endpoints de progreso.
+ */
+const STALL_MIN_SESSIONS_SINCE_PR = 6
+const STALL_RECENT_WEEKS = 8
+
+export const getStalled = async (req, res, next) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.id)
+    const cutoff = new Date(
+      Date.now() - STALL_RECENT_WEEKS * 7 * 24 * 60 * 60 * 1000,
+    )
+
+    // Todas las sesiones cerradas del usuario, en orden cronológico, con solo
+    // los campos que el barrido consume. `endedAt: { $ne: null }` descarta la
+    // sesión en curso: sus series a medio escribir no deben contar como "otra
+    // sesión sin PR" ni como actividad reciente.
+    const sessions = await Session.find({
+      user: userId,
+      endedAt: { $ne: null },
+    })
+      .select('startedAt entries.exercise entries.exerciseName entries.tracking entries.sets')
+      .sort({ startedAt: 1 })
+      .lean()
+
+    /*
+      Por ejercicio acumulamos una línea temporal con un punto por sesión que
+      tenga trabajo VÁLIDO (al menos una serie completada con peso y reps > 0).
+      Una sesión en la que el ejercicio aparece pero no se registró nada no
+      cuenta como "sesión sin PR": no hubo intento que medir. Es el mismo
+      criterio que /:id/progress, para que la curva que ve el usuario y esta
+      detección hablen de los mismos puntos.
+    */
+    const byExercise = new Map()
+
+    for (const session of sessions) {
+      for (const entry of session.entries ?? []) {
+        if (entry.tracking !== 'weight_reps') continue
+
+        let sessionBest1RM = 0
+        let sessionHeaviest = 0
+        for (const set of entry.sets ?? []) {
+          if (!set.completed) continue
+          const w = set.weightKg ?? 0
+          const r = set.reps ?? 0
+          if (w <= 0 || r <= 0) continue
+          const e1rm = w * (1 + r / 30)
+          if (e1rm > sessionBest1RM) sessionBest1RM = e1rm
+          if (w > sessionHeaviest) sessionHeaviest = w
+        }
+        if (sessionBest1RM <= 0) continue
+
+        const key = entry.exercise.toString()
+        if (!byExercise.has(key)) {
+          byExercise.set(key, { name: entry.exerciseName ?? null, points: [] })
+        }
+        const bucket = byExercise.get(key)
+        // El nombre denormalizado puede variar entre sesiones (rename de un
+        // custom); nos quedamos con el más reciente, que es el último en
+        // recorrerse por el orden cronológico.
+        if (entry.exerciseName) bucket.name = entry.exerciseName
+        bucket.points.push({
+          date: session.startedAt,
+          best1RM: sessionBest1RM,
+          heaviest: sessionHeaviest,
+        })
+      }
+    }
+
+    const stalled = []
+    for (const [exerciseId, { name, points }] of byExercise) {
+      // Índice del pico de 1RM. `>` estricto conserva la PRIMERA vez que se
+      // alcanzó el máximo: "sin PR desde entonces" se mide desde ahí, no
+      // desde una repetición posterior del mismo número.
+      let peakIndex = 0
+      for (let i = 1; i < points.length; i += 1) {
+        if (points[i].best1RM > points[peakIndex].best1RM) peakIndex = i
+      }
+
+      const sessionsSince = points.length - 1 - peakIndex
+      const lastSessionAt = points[points.length - 1].date
+
+      if (
+        sessionsSince >= STALL_MIN_SESSIONS_SINCE_PR &&
+        new Date(lastSessionAt) >= cutoff
+      ) {
+        // Peso del pico: el mayor peso real levantado hasta ese día. Es la
+        // referencia honesta para proponer un deload — no el 1RM estimado,
+        // que es una cifra que nadie carga en la barra.
+        let peakHeaviestKg = 0
+        for (let i = 0; i <= peakIndex; i += 1) {
+          if (points[i].heaviest > peakHeaviestKg) peakHeaviestKg = points[i].heaviest
+        }
+        stalled.push({
+          exerciseId,
+          exerciseName: name,
+          peakBest1RM: Math.round(points[peakIndex].best1RM * 10) / 10,
+          peakHeaviestKg,
+          peakAt: points[peakIndex].date,
+          sessionsSince,
+          lastSessionAt,
+        })
+      }
+    }
+
+    // Más estancado primero (más sesiones sin batir); empate, el más reciente
+    // arriba para que la tarjeta priorice lo que el usuario entrena ahora.
+    stalled.sort(
+      (a, b) =>
+        b.sessionsSince - a.sessionsSince ||
+        new Date(b.lastSessionAt) - new Date(a.lastSessionAt),
+    )
+
+    res.json({ stalled })
+  } catch (err) {
+    next(err)
+  }
+}
+
 export const deleteExercise = async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ message: 'Ejercicio no encontrado' })

@@ -77,6 +77,16 @@
     "prHeaviest": "Peso máx",
     "prOneRm": "1RM est.",
     "prReps": "Reps",
+    "stalled": {
+      "title": "Estancados",
+      "empty": "Nada estancado: sigues progresando en todo.",
+      "since_one": "Sin PR en {{count}} sesión",
+      "since_other": "Sin PR en {{count}} sesiones",
+      "peak": "Techo {{weight}} kg",
+      "plan": "Prueba bajar a {{weight}} kg y subir 2,5 kg por sesión.",
+      "expandAria": "Ver la evolución de {{name}}",
+      "collapseAria": "Ocultar la evolución de {{name}}"
+    },
     "streak": "Racha actual",
     "days": "días",
     "thisWeek": "Esta semana",

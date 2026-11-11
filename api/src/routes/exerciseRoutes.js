@@ -8,6 +8,7 @@ import {
   getExercisesHistory,
   getExerciseProgress,
   getRecentPrs,
+  getStalled,
   createExercise,
   updateExercise,
   deleteExercise,
@@ -30,6 +31,9 @@ router.get('/history', getExercisesHistory)
 // Segmento fijo antes de /:id — mismo motivo que /history: si se coloca
 // después, Express intenta castear "recent-prs" como ObjectId.
 router.get('/recent-prs', getRecentPrs)
+// Mismo motivo que /recent-prs: segmento fijo antes de /:id para que Express
+// no intente castear "stalled" como ObjectId.
+router.get('/stalled', getStalled)
 // /:id/progress va antes del /:id solo para dejar claro el agrupamiento;
 // Express casa segmentos exactos antes de los params, así que el orden entre
 // estos dos no cambia el comportamiento — pero juntos se leen mejor.
