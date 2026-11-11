@@ -476,6 +476,22 @@
       "generic": "Couldn't create the exercise. Try again."
     }
   },
+  "medals": {
+    "title": "Medals",
+    "settingsHint": "Your badges and what's left",
+    "counts": "{{unlocked}} of {{total}} unlocked",
+    "error": "Couldn't load your medals.",
+    "empty": "No medals in the catalog yet.",
+    "earned": "Earned",
+    "progress": "{{current}}/{{target}}",
+    "category": {
+      "constancia": "Consistency",
+      "volumen": "Volume",
+      "hitos": "Milestones",
+      "variedad": "Variety",
+      "rareza": "Rarity"
+    }
+  },
   "settings": {
     "title": "Settings",
     "intro": "Changes save as you make them.",

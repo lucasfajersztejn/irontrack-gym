@@ -30,6 +30,7 @@ const Routines = lazy(() => import('./routes/Routines.jsx'))
 const RoutineEditor = lazy(() => import('./routes/RoutineEditor.jsx'))
 const Training = lazy(() => import('./routes/Training.jsx'))
 const Settings = lazy(() => import('./routes/Settings.jsx'))
+const Medals = lazy(() => import('./routes/Medals.jsx'))
 // WeekStats pasa a montarse dentro de Home como <WeekDashboard />; la ruta
 // /stats/week solo sobrevive como redirect a /home para no romper bookmarks.
 export default function App() {
@@ -76,6 +77,8 @@ export default function App() {
         <Route path="/history" element={<Navigate to="/home" replace />} />
         <Route path="/stats/week" element={<Navigate to="/home" replace />} />
         <Route path="/settings" element={<Settings />} />
+        {/* Muro de insignias — colgado del perfil (se entra desde Settings). */}
+        <Route path="/medals" element={<Medals />} />
         {/*
           El tab Perfil de la bottom-nav apunta a /profile para no acoplarse a
           /settings todavía. Hoy redirige: cuando el perfil tenga pantalla

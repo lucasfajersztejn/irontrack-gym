@@ -155,6 +155,24 @@ export function evaluateBadges(badges = [], metrics, unlockedBadgeIds = new Set(
   return unlocked
 }
 
+/**
+ * Progreso de UNA insignia hacia su desbloqueo, para el muro: cuánto llevas
+ * de lo que pide. `current` es la métrica actual, `target` el umbral de la
+ * regla, `pct` el avance 0-100 (tope 100 aunque ya lo superes).
+ *
+ * Un tipo que el motor no mide todavía devuelve `current: null` y `pct: 0`:
+ * la insignia se pinta bloqueada y sin barra, en vez de con un progreso falso.
+ * `pct` asume reglas de acumulación (gte/gt), que son todas las de hoy; si un
+ * día entra una regla "menor que", su barra necesitará otro cálculo.
+ */
+export function badgeProgress(badge, metrics) {
+  const current = metricForRuleType(badge.rule.type, metrics)
+  const target = badge.rule.value
+  if (current == null) return { current: null, target, pct: 0 }
+  const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0
+  return { current, target, pct }
+}
+
 // ---------------------------------------------------------------------------
 // Servicio: leer, evaluar, persistir
 // ---------------------------------------------------------------------------

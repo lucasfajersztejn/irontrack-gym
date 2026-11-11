@@ -476,6 +476,22 @@
       "generic": "No pudimos crear el ejercicio. Vuelve a intentarlo."
     }
   },
+  "medals": {
+    "title": "Medallas",
+    "settingsHint": "Tus insignias y lo que te falta",
+    "counts": "{{unlocked}} de {{total}} desbloqueadas",
+    "error": "No se pudieron cargar las medallas.",
+    "empty": "Aún no hay medallas en el catálogo.",
+    "earned": "Conseguida",
+    "progress": "{{current}}/{{target}}",
+    "category": {
+      "constancia": "Constancia",
+      "volumen": "Volumen",
+      "hitos": "Hitos",
+      "variedad": "Variedad",
+      "rareza": "Rareza"
+    }
+  },
   "settings": {
     "title": "Ajustes",
     "intro": "Los cambios se guardan al instante.",
