@@ -107,9 +107,14 @@ export const BADGE_TIERS = ['bronce', 'plata', 'oro'];
  * de romper. Así el catálogo puede adelantarse al motor sin acoplarse a él.
  */
 export const BADGE_RULE_TYPES = [
-  'streak',        // racha máxima de días consecutivos con sesión
-  'sessionCount',  // nº de sesiones cerradas
-  'totalVolumeKg', // suma de weightKg × reps de las series completadas
+  'streak',             // racha máxima de días consecutivos con sesión
+  'sessionCount',       // nº de sesiones cerradas
+  'totalVolumeKg',      // suma de weightKg × reps de las series completadas
+  'totalReps',          // suma de reps de todas las series completadas
+  'totalSets',          // nº de series completadas (cualquier tracking)
+  'maxSessionVolumeKg', // mayor volumen (kg) en una sola sesión
+  'maxSetsInSession',   // más series completadas en una sola sesión
+  'maxWeightSingleKg',  // mayor peso levantado en una sola serie
 ];
 
 /** Comparadores de la regla declarativa. */

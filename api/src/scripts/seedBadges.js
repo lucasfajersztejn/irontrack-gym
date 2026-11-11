@@ -55,7 +55,10 @@ const BADGES = [
   },
   {
     slug: 'streak-100',
-    name: { es: 'Centurión', en: 'Centurion' },
+    // Antes "Centurión": ese nombre pasó a la insignia de 100 series (sets-100),
+    // que es la lectura literal de centurión. La racha de 100 días ya se
+    // describía como "Imparable", así que el nombre encaja sin inventar nada.
+    name: { es: 'Imparable', en: 'Unstoppable' },
     description: {
       es: 'Cien días consecutivos. Imparable.',
       en: 'One hundred days in a row. Unstoppable.',
@@ -133,6 +136,118 @@ const BADGES = [
     category: 'volumen',
     tier: 'oro',
     rule: { type: 'totalVolumeKg', operator: 'gte', value: 500000 },
+  },
+
+  // === Wave 1: métricas nuevas de Session (totalReps, totalSets,
+  // maxSessionVolumeKg, maxSetsInSession, maxWeightSingleKg) ===
+
+  // --- Hito de arranque ---
+  {
+    slug: 'first-session',
+    name: { es: 'Primer paso', en: 'First step' },
+    description: {
+      es: 'Tu primera sesión registrada.',
+      en: 'Your first logged session.',
+    },
+    category: 'hitos',
+    tier: 'bronce',
+    rule: { type: 'sessionCount', operator: 'gte', value: 1 },
+  },
+
+  // --- Volumen: primer peldaño y máximos en una sola sesión ---
+  {
+    slug: 'volume-1000',
+    name: { es: 'Primera tonelada', en: 'First tonne' },
+    description: {
+      es: 'Mil kilos levantados en total.',
+      en: 'One thousand kilos lifted in total.',
+    },
+    category: 'volumen',
+    tier: 'bronce',
+    rule: { type: 'totalVolumeKg', operator: 'gte', value: 1000 },
+  },
+  {
+    slug: 'session-volume-500',
+    name: { es: 'Media tonelada diaria', en: 'Half a tonne in a day' },
+    description: {
+      es: 'Quinientos kilos en una sola sesión.',
+      en: 'Five hundred kilos in a single session.',
+    },
+    category: 'volumen',
+    tier: 'bronce',
+    rule: { type: 'maxSessionVolumeKg', operator: 'gte', value: 500 },
+  },
+  {
+    slug: 'session-volume-1500',
+    name: { es: 'Levanta un coche', en: 'Lift a car' },
+    description: {
+      es: 'Mil quinientos kilos en una sola sesión.',
+      en: 'Fifteen hundred kilos in a single session.',
+    },
+    category: 'volumen',
+    tier: 'plata',
+    rule: { type: 'maxSessionVolumeKg', operator: 'gte', value: 1500 },
+  },
+
+  // --- Series acumuladas ---
+  {
+    slug: 'sets-100',
+    name: { es: 'Centurión', en: 'Centurion' },
+    description: {
+      es: 'Cien series completadas en total.',
+      en: 'One hundred sets completed in total.',
+    },
+    category: 'hitos',
+    tier: 'plata',
+    rule: { type: 'totalSets', operator: 'gte', value: 100 },
+  },
+  {
+    slug: 'sets-1000',
+    name: { es: 'Mil series', en: 'A thousand sets' },
+    description: {
+      es: 'Mil series completadas en total.',
+      en: 'One thousand sets completed in total.',
+    },
+    category: 'hitos',
+    tier: 'oro',
+    rule: { type: 'totalSets', operator: 'gte', value: 1000 },
+  },
+
+  // --- Reps acumuladas ---
+  {
+    slug: 'reps-10000',
+    name: { es: 'Maratón de reps', en: 'Rep marathon' },
+    description: {
+      es: 'Diez mil repeticiones completadas.',
+      en: 'Ten thousand reps completed.',
+    },
+    category: 'hitos',
+    tier: 'oro',
+    rule: { type: 'totalReps', operator: 'gte', value: 10000 },
+  },
+
+  // --- Máximos en una sola sesión / serie ---
+  {
+    slug: 'session-sets-30',
+    name: { es: 'Gran sesión', en: 'Big session' },
+    description: {
+      es: 'Treinta series en una sola sesión.',
+      en: 'Thirty sets in a single session.',
+    },
+    category: 'hitos',
+    tier: 'plata',
+    rule: { type: 'maxSetsInSession', operator: 'gte', value: 30 },
+  },
+  {
+    slug: 'weight-100',
+    name: { es: 'Club de los 3 dígitos', en: 'Three-digit club' },
+    description: {
+      es: 'Cien kilos o más en una sola serie.',
+      en: 'One hundred kilos or more in a single set.',
+    },
+    category: 'hitos',
+    tier: 'oro',
+    rule: { type: 'maxWeightSingleKg', operator: 'gte', value: 100 },
   },
 ]
 

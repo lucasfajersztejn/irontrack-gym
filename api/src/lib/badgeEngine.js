@@ -73,24 +73,60 @@ function maxConsecutiveDays(dayKeys) {
  */
 export function computeUserMetrics(sessions = []) {
   let totalVolumeKg = 0
+  let totalReps = 0
+  let totalSets = 0
+  let maxSessionVolumeKg = 0
+  let maxSetsInSession = 0
+  let maxWeightSingleKg = 0
   const dayKeys = []
 
   for (const s of sessions) {
     dayKeys.push(toUtcDayKey(s.startedAt))
+
+    // Acumuladores POR sesión, para derivar los máximos "en una sola sesión"
+    // sin un segundo recorrido. El volumen de sesión usa el mismo criterio que
+    // el total (solo weight_reps completadas con peso y reps > 0).
+    let sessionVolumeKg = 0
+    let sessionSets = 0
+
     for (const entry of s.entries ?? []) {
-      if (entry.tracking !== 'weight_reps') continue
       for (const set of entry.sets ?? []) {
         if (!set.completed) continue
-        const w = set.weightKg ?? 0
+
+        // Una serie completada cuenta como serie sea cual sea el tracking: un
+        // isométrico o un tramo de cardio también es trabajo hecho.
+        totalSets += 1
+        sessionSets += 1
+
+        // reps existen en weight_reps y en reps; time/distance no las tienen.
         const r = set.reps ?? 0
-        if (w > 0 && r > 0) totalVolumeKg += w * r
+        if (r > 0) totalReps += r
+
+        // Peso y volumen solo tienen sentido en weight_reps.
+        if (entry.tracking !== 'weight_reps') continue
+        const w = set.weightKg ?? 0
+        if (w > 0 && r > 0) {
+          totalVolumeKg += w * r
+          sessionVolumeKg += w * r
+        }
+        // El récord de peso es el mayor levantado en UNA serie real (con reps),
+        // no un peso cargado y no ejecutado.
+        if (w > 0 && r > 0 && w > maxWeightSingleKg) maxWeightSingleKg = w
       }
     }
+
+    if (sessionVolumeKg > maxSessionVolumeKg) maxSessionVolumeKg = sessionVolumeKg
+    if (sessionSets > maxSetsInSession) maxSetsInSession = sessionSets
   }
 
   return {
     sessionCount: sessions.length,
     totalVolumeKg,
+    totalReps,
+    totalSets,
+    maxSessionVolumeKg,
+    maxSetsInSession,
+    maxWeightSingleKg,
     maxStreak: maxConsecutiveDays(dayKeys),
   }
 }
@@ -112,6 +148,16 @@ function metricForRuleType(type, metrics) {
       return metrics.sessionCount
     case 'totalVolumeKg':
       return metrics.totalVolumeKg
+    case 'totalReps':
+      return metrics.totalReps
+    case 'totalSets':
+      return metrics.totalSets
+    case 'maxSessionVolumeKg':
+      return metrics.maxSessionVolumeKg
+    case 'maxSetsInSession':
+      return metrics.maxSetsInSession
+    case 'maxWeightSingleKg':
+      return metrics.maxWeightSingleKg
     default:
       return null
   }

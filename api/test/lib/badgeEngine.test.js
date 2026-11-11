@@ -69,6 +69,43 @@ describe('computeUserMetrics', () => {
     expect(m.sessionCount).toBe(1)
     expect(m.maxStreak).toBe(1)
   })
+
+  it('deriva reps, series y máximos por sesión', () => {
+    const sessions = [
+      {
+        startedAt: new Date('2026-04-01T10:00:00Z'),
+        entries: [
+          {
+            tracking: 'weight_reps',
+            sets: [
+              { order: 0, completed: true, weightKg: 100, reps: 5 }, // vol 500
+              { order: 1, completed: true, weightKg: 120, reps: 3 }, // vol 360, peso récord
+              { order: 2, completed: false, weightKg: 200, reps: 1 }, // sin completar: nada
+            ],
+          },
+          {
+            tracking: 'time',
+            sets: [{ order: 0, completed: true, durationSec: 60 }], // serie sí, reps/peso no
+          },
+        ],
+      },
+      {
+        startedAt: new Date('2026-04-02T10:00:00Z'),
+        entries: [
+          {
+            tracking: 'weight_reps',
+            sets: [{ order: 0, completed: true, weightKg: 50, reps: 10 }], // vol 500
+          },
+        ],
+      },
+    ]
+    const m = computeUserMetrics(sessions)
+    expect(m.totalReps).toBe(18) // 5 + 3 + 10 (la serie de tiempo no aporta reps)
+    expect(m.totalSets).toBe(4) // 2 weight_reps + 1 time + 1 weight_reps (la no completada no)
+    expect(m.maxSessionVolumeKg).toBe(860) // sesión 1: 500 + 360
+    expect(m.maxSetsInSession).toBe(3) // sesión 1: 2 weight_reps completadas + 1 time
+    expect(m.maxWeightSingleKg).toBe(120)
+  })
 })
 
 describe('evaluateBadges', () => {
