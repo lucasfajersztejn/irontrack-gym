@@ -104,15 +104,18 @@ function BadgeTile({ badge, lang, t }) {
     <li className="flex flex-col items-center gap-2 text-center">
       <div
         // El hexágono. Desbloqueada: relleno de acento tenue + icono verde.
-        // Bloqueada: grafito elevado + icono muy apagado = la silueta visible.
+        // Bloqueada: superficie elevada (surface-3, un escalón por encima del
+        // fondo para que el medallón se lea) + icono a plena opacidad muted, que
+        // es la silueta. Antes era surface-2 + icono al 35%: casi invisible
+        // sobre el fondo, así que el muro parecía mostrar solo las ganadas.
         className={`flex aspect-square w-full items-center justify-center ${
-          unlocked ? 'bg-accent/20' : 'bg-surface-2'
+          unlocked ? 'bg-accent/20' : 'bg-surface-3'
         }`}
         style={{ clipPath: HEX_CLIP }}
         title={description}
       >
         <TrophyIcon
-          className={`h-6 w-6 ${unlocked ? 'text-accent' : 'text-text-muted/35'}`}
+          className={`h-6 w-6 ${unlocked ? 'text-accent' : 'text-text-muted'}`}
         />
       </div>
 
@@ -131,9 +134,12 @@ function BadgeTile({ badge, lang, t }) {
       ) : (
         progress.current != null && (
           <div className="flex w-full flex-col items-center gap-1">
-            <div className="h-1 w-full overflow-hidden rounded-full bg-bg">
+            {/* Pista sobre surface-2 (no bg) para que el carril se vea aunque
+                el progreso sea 0%. Relleno neutro, no verde: el verde señala
+                "ganada"; aquí es "lo que llevas", no un logro. */}
+            <div className="h-1 w-full overflow-hidden rounded-full bg-surface-2">
               <div
-                className="h-full rounded-full bg-accent/60"
+                className="h-full rounded-full bg-text-muted"
                 style={{ width: `${progress.pct}%` }}
               />
             </div>
