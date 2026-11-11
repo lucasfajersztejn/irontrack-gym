@@ -45,13 +45,13 @@ function formatKg(v) {
   return `${Number(v).toFixed(1)} kg`
 }
 
-function relativeDays(dateStr, now = new Date()) {
+function relativeDays(dateStr, t, now = new Date()) {
   if (!dateStr) return ''
   const diffMs = now - new Date(dateStr)
   const day = 86_400_000
   const days = Math.floor(diffMs / day)
-  if (days <= 0) return 'hoy'
-  if (days === 1) return 'ayer'
+  if (days <= 0) return t('home.relToday')
+  if (days === 1) return t('home.relYesterday')
   return `${days}d`
 }
 
@@ -163,7 +163,7 @@ export default function RecordsCard() {
                           ) : null}
                         </span>
                         <span className="shrink-0 tabular-nums">
-                          {relativeDays(primary?.achievedAt ?? rec.latestAt)}
+                          {relativeDays(primary?.achievedAt ?? rec.latestAt, t)}
                         </span>
                       </div>
                     </li>

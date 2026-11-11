@@ -77,6 +77,8 @@
     "prHeaviest": "Top set",
     "prOneRm": "Est. 1RM",
     "prReps": "Reps",
+    "relToday": "today",
+    "relYesterday": "yesterday",
     "stalled": {
       "title": "Stalled",
       "empty": "Nothing stalled — you're still progressing everywhere.",
