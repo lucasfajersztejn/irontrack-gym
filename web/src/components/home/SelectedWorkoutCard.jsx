@@ -7,6 +7,7 @@ import { useExerciseProgress } from '../../lib/useExerciseProgress.js'
 import { breakdownForSession } from '../../lib/useWeeklyStats.js'
 import ExerciseCurve from '../stats/ExerciseCurve.jsx'
 import MuscleChips from '../MuscleChips.jsx'
+import { ChevronRightIcon } from '../icons/NavIcons.jsx'
 
 /*
   "Detalle de entreno" — tercera card de rendimiento del Home.
@@ -145,6 +146,11 @@ export default function SelectedWorkoutCard({ sessions = [], loading }) {
 
   const [selectedId, setSelectedId] = useState(null)
   const [range, setRange] = useState('12w')
+  // Colapsado por defecto: esta card expande una ExerciseCurve por cada
+  // ejercicio de la sesión, lo que la vuelve el bloque más alto del Home.
+  // Cerrada de arranque, Home abre escaneable; al abrirla se montan las
+  // filas y recién ahí disparan sus fetches de progreso.
+  const [open, setOpen] = useState(false)
 
   // Mantén la selección sincronizada con la sesión más reciente mientras
   // no la haya cambiado el usuario (o cuando la elegida deja de existir
@@ -153,6 +159,10 @@ export default function SelectedWorkoutCard({ sessions = [], loading }) {
   useEffect(() => {
     if (recent.length === 0) return
     const stillValid = recent.some((s) => s._id === selectedId)
+    // Sincroniza la selección con la sesión más nueva cuando la elegida deja
+    // de existir (borrado) o en el primer load. Es el uso legítimo de setState
+    // en efecto: reaccionar a un cambio de datos externos, no un bucle.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!stillValid) setSelectedId(recent[0]._id)
   }, [recent, selectedId])
 
@@ -184,11 +194,24 @@ export default function SelectedWorkoutCard({ sessions = [], loading }) {
 
   return (
     <section className="card-liquid flex flex-col gap-4 rounded-container p-4 md:p-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="press flex w-full items-center gap-2 text-left transition-[filter,transform,color] hover:text-accent"
+      >
+        <ChevronRightIcon
+          className={`h-3.5 w-3.5 shrink-0 text-text-muted transition-transform ${
+            open ? 'rotate-90' : ''
+          }`}
+        />
         <h2 className="font-display text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">
           {t('home.selectedWorkout')}
         </h2>
-        <div className="flex flex-wrap items-center gap-2">
+      </button>
+
+      {open && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <label className="flex items-center gap-2 text-xs text-text-muted">
             <select
               value={selectedId ?? ''}
@@ -234,9 +257,9 @@ export default function SelectedWorkoutCard({ sessions = [], loading }) {
             })}
           </div>
         </div>
-      </header>
+      )}
 
-      {loadingDetail && !detail ? (
+      {open && (loadingDetail && !detail ? (
         <div className="space-y-3">
           <div className="h-10 w-full animate-pulse rounded-card bg-surface-2" />
           <div className="h-40 w-full animate-pulse rounded-card bg-surface-2" />
@@ -268,7 +291,7 @@ export default function SelectedWorkoutCard({ sessions = [], loading }) {
             </p>
           )}
         </div>
-      )}
+      ))}
     </section>
   )
 }
