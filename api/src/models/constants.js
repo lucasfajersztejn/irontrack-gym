@@ -84,6 +84,37 @@ export const BAR_INPUT_MODES = [
  */
 export const MAX_SESSION_HOURS = 4;
 
+// ---------------------------------------------------------------------------
+// Insignias (Fase 3) — catálogo declarativo
+// ---------------------------------------------------------------------------
+
+/** Familias de insignia. La categoría agrupa el muro, no cambia la evaluación. */
+export const BADGE_CATEGORIES = [
+  'constancia', // rachas de días con sesión
+  'volumen',    // kilos acumulados
+  'hitos',      // sesión nº 100, primer récord…
+  'variedad',   // entrenar todos los grupos en un mes
+  'rareza',     // madrugador y similares
+];
+
+/** Niveles. Solo estético/ordenación; no implican jerarquía de evaluación. */
+export const BADGE_TIERS = ['bronce', 'plata', 'oro'];
+
+/**
+ * Tipos de regla que el MOTOR sabe evaluar hoy. Una insignia con un `type`
+ * fuera de esta lista (p.ej. `earlyBird`, aplazado por la zona horaria) existe
+ * en el catálogo pero se queda bloqueada: el motor la ignora en silencio en vez
+ * de romper. Así el catálogo puede adelantarse al motor sin acoplarse a él.
+ */
+export const BADGE_RULE_TYPES = [
+  'streak',        // racha máxima de días consecutivos con sesión
+  'sessionCount',  // nº de sesiones cerradas
+  'totalVolumeKg', // suma de weightKg × reps de las series completadas
+];
+
+/** Comparadores de la regla declarativa. */
+export const BADGE_RULE_OPERATORS = ['gte', 'gt', 'lte', 'lt', 'eq'];
+
 /** Usernames que no se pueden registrar porque chocan con rutas de la app. */
 export const RESERVED_USERNAMES = [
   'admin', 'api', 'login', 'logout', 'signup', 'settings', 'profile', 'u',
