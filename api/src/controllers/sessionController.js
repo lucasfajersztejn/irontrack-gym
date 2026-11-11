@@ -3,6 +3,7 @@ import { z } from 'zod'
 import Session from '../models/session.model.js'
 import Routine from '../models/routine.model.js'
 import { MUSCLES, TRACKING_TYPES, MAX_SESSION_HOURS } from '../models/constants.js'
+import { evaluateAndPersist } from '../lib/badgeEngine.js'
 
 /**
  * Schemas Zod
@@ -686,6 +687,17 @@ export async function finishSession(req, res, next) {
           $set: { lastUsedAt: session.endedAt },
         },
       )
+    }
+
+    // Motor de insignias: cerrar una sesión es el evento del dominio que puede
+    // desbloquear una medalla. Va en try/catch propio porque NO debe tumbar el
+    // finish: si la evaluación falla, el entreno ya se cerró y el usuario no
+    // puede hacer nada con un 500 aquí. La próxima sesión (o el backfill)
+    // recupera lo que se perdiera, el motor es idempotente.
+    try {
+      await evaluateAndPersist(req.user.id)
+    } catch (err) {
+      console.error('[badges] evaluación tras finish falló:', err?.message)
     }
 
     res.json(session)

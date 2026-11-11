@@ -7,7 +7,9 @@
     "start": "node src/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed": "node src/scripts/seedExercises.js"
+    "seed": "node src/scripts/seedExercises.js",
+    "seed:badges": "node src/scripts/seedBadges.js",
+    "backfill:badges": "node src/scripts/backfillBadges.js"
   },
   "dependencies": {
     "better-auth": "^1.2.0",
