@@ -77,6 +77,8 @@
     "prHeaviest": "Peso máx",
     "prOneRm": "1RM est.",
     "prReps": "Reps",
+    "relToday": "hoy",
+    "relYesterday": "ayer",
     "stalled": {
       "title": "Estancados",
       "empty": "Nada estancado: sigues progresando en todo.",

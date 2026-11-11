@@ -40,13 +40,13 @@ function formatValue(kind, value) {
   return `${Number(value).toFixed(1)} kg`
 }
 
-function relativeDays(dateStr, now = new Date()) {
+function relativeDays(dateStr, t, now = new Date()) {
   const date = new Date(dateStr)
   const diffMs = now - date
   const day = 86_400_000
   const days = Math.floor(diffMs / day)
-  if (days <= 0) return 'hoy'
-  if (days === 1) return 'ayer'
+  if (days <= 0) return t('home.relToday')
+  if (days === 1) return t('home.relYesterday')
   return `${days}d`
 }
 
@@ -60,7 +60,6 @@ export default function RecentPrsCard() {
   // con el bloque Actividad de abajo. En desktop el ancho sobra y dejamos
   // la lista más larga.
   const visible = prs.slice(0, MAX_ROWS_DESKTOP)
-  const mobileExtra = visible.length - MAX_ROWS_MOBILE
 
   return (
     <section className="card-liquid flex h-full flex-col gap-2 rounded-container p-3 md:p-5">
@@ -112,7 +111,7 @@ export default function RecentPrsCard() {
                   {t(PR_LABEL_KEYS[pr.kind] ?? 'home.prHeaviest')}
                 </span>
                 <span className="shrink-0 tabular-nums">
-                  {relativeDays(pr.achievedAt)}
+                  {relativeDays(pr.achievedAt, t)}
                 </span>
               </div>
             </li>
