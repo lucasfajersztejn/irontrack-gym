@@ -6,6 +6,7 @@ import { useUser } from '../contexts/UserContext.jsx'
 import { useSettings } from '../lib/useSettings.js'
 import { REST_DEFAULT_SEC } from '../stores/sessionStore.js'
 import Avatar from '../components/Avatar.jsx'
+import { TrophyIcon, ChevronRightIcon } from '../components/icons/NavIcons.jsx'
 import SettingsSection from '../components/settings/SettingsSection.jsx'
 import SegmentedField from '../components/settings/SegmentedField.jsx'
 import StepperField from '../components/settings/StepperField.jsx'
@@ -145,6 +146,28 @@ export default function Settings() {
           </p>
         </div>
       </section>
+
+      {/* Medallas — destino, no ajuste. Settings es el hub del perfil (|/profile|
+          redirige aquí), así que el muro de insignias se entra desde una card
+          de navegación, no desde una fila de control. */}
+      <button
+        type="button"
+        onClick={() => navigate('/medals')}
+        className="press card-liquid flex items-center justify-between gap-3 rounded-container p-4 text-left transition-[filter,transform] hover:brightness-110 md:p-5"
+      >
+        <div className="flex items-center gap-3">
+          <TrophyIcon className="h-5 w-5 shrink-0 text-accent" />
+          <div className="min-w-0">
+            <p className="font-display text-sm font-semibold text-text">
+              {t('medals.title')}
+            </p>
+            <p className="truncate text-xs text-text-muted">
+              {t('medals.settingsHint')}
+            </p>
+          </div>
+        </div>
+        <ChevronRightIcon className="h-4 w-4 shrink-0 text-text-muted" />
+      </button>
 
       <SettingsSection
         title={t('settings.sections.training')}

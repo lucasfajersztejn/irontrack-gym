@@ -22,6 +22,7 @@ import userRoutes from './routes/userRoutes.js'
 import routineRoutes from './routes/routineRoutes.js'
 import sessionRoutes from './routes/sessionRoutes.js'
 import statsRoutes from './routes/statsRoutes.js'
+import badgeRoutes from './routes/badgeRoutes.js'
 
 connectDB()
 
@@ -83,6 +84,7 @@ app.use('/api/me', userRoutes)
 app.use('/api/routines', routineRoutes)
 app.use('/api/sessions', sessionRoutes)
 app.use('/api/stats', statsRoutes)
+app.use('/api/badges', badgeRoutes)
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', project: 'IronTrack API' })
