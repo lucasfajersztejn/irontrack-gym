@@ -115,6 +115,10 @@ export const BADGE_RULE_TYPES = [
   'maxSessionVolumeKg', // mayor volumen (kg) en una sola sesión
   'maxSetsInSession',   // más series completadas en una sola sesión
   'maxWeightSingleKg',  // mayor peso levantado en una sola serie
+  'maxGoalWeekStreak',  // semanas consecutivas cumpliendo la meta semanal
+  'distinctActiveMonths', // nº de meses naturales distintos con sesión
+  'weekendSessions',    // nº de sesiones en sábado o domingo (hora local)
+  'accountAgeDays',     // días desde el alta de la cuenta
 ];
 
 /** Comparadores de la regla declarativa. */
