@@ -630,6 +630,46 @@ const BADGES = [
     tier: 'plata',
     rule: { type: 'beatPrevWeekVolume', operator: 'gte', value: 1 },
   },
+
+  // === Wave 7: récords (mejoras de 1RM estimado o reps por ejercicio, solo desde Session) ===
+  // Primer récord: registrar un ejercicio por primera vez ya cuenta como récord.
+  {
+    slug: 'pr-1',
+    name: { es: 'Récord personal', en: 'Personal record' },
+    description: {
+      es: 'Batiste tu primer récord personal en un ejercicio.',
+      en: 'Set your first personal record in an exercise.',
+    },
+    category: 'hitos',
+    tier: 'bronce',
+    rule: { type: 'prCount', operator: 'gte', value: 1 },
+  },
+
+  // Diez récords batidos (máximo uno por ejercicio y sesión).
+  {
+    slug: 'pr-10',
+    name: { es: 'Rompe-récords', en: 'Record breaker' },
+    description: {
+      es: 'Batiste diez récords personales.',
+      en: 'Broke ten personal records.',
+    },
+    category: 'hitos',
+    tier: 'plata',
+    rule: { type: 'prCount', operator: 'gte', value: 10 },
+  },
+
+  // Cincuenta récords batidos.
+  {
+    slug: 'pr-50',
+    name: { es: 'Máquina de récords', en: 'Record machine' },
+    description: {
+      es: 'Batiste cincuenta récords personales.',
+      en: 'Broke fifty personal records.',
+    },
+    category: 'hitos',
+    tier: 'oro',
+    rule: { type: 'prCount', operator: 'gte', value: 50 },
+  },
 ]
 
 async function run() {
