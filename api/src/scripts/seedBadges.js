@@ -336,6 +336,82 @@ const BADGES = [
     tier: 'oro',
     rule: { type: 'accountAgeDays', operator: 'gte', value: 365 },
   },
+
+  // === Wave 3: hora local (madrugador/búho) + difusos del heatmap ===
+
+  // --- Franja horaria (hora local de inicio) ---
+  {
+    slug: 'early-bird',
+    name: { es: 'Madrugador', en: 'Early bird' },
+    description: {
+      es: 'Cinco sesiones empezadas antes de las 7.',
+      en: 'Five sessions started before 7 a.m.',
+    },
+    category: 'rareza',
+    tier: 'plata',
+    rule: { type: 'earlyBirdSessions', operator: 'gte', value: 5 },
+  },
+  {
+    slug: 'night-owl',
+    name: { es: 'Búho nocturno', en: 'Night owl' },
+    description: {
+      es: 'Cinco sesiones empezadas a partir de las 22.',
+      en: 'Five sessions started at 10 p.m. or later.',
+    },
+    category: 'rareza',
+    tier: 'plata',
+    rule: { type: 'nightOwlSessions', operator: 'gte', value: 5 },
+  },
+
+  // --- Heatmap: días distintos y semana completa ---
+  {
+    slug: 'active-days-100',
+    name: { es: 'Contribución verde', en: 'Green contribution' },
+    description: {
+      es: 'Cien días distintos con sesión.',
+      en: 'One hundred different days with a session.',
+    },
+    category: 'constancia',
+    tier: 'oro',
+    rule: { type: 'distinctActiveDays', operator: 'gte', value: 100 },
+  },
+  {
+    slug: 'full-week',
+    name: { es: 'Cuadrícula llena', en: 'Full grid' },
+    description: {
+      es: 'Los siete días de una semana con sesión.',
+      en: 'All seven days of a week with a session.',
+    },
+    category: 'constancia',
+    tier: 'plata',
+    rule: { type: 'maxDaysInWeek', operator: 'gte', value: 7 },
+  },
+
+  // --- Vuelta tras un parón ---
+  {
+    slug: 'comeback',
+    name: { es: 'Vuelta al ruedo', en: 'Back in the ring' },
+    description: {
+      es: 'Volviste tras treinta días sin entrenar.',
+      en: 'You came back after thirty days away.',
+    },
+    category: 'rareza',
+    tier: 'bronce',
+    rule: { type: 'longestGapDays', operator: 'gte', value: 30 },
+  },
+
+  // --- Retención: primer mes de cuenta ---
+  {
+    slug: 'first-month',
+    name: { es: 'Primer mes cumplido', en: 'First month done' },
+    description: {
+      es: 'Un mes desde que creaste tu cuenta.',
+      en: 'One month since you created your account.',
+    },
+    category: 'hitos',
+    tier: 'bronce',
+    rule: { type: 'accountAgeDays', operator: 'gte', value: 30 },
+  },
 ]
 
 async function run() {

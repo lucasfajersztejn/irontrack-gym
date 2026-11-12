@@ -179,6 +179,50 @@ describe('computeUserMetrics — calendario consciente de zona', () => {
   })
 })
 
+describe('computeUserMetrics — hora local y heatmap (Wave 3)', () => {
+  const BA = 'America/Argentina/Buenos_Aires' // UTC-3
+
+  function s(startedAt, timeZone) {
+    return { startedAt: new Date(startedAt), timeZone, entries: [] }
+  }
+
+  it('clasifica madrugada y noche por la hora LOCAL', () => {
+    const sessions = [
+      s('2026-01-05T09:00:00Z', BA), // local 06:00 -> madrugada
+      s('2026-01-05T01:00:00Z', BA), // local 22:00 del día anterior -> noche
+      s('2026-01-05T18:00:00Z', BA), // local 15:00 -> ninguna
+    ]
+    const m = computeUserMetrics(sessions)
+    expect(m.earlyBirdSessions).toBe(1)
+    expect(m.nightOwlSessions).toBe(1)
+  })
+
+  it('cuenta días distintos con sesión (contribución)', () => {
+    const sessions = [
+      s('2026-02-01T10:00:00Z', 'UTC'),
+      s('2026-02-01T20:00:00Z', 'UTC'), // mismo día
+      s('2026-02-02T10:00:00Z', 'UTC'),
+    ]
+    expect(computeUserMetrics(sessions).distinctActiveDays).toBe(2)
+  })
+
+  it('detecta la semana completa (7 días distintos)', () => {
+    // Semana ISO de lun 05 a dom 11 de enero 2026, un día cada uno.
+    const sessions = [5, 6, 7, 8, 9, 10, 11].map((day) =>
+      s(`2026-01-${String(day).padStart(2, '0')}T10:00:00Z`, 'UTC'),
+    )
+    expect(computeUserMetrics(sessions).maxDaysInWeek).toBe(7)
+  })
+
+  it('mide el mayor hueco entre sesiones (vuelta al ruedo)', () => {
+    const sessions = [
+      s('2026-01-01T10:00:00Z', 'UTC'),
+      s('2026-02-01T10:00:00Z', 'UTC'), // 31 días después
+    ]
+    expect(computeUserMetrics(sessions).longestGapDays).toBe(31)
+  })
+})
+
 describe('evaluateBadges', () => {
   const metrics = { maxStreak: 7, sessionCount: 12, totalVolumeKg: 15000 }
 

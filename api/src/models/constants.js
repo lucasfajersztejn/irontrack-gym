@@ -117,7 +117,12 @@ export const BADGE_RULE_TYPES = [
   'maxWeightSingleKg',  // mayor peso levantado en una sola serie
   'maxGoalWeekStreak',  // semanas consecutivas cumpliendo la meta semanal
   'distinctActiveMonths', // nº de meses naturales distintos con sesión
+  'distinctActiveDays', // nº de días distintos con sesión (días del heatmap)
+  'maxDaysInWeek',      // más días distintos entrenados en una misma semana
+  'longestGapDays',     // mayor separación en días entre dos sesiones seguidas
   'weekendSessions',    // nº de sesiones en sábado o domingo (hora local)
+  'earlyBirdSessions',  // nº de sesiones empezadas antes de las 07:00 locales
+  'nightOwlSessions',   // nº de sesiones empezadas a las 22:00 locales o más tarde
   'accountAgeDays',     // días desde el alta de la cuenta
 ];
 

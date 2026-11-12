@@ -46,28 +46,28 @@ import User from '../models/user.model.js'
  */
 function localParts(dateLike, timeZone) {
   const d = new Date(dateLike)
-  let parts
-  try {
-    parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timeZone || 'UTC',
+  const fmt = (tz) =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
+      hour: '2-digit',
+      hourCycle: 'h23', // 00..23, sin "24" a medianoche
     }).formatToParts(d)
+  let parts
+  try {
+    parts = fmt(timeZone || 'UTC')
   } catch {
     // Zona inválida -> UTC. No debería ocurrir (se valida al crear), pero el
     // motor nunca debe romper por un dato sucio.
-    parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'UTC',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(d)
+    parts = fmt('UTC')
   }
   const get = (t) => parts.find((p) => p.type === t).value
   const year = Number(get('year'))
   const month = Number(get('month'))
   const day = Number(get('day'))
+  const hour = Number(get('hour'))
 
   // La fecha local se trata como un instante UTC para derivar día de semana e
   // ISO week de forma determinista (ya no hay zona de por medio: es una fecha).
@@ -81,6 +81,7 @@ function localParts(dateLike, timeZone) {
     monthKey: `${year}-${String(month).padStart(2, '0')}`,
     weekday,
     weekStartMs,
+    hour,
   }
 }
 
@@ -150,18 +151,29 @@ export function computeUserMetrics(
   let maxSetsInSession = 0
   let maxWeightSingleKg = 0
   let weekendSessions = 0
+  let earlyBirdSessions = 0
+  let nightOwlSessions = 0
   const dayKeys = []
   const monthKeys = new Set()
   // weekStartMs (lunes local) -> nº de sesiones de esa semana.
   const weekCounts = new Map()
+  // weekStartMs -> Set de días distintos de esa semana, para "cuadrícula llena".
+  const weekDays = new Map()
 
   for (const s of sessions) {
-    // Día, mes, semana y día-de-semana en la zona donde se entrenó.
-    const { dayKey, monthKey, weekday, weekStartMs } = localParts(s.startedAt, s.timeZone)
+    // Día, mes, semana, día-de-semana y hora en la zona donde se entrenó.
+    const { dayKey, monthKey, weekday, weekStartMs, hour } = localParts(s.startedAt, s.timeZone)
     dayKeys.push(dayKey)
     monthKeys.add(monthKey)
     weekCounts.set(weekStartMs, (weekCounts.get(weekStartMs) ?? 0) + 1)
+    if (!weekDays.has(weekStartMs)) weekDays.set(weekStartMs, new Set())
+    weekDays.get(weekStartMs).add(dayKey)
     if (weekday === 0 || weekday === 6) weekendSessions += 1 // domingo o sábado
+    // Franjas horarias locales fijas: madrugada = antes de las 07:00, noche =
+    // 22:00 o más tarde. El motor cuenta cuántas sesiones caen en cada franja;
+    // cuántas hacen falta para la medalla es el `value` de la regla.
+    if (hour < 7) earlyBirdSessions += 1
+    if (hour >= 22) nightOwlSessions += 1
 
     // Acumuladores POR sesión, para derivar los máximos "en una sola sesión"
     // sin un segundo recorrido. El volumen de sesión usa el mismo criterio que
@@ -207,6 +219,22 @@ export function computeUserMetrics(
     if (count >= weeklyGoal) goalWeekMondays.push(weekStartMs)
   }
   const WEEK = 7 * 24 * 60 * 60 * 1000
+  const DAY = 24 * 60 * 60 * 1000
+
+  // Cuadrícula llena: la semana con más días DISTINTOS entrenados (máx 7).
+  let maxDaysInWeek = 0
+  for (const days of weekDays.values()) {
+    if (days.size > maxDaysInWeek) maxDaysInWeek = days.size
+  }
+
+  // Vuelta al ruedo: mayor separación (en días) entre dos días de entreno
+  // consecutivos. Un valor alto = un parón largo del que se volvió.
+  const uniqueDayMs = [...new Set(dayKeys)].map(dayKeyToUtcMs).sort((a, b) => a - b)
+  let longestGapDays = 0
+  for (let i = 1; i < uniqueDayMs.length; i += 1) {
+    const gap = (uniqueDayMs[i] - uniqueDayMs[i - 1]) / DAY
+    if (gap > longestGapDays) longestGapDays = gap
+  }
 
   return {
     sessionCount: sessions.length,
@@ -219,9 +247,14 @@ export function computeUserMetrics(
     maxStreak: maxConsecutiveDays(dayKeys),
     maxGoalWeekStreak: maxConsecutiveSteps(goalWeekMondays, WEEK),
     distinctActiveMonths: monthKeys.size,
+    distinctActiveDays: new Set(dayKeys).size,
+    maxDaysInWeek,
+    longestGapDays,
     weekendSessions,
+    earlyBirdSessions,
+    nightOwlSessions,
     accountAgeDays: createdAt
-      ? Math.max(0, Math.floor((now - new Date(createdAt)) / (24 * 60 * 60 * 1000)))
+      ? Math.max(0, Math.floor((now - new Date(createdAt)) / DAY))
       : 0,
   }
 }
@@ -257,8 +290,18 @@ function metricForRuleType(type, metrics) {
       return metrics.maxGoalWeekStreak
     case 'distinctActiveMonths':
       return metrics.distinctActiveMonths
+    case 'distinctActiveDays':
+      return metrics.distinctActiveDays
+    case 'maxDaysInWeek':
+      return metrics.maxDaysInWeek
+    case 'longestGapDays':
+      return metrics.longestGapDays
     case 'weekendSessions':
       return metrics.weekendSessions
+    case 'earlyBirdSessions':
+      return metrics.earlyBirdSessions
+    case 'nightOwlSessions':
+      return metrics.nightOwlSessions
     case 'accountAgeDays':
       return metrics.accountAgeDays
     default:
