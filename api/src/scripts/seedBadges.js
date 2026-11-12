@@ -317,7 +317,10 @@ const BADGES = [
   // --- Fin de semana (día local, por eso necesita timeZone) ---
   {
     slug: 'weekend-10',
-    name: { es: 'Fin de semana guerrero', en: 'Weekend warrior' },
+    // "Fin de semana guerrero" pasó a 'weekend-warrior' (sábado Y domingo la
+    // misma semana), su lectura literal del listado original. Esta medalla,
+    // diez sesiones de fin de semana, es "Fiel al finde".
+    name: { es: 'Fiel al finde', en: 'Weekend regular' },
     description: {
       es: 'Diez sesiones en sábado o domingo.',
       en: 'Ten sessions on a Saturday or Sunday.',
