@@ -412,6 +412,91 @@ const BADGES = [
     tier: 'bronce',
     rule: { type: 'accountAgeDays', operator: 'gte', value: 30 },
   },
+
+  // === Wave 5: variedad (grupos musculares y ejercicios) ===
+  // Partes del cuerpo derivadas del músculo con MUSCLE_TO_BODY_PART (7 partes,
+  // cardio incluido). Solo cuentan series completadas.
+  {
+    slug: 'body-parts-5',
+    name: { es: 'Explorador', en: 'Explorer' },
+    description: {
+      es: 'Has entrenado cinco partes del cuerpo distintas.',
+      en: 'You have trained five different body parts.',
+    },
+    category: 'variedad',
+    tier: 'bronce',
+    rule: { type: 'distinctBodyParts', operator: 'gte', value: 5 },
+  },
+  {
+    slug: 'body-parts-all',
+    name: { es: 'Cuerpo completo', en: 'Full body' },
+    description: {
+      es: 'Has entrenado las siete partes del cuerpo.',
+      en: 'You have trained all seven body parts.',
+    },
+    category: 'variedad',
+    tier: 'plata',
+    rule: { type: 'distinctBodyParts', operator: 'gte', value: 7 },
+  },
+  // Seis partes distintas en una misma semana ISO (no confundir con 'full-week',
+  // que mide días, no grupos).
+  {
+    slug: 'body-parts-week-6',
+    name: { es: 'Full body day', en: 'Full body day' },
+    description: {
+      es: 'Seis partes del cuerpo distintas en una misma semana.',
+      en: 'Six different body parts in a single week.',
+    },
+    category: 'variedad',
+    tier: 'plata',
+    rule: { type: 'maxBodyPartsInWeek', operator: 'gte', value: 6 },
+  },
+  {
+    slug: 'exercises-25',
+    name: { es: 'Curioso', en: 'Curious' },
+    description: {
+      es: 'Veinticinco ejercicios distintos probados.',
+      en: 'Twenty-five different exercises tried.',
+    },
+    category: 'variedad',
+    tier: 'bronce',
+    rule: { type: 'distinctExercises', operator: 'gte', value: 25 },
+  },
+  {
+    slug: 'exercises-100',
+    name: { es: 'Catálogo abierto', en: 'Open catalog' },
+    description: {
+      es: 'Cien ejercicios distintos en tu historial.',
+      en: 'One hundred different exercises in your history.',
+    },
+    category: 'variedad',
+    tier: 'oro',
+    rule: { type: 'distinctExercises', operator: 'gte', value: 100 },
+  },
+  // Las siete partes dentro de una misma ventana de 30 días: no hace falta
+  // que sea la semana, sirve un mes cualquiera.
+  {
+    slug: 'all-parts-30d',
+    name: { es: 'Sin favoritismos', en: 'No favorites' },
+    description: {
+      es: 'Las siete partes del cuerpo en un periodo de 30 días.',
+      en: 'All seven body parts within a 30-day period.',
+    },
+    category: 'variedad',
+    tier: 'oro',
+    rule: { type: 'maxBodyPartsIn30DayWindow', operator: 'gte', value: 7 },
+  },
+  {
+    slug: 'first-cardio',
+    name: { es: 'Cardio también cuenta', en: 'Cardio counts too' },
+    description: {
+      es: 'Completa una sesión con cardio.',
+      en: 'Complete a session that includes cardio.',
+    },
+    category: 'variedad',
+    tier: 'bronce',
+    rule: { type: 'cardioSessions', operator: 'gte', value: 1 },
+  },
 ]
 
 async function run() {

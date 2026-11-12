@@ -21,6 +21,34 @@ export const BODY_PARTS = [
   'arms', 'legs', 'chest', 'back', 'core', 'shoulders', 'cardio',
 ];
 
+/**
+ * Músculo fino -> parte del cuerpo, para las medallas de variedad ("entrena
+ * todos los grupos"). Es un mapa de PRESENTACIÓN del motor de insignias: no
+ * sustituye al `bodyPart` del catálogo de ejercicios, que es la fuente de
+ * verdad para filtrar. Aquí solo decidimos qué cuenta como "grupo distinto".
+ */
+export const MUSCLE_TO_BODY_PART = {
+  quads: 'legs',
+  glutes: 'legs',
+  hamstrings: 'legs',
+  calves: 'legs',
+  abductors: 'legs',
+  adductors: 'legs',
+  pectorals: 'chest',
+  lats: 'back',
+  traps: 'back',
+  'upper-back': 'back',
+  spine: 'back',
+  'levator-scapulae': 'back',
+  delts: 'shoulders',
+  biceps: 'arms',
+  triceps: 'arms',
+  forearms: 'arms',
+  abs: 'core',
+  'serratus-anterior': 'core',
+  cardio: 'cardio',
+};
+
 export const EQUIPMENT = [
   'barbell', 'dumbbell', 'cable', 'machine', 'bodyweight', 'band',
   'kettlebell', 'smith', 'ez-bar', 'lever', 'sled', 'other',
@@ -124,6 +152,11 @@ export const BADGE_RULE_TYPES = [
   'earlyBirdSessions',  // nº de sesiones empezadas antes de las 07:00 locales
   'nightOwlSessions',   // nº de sesiones empezadas a las 22:00 locales o más tarde
   'accountAgeDays',     // días desde el alta de la cuenta
+  'distinctBodyParts',  // nº de partes del cuerpo distintas entrenadas (alguna vez)
+  'maxBodyPartsInWeek', // más partes del cuerpo distintas en una misma semana ISO
+  'distinctExercises',  // nº de ejercicios distintos del catálogo ejecutados
+  'maxBodyPartsIn30DayWindow', // más partes distintas en cualquier ventana de 30 días
+  'cardioSessions',     // nº de sesiones con alguna serie completada de cardio
 ];
 
 /** Comparadores de la regla declarativa. */

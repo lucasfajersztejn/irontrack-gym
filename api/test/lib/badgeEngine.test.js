@@ -8,6 +8,7 @@ import {
   evaluateBadges,
   evaluateAndPersist,
 } from '../../src/lib/badgeEngine.js'
+import { MUSCLES, BODY_PARTS, MUSCLE_TO_BODY_PART } from '../../src/models/constants.js'
 
 /**
  * El motor de insignias es el corazón de la Fase 3. Se testea en dos niveles:
@@ -220,6 +221,106 @@ describe('computeUserMetrics — hora local y heatmap (Wave 3)', () => {
       s('2026-02-01T10:00:00Z', 'UTC'), // 31 días después
     ]
     expect(computeUserMetrics(sessions).longestGapDays).toBe(31)
+  })
+})
+
+describe('computeUserMetrics — variedad (Wave 5)', () => {
+  // Entrada denormalizada tal como la guarda Session: exercise + muscle + tracking.
+  function entry({ exercise, muscle, completed = true }) {
+    return {
+      exercise,
+      muscle,
+      tracking: 'weight_reps',
+      sets: [{ order: 0, completed, weightKg: 50, reps: 5 }],
+    }
+  }
+  function trained(startedAt, entries) {
+    return { startedAt: new Date(startedAt), timeZone: 'UTC', entries }
+  }
+
+  it('mapea cada músculo del catálogo a una parte del cuerpo válida', () => {
+    for (const muscle of MUSCLES) {
+      expect(BODY_PARTS).toContain(MUSCLE_TO_BODY_PART[muscle])
+    }
+    expect(MUSCLE_TO_BODY_PART.pectorals).toBe('chest')
+    expect(MUSCLE_TO_BODY_PART.cardio).toBe('cardio')
+  })
+
+  it('cuenta partes del cuerpo distintas, sin repetir y sin entries vacías', () => {
+    const sessions = [
+      trained('2026-01-05T10:00:00Z', [entry({ exercise: 'a', muscle: 'pectorals' })]),
+      trained('2026-01-06T10:00:00Z', [
+        entry({ exercise: 'b', muscle: 'pectorals' }), // misma parte: no suma
+        entry({ exercise: 'c', muscle: 'quads' }), // legs
+        entry({ exercise: 'd', muscle: 'lats', completed: false }), // sin series hechas: no cuenta
+      ]),
+    ]
+    expect(computeUserMetrics(sessions).distinctBodyParts).toBe(2)
+  })
+
+  it('una entry solo con series sin completar no cuenta como ejercicio ni parte', () => {
+    const sessions = [
+      trained('2026-01-05T10:00:00Z', [entry({ exercise: 'x', muscle: 'biceps', completed: false })]),
+    ]
+    const m = computeUserMetrics(sessions)
+    expect(m.distinctBodyParts).toBe(0)
+    expect(m.distinctExercises).toBe(0)
+  })
+
+  it('cuenta ejercicios distintos del catálogo, no repeticiones', () => {
+    const sessions = [
+      trained('2026-01-05T10:00:00Z', [entry({ exercise: 'press', muscle: 'pectorals' })]),
+      trained('2026-01-06T10:00:00Z', [
+        entry({ exercise: 'press', muscle: 'pectorals' }), // repetido
+        entry({ exercise: 'squat', muscle: 'quads' }),
+      ]),
+    ]
+    expect(computeUserMetrics(sessions).distinctExercises).toBe(2)
+  })
+
+  it('mide el máximo de partes distintas en una misma semana ISO', () => {
+    const sessions = [
+      // Semana del lun 05 ene: chest + legs = 2
+      trained('2026-01-05T10:00:00Z', [entry({ exercise: 'a', muscle: 'pectorals' })]),
+      trained('2026-01-06T10:00:00Z', [entry({ exercise: 'b', muscle: 'quads' })]),
+      // Semana del lun 12 ene: chest + legs + back = 3
+      trained('2026-01-12T10:00:00Z', [entry({ exercise: 'a', muscle: 'pectorals' })]),
+      trained('2026-01-13T10:00:00Z', [entry({ exercise: 'b', muscle: 'quads' })]),
+      trained('2026-01-14T10:00:00Z', [entry({ exercise: 'c', muscle: 'lats' })]),
+    ]
+    expect(computeUserMetrics(sessions).maxBodyPartsInWeek).toBe(3)
+  })
+
+  it('la ventana de 30 días agrupa partes de días cercanos, no de meses lejanos', () => {
+    // Ene 1 (chest) y Feb 1 (legs) están a 31 días: ninguna ventana de 30 los une.
+    const apart = [
+      trained('2026-01-01T10:00:00Z', [entry({ exercise: 'a', muscle: 'pectorals' })]),
+      trained('2026-02-01T10:00:00Z', [entry({ exercise: 'b', muscle: 'quads' })]),
+    ]
+    expect(computeUserMetrics(apart).maxBodyPartsIn30DayWindow).toBe(1)
+
+    // Ene 12 (legs), Ene 20 (back), Ene 25 (chest), Feb 10 (arms):
+    // la ventana que termina el Feb 10 cubre desde el Ene 12 -> legs+back+chest+arms = 4.
+    // La del Ene 25 cubre desde el Dic 27 -> legs+back+chest = 3. Gana la de 4.
+    const near = [
+      trained('2026-01-12T10:00:00Z', [entry({ exercise: 'b', muscle: 'quads' })]),
+      trained('2026-01-20T10:00:00Z', [entry({ exercise: 'c', muscle: 'lats' })]),
+      trained('2026-01-25T10:00:00Z', [entry({ exercise: 'a', muscle: 'pectorals' })]),
+      trained('2026-02-10T10:00:00Z', [entry({ exercise: 'd', muscle: 'biceps' })]),
+    ]
+    expect(computeUserMetrics(near).maxBodyPartsIn30DayWindow).toBe(4)
+  })
+
+  it('cuenta sesiones con cardio completado', () => {
+    const sessions = [
+      trained('2026-01-05T10:00:00Z', [entry({ exercise: 'bike', muscle: 'cardio' })]),
+      trained('2026-01-06T10:00:00Z', [entry({ exercise: 'bike', muscle: 'cardio', completed: false })]),
+      trained('2026-01-07T10:00:00Z', [entry({ exercise: 'press', muscle: 'pectorals' })]),
+    ]
+    const m = computeUserMetrics(sessions)
+    expect(m.cardioSessions).toBe(1)
+    // cardio + chest; la sesión con cardio sin series hechas no suma una parte
+    expect(m.distinctBodyParts).toBe(2)
   })
 })
 
