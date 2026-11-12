@@ -324,6 +324,81 @@ describe('computeUserMetrics — variedad (Wave 5)', () => {
   })
 })
 
+describe('computeUserMetrics — forma de calendario (Wave 6)', () => {
+  // Una sesión con una única serie de peso: volumen = kg × reps.
+  function lift(startedAt, weightKg, reps) {
+    return {
+      startedAt: new Date(startedAt),
+      timeZone: 'UTC',
+      entries: [
+        { tracking: 'weight_reps', sets: [{ order: 0, completed: true, weightKg, reps }] },
+      ],
+    }
+  }
+
+  it('maxDistinctWeeksInMonth cuenta semanas ISO distintas dentro de un mes', () => {
+    // Enero 2026: lunes 5, 12, 19 y 26 -> cuatro semanas distintas en enero.
+    const sessions = [
+      lift('2026-01-06T10:00:00Z', 50, 5),
+      lift('2026-01-13T10:00:00Z', 50, 5),
+      lift('2026-01-14T10:00:00Z', 50, 5), // misma semana que el 13: no suma
+      lift('2026-01-20T10:00:00Z', 50, 5),
+      lift('2026-01-27T10:00:00Z', 50, 5),
+      // Febrero con una sola semana: no supera el máximo de enero.
+      lift('2026-02-03T10:00:00Z', 50, 5),
+    ]
+    expect(computeUserMetrics(sessions).maxDistinctWeeksInMonth).toBe(4)
+  })
+
+  it('maxDistinctWeeksInMonth no sube por sesiones repetidas en la misma semana', () => {
+    const sessions = [
+      lift('2026-01-05T10:00:00Z', 50, 5),
+      lift('2026-01-06T10:00:00Z', 50, 5),
+      lift('2026-01-07T10:00:00Z', 50, 5),
+    ]
+    expect(computeUserMetrics(sessions).maxDistinctWeeksInMonth).toBe(1)
+  })
+
+  it('weekendPairs solo cuenta semanas con sábado Y domingo', () => {
+    const sessions = [
+      // Semana del lun 5: sábado 10 + domingo 11 -> pareja.
+      lift('2026-01-10T10:00:00Z', 50, 5),
+      lift('2026-01-11T10:00:00Z', 50, 5),
+      // Semana del lun 12: solo sábado 17 -> no es pareja.
+      lift('2026-01-17T10:00:00Z', 50, 5),
+    ]
+    expect(computeUserMetrics(sessions).weekendPairs).toBe(1)
+  })
+
+  it('weekendPairs no cuenta un domingo suelto de la semana anterior con un sábado', () => {
+    // Domingo 11 (semana del 5) y sábado 17 (semana del 12): cada uno en su semana.
+    const sessions = [
+      lift('2026-01-11T10:00:00Z', 50, 5),
+      lift('2026-01-17T10:00:00Z', 50, 5),
+    ]
+    expect(computeUserMetrics(sessions).weekendPairs).toBe(0)
+  })
+
+  it('beatPrevWeekVolume cuenta semanas que superan el volumen de la anterior', () => {
+    const sessions = [
+      lift('2026-01-06T10:00:00Z', 100, 10), // sem 5: 1000
+      lift('2026-01-13T10:00:00Z', 100, 15), // sem 12: 1500 > 1000 -> cuenta
+      lift('2026-01-20T10:00:00Z', 100, 12), // sem 19: 1200 < 1500 -> no cuenta
+      lift('2026-01-27T10:00:00Z', 100, 20), // sem 26: 2000 > 1200 -> cuenta
+    ]
+    expect(computeUserMetrics(sessions).beatPrevWeekVolume).toBe(2)
+  })
+
+  it('beatPrevWeekVolume no cuenta una semana cuya anterior no tiene volumen', () => {
+    // Semana del 2 feb sin entreno: la del 9 feb no tiene referencia.
+    const sessions = [
+      lift('2026-01-06T10:00:00Z', 100, 10), // sem 5: 1000
+      lift('2026-02-10T10:00:00Z', 100, 50), // sem 9 feb: 5000, pero la anterior está vacía
+    ]
+    expect(computeUserMetrics(sessions).beatPrevWeekVolume).toBe(0)
+  })
+})
+
 describe('evaluateBadges', () => {
   const metrics = { maxStreak: 7, sessionCount: 12, totalVolumeKg: 15000 }
 

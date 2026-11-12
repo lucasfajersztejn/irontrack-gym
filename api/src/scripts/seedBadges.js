@@ -44,7 +44,10 @@ const BADGES = [
   },
   {
     slug: 'streak-30',
-    name: { es: 'Mes de hierro', en: 'Iron month' },
+    // El nombre "Mes de hierro" pasó a 'iron-month' (entrenar todas las semanas
+    // de un mes), que es su lectura literal. La racha de 30 días es "Racha de
+    // fuego", como figuraba en el listado original de insignias.
+    name: { es: 'Racha de fuego', en: 'Fire streak' },
     description: {
       es: 'Treinta días seguidos entrenando.',
       en: 'Thirty days training in a row.',
@@ -314,7 +317,10 @@ const BADGES = [
   // --- Fin de semana (día local, por eso necesita timeZone) ---
   {
     slug: 'weekend-10',
-    name: { es: 'Fin de semana guerrero', en: 'Weekend warrior' },
+    // "Fin de semana guerrero" pasó a 'weekend-warrior' (sábado Y domingo la
+    // misma semana), su lectura literal del listado original. Esta medalla,
+    // diez sesiones de fin de semana, es "Fiel al finde".
+    name: { es: 'Fiel al finde', en: 'Weekend regular' },
     description: {
       es: 'Diez sesiones en sábado o domingo.',
       en: 'Ten sessions on a Saturday or Sunday.',
@@ -583,6 +589,46 @@ const BADGES = [
     category: 'hitos',
     tier: 'bronce',
     rule: { type: 'maxSetsInSession', operator: 'gte', value: 20 },
+  },
+
+  // === Wave 6: calendario (forma de la semana y del mes, solo desde Session) ===
+  // Cuatro semanas distintas con sesión dentro de un mismo mes natural.
+  {
+    slug: 'iron-month',
+    name: { es: 'Mes de hierro', en: 'Iron month' },
+    description: {
+      es: 'Entrenaste en cuatro semanas distintas dentro de un mismo mes.',
+      en: 'Trained in four different weeks within the same calendar month.',
+    },
+    category: 'constancia',
+    tier: 'bronce',
+    rule: { type: 'maxDistinctWeeksInMonth', operator: 'gte', value: 4 },
+  },
+
+  // Sábado y domingo entrenados en la misma semana.
+  {
+    slug: 'weekend-warrior',
+    name: { es: 'Fin de semana guerrero', en: 'Weekend warrior' },
+    description: {
+      es: 'Entrenaste el sábado y el domingo de la misma semana.',
+      en: 'Trained on both Saturday and Sunday of the same week.',
+    },
+    category: 'constancia',
+    tier: 'bronce',
+    rule: { type: 'weekendPairs', operator: 'gte', value: 1 },
+  },
+
+  // Una semana con más kilos movidos que la anterior.
+  {
+    slug: 'weekly-volume-up',
+    name: { es: 'Volumen semanal', en: 'Weekly volume up' },
+    description: {
+      es: 'Moviste más kilos que la semana anterior.',
+      en: 'Lifted more total weight than the previous week.',
+    },
+    category: 'volumen',
+    tier: 'plata',
+    rule: { type: 'beatPrevWeekVolume', operator: 'gte', value: 1 },
   },
 ]
 
