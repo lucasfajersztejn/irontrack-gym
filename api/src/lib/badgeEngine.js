@@ -22,6 +22,16 @@ import Session from '../models/session.model.js'
 import Badge from '../models/badge.model.js'
 import UserBadge from '../models/userBadge.model.js'
 import User from '../models/user.model.js'
+import { MUSCLE_TO_BODY_PART } from '../models/constants.js'
+
+/**
+ * Campos de `Session` que el motor necesita. Se exporta para que el servicio
+ * (evaluateAndPersist) y el muro (badgeController.getBadges) lean EXACTAMENTE
+ * lo mismo: si uno amplía la proyección y el otro no, las medallas del muro y
+ * las que se conceden al cerrar sesión dejan de coincidir sin que nada falle.
+ */
+export const SESSION_METRIC_SELECT =
+  'startedAt timeZone entries.exercise entries.muscle entries.tracking entries.sets.weightKg entries.sets.reps entries.sets.completed'
 
 // ---------------------------------------------------------------------------
 // Métricas derivadas de las sesiones
@@ -159,6 +169,15 @@ export function computeUserMetrics(
   const weekCounts = new Map()
   // weekStartMs -> Set de días distintos de esa semana, para "cuadrícula llena".
   const weekDays = new Map()
+  // Variedad: partes del cuerpo y ejercicios se miden solo con series
+  // completadas (una entry sin ninguna hecha no cuenta como entrenada).
+  const bodyPartsAll = new Set()
+  const exercisesAll = new Set()
+  // weekStartMs -> partes del cuerpo entrenadas esa semana.
+  const weekBodyParts = new Map()
+  // dayKey -> partes del cuerpo entrenadas ese día (base de la ventana de 30 días).
+  const dayBodyParts = new Map()
+  let cardioSessions = 0
 
   for (const s of sessions) {
     // Día, mes, semana, día-de-semana y hora en la zona donde se entrenó.
@@ -180,10 +199,15 @@ export function computeUserMetrics(
     // el total (solo weight_reps completadas con peso y reps > 0).
     let sessionVolumeKg = 0
     let sessionSets = 0
+    const sessionBodyParts = new Set()
+    let sessionHasCardio = false
 
     for (const entry of s.entries ?? []) {
+      // Una entry cuenta como "ejercicio hecho" solo si tiene alguna serie completada.
+      let entryDone = false
       for (const set of entry.sets ?? []) {
         if (!set.completed) continue
+        entryDone = true
 
         // Una serie completada cuenta como serie sea cual sea el tracking: un
         // isométrico o un tramo de cardio también es trabajo hecho.
@@ -205,10 +229,32 @@ export function computeUserMetrics(
         // no un peso cargado y no ejecutado.
         if (w > 0 && r > 0 && w > maxWeightSingleKg) maxWeightSingleKg = w
       }
+
+      if (entryDone) {
+        // La entry ya trae el ejercicio y el músculo denormalizados (ver
+        // session.model): no hace falta consultar el catálogo.
+        if (entry.exercise) exercisesAll.add(String(entry.exercise))
+        const bodyPart = MUSCLE_TO_BODY_PART[entry.muscle]
+        if (bodyPart) {
+          sessionBodyParts.add(bodyPart)
+          if (bodyPart === 'cardio') sessionHasCardio = true
+        }
+      }
     }
 
     if (sessionVolumeKg > maxSessionVolumeKg) maxSessionVolumeKg = sessionVolumeKg
     if (sessionSets > maxSetsInSession) maxSetsInSession = sessionSets
+
+    if (sessionHasCardio) cardioSessions += 1
+    if (sessionBodyParts.size > 0) {
+      if (!weekBodyParts.has(weekStartMs)) weekBodyParts.set(weekStartMs, new Set())
+      if (!dayBodyParts.has(dayKey)) dayBodyParts.set(dayKey, new Set())
+      for (const bp of sessionBodyParts) {
+        bodyPartsAll.add(bp)
+        weekBodyParts.get(weekStartMs).add(bp)
+        dayBodyParts.get(dayKey).add(bp)
+      }
+    }
   }
 
   // Semanas que cumplieron la meta, por su lunes. "Ritmo perfecto" pide que
@@ -236,8 +282,36 @@ export function computeUserMetrics(
     if (gap > longestGapDays) longestGapDays = gap
   }
 
+  // Semana con más partes del cuerpo distintas ("día de cuerpo completo" en 7 días).
+  let maxBodyPartsInWeek = 0
+  for (const parts of weekBodyParts.values()) {
+    if (parts.size > maxBodyPartsInWeek) maxBodyPartsInWeek = parts.size
+  }
+
+  // Ventana deslizante de 30 días: para cada día con entreno, unimos las partes
+  // de los días con entreno en [día-29, día] y guardamos el máximo. Solo hace
+  // falta mirar días con sesión (fuera de ellos la ventana no gana partes), y
+  // con un historial personal de cientos de días el O(N²) es despreciable.
+  const dayParts = [...dayBodyParts]
+    .map(([key, parts]) => ({ ms: dayKeyToUtcMs(key), parts }))
+    .sort((a, b) => a.ms - b.ms)
+  let maxBodyPartsIn30DayWindow = 0
+  for (let i = 0; i < dayParts.length; i += 1) {
+    const windowStart = dayParts[i].ms - 29 * DAY
+    const union = new Set()
+    for (let j = i; j >= 0 && dayParts[j].ms >= windowStart; j -= 1) {
+      for (const bp of dayParts[j].parts) union.add(bp)
+    }
+    if (union.size > maxBodyPartsIn30DayWindow) maxBodyPartsIn30DayWindow = union.size
+  }
+
   return {
     sessionCount: sessions.length,
+    distinctBodyParts: bodyPartsAll.size,
+    maxBodyPartsInWeek,
+    distinctExercises: exercisesAll.size,
+    maxBodyPartsIn30DayWindow,
+    cardioSessions,
     totalVolumeKg,
     totalReps,
     totalSets,
@@ -304,6 +378,16 @@ function metricForRuleType(type, metrics) {
       return metrics.nightOwlSessions
     case 'accountAgeDays':
       return metrics.accountAgeDays
+    case 'distinctBodyParts':
+      return metrics.distinctBodyParts
+    case 'maxBodyPartsInWeek':
+      return metrics.maxBodyPartsInWeek
+    case 'distinctExercises':
+      return metrics.distinctExercises
+    case 'maxBodyPartsIn30DayWindow':
+      return metrics.maxBodyPartsIn30DayWindow
+    case 'cardioSessions':
+      return metrics.cardioSessions
     default:
       return null
   }
@@ -386,7 +470,7 @@ export async function evaluateAndPersist(userId) {
     // ni para el conteo ni para la racha. timeZone entra porque el día/semana
     // local de cada sesión se deriva de ella.
     Session.find({ user: userId, endedAt: { $ne: null } })
-      .select('startedAt timeZone entries.tracking entries.sets.weightKg entries.sets.reps entries.sets.completed')
+      .select(SESSION_METRIC_SELECT)
       .lean(),
     Badge.find().lean(),
     UserBadge.find({ user: userId }).select('badge').lean(),

@@ -3,7 +3,7 @@ import Badge from '../models/badge.model.js'
 import UserBadge from '../models/userBadge.model.js'
 import Session from '../models/session.model.js'
 import User from '../models/user.model.js'
-import { computeUserMetrics, badgeProgress } from '../lib/badgeEngine.js'
+import { computeUserMetrics, badgeProgress, SESSION_METRIC_SELECT } from '../lib/badgeEngine.js'
 import { BADGE_CATEGORIES, BADGE_TIERS } from '../models/constants.js'
 
 /**
@@ -30,7 +30,7 @@ export const getBadges = async (req, res, next) => {
       Badge.find().lean(),
       UserBadge.find({ user: userId }).select('badge unlockedAt progress').lean(),
       Session.find({ user: userId, endedAt: { $ne: null } })
-        .select('startedAt timeZone entries.tracking entries.sets.weightKg entries.sets.reps entries.sets.completed')
+        .select(SESSION_METRIC_SELECT)
         .lean(),
       User.findById(userId).select('weeklyGoal createdAt').lean(),
     ])
