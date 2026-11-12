@@ -497,6 +497,93 @@ const BADGES = [
     tier: 'bronce',
     rule: { type: 'cardioSessions', operator: 'gte', value: 1 },
   },
+
+  // === Wave 4: umbrales nuevos sobre métricas que el motor YA calcula ===
+  // Ningún tipo de regla nuevo: cada una reusa una métrica existente, así que
+  // no toca badgeEngine. Nombres elegidos para no chocar con insignias ya
+  // sembradas que usan otra métrica con el mismo nombre coloquial (p.ej. la
+  // "Año de hierro" de meses, el "Búho nocturno" de 5, la "Vuelta al ruedo" de 30).
+
+  // Tres días DISTINTOS en una misma semana ISO (maxDaysInWeek). No confundir
+  // con 'goal-week-1' ("Semana completa"), que mide cumplir la meta semanal.
+  {
+    slug: 'days-in-week-3',
+    name: { es: 'Triple semanal', en: 'Triple week' },
+    description: {
+      es: 'Tres días entrenados en una misma semana.',
+      en: 'Three training days in a single week.',
+    },
+    category: 'constancia',
+    tier: 'bronce',
+    rule: { type: 'maxDaysInWeek', operator: 'gte', value: 3 },
+  },
+
+  // Racha de 10 días consecutivos: peldaño entre 'streak-7' y 'streak-30'.
+  {
+    slug: 'streak-10',
+    name: { es: 'Doble dígito', en: 'Double digits' },
+    description: {
+      es: 'Diez días seguidos con sesión.',
+      en: 'Ten days in a row with a session.',
+    },
+    category: 'constancia',
+    tier: 'bronce',
+    rule: { type: 'streak', operator: 'gte', value: 10 },
+  },
+
+  // 365 días DISTINTOS con sesión (distinctActiveDays), el escalón oro sobre
+  // 'active-days-100'. Es la "año de hierro" por días reales que pediste; la
+  // sembrada 'months-active-12' cuenta meses distintos, no días.
+  {
+    slug: 'active-days-365',
+    name: { es: 'Año en verde', en: 'A year in green' },
+    description: {
+      es: 'Trescientos sesenta y cinco días distintos con sesión.',
+      en: 'Three hundred sixty-five different days with a session.',
+    },
+    category: 'constancia',
+    tier: 'oro',
+    rule: { type: 'distinctActiveDays', operator: 'gte', value: 365 },
+  },
+
+  // 10 sesiones a partir de las 22h: escalón oro sobre 'night-owl' (5, plata).
+  {
+    slug: 'night-owl-10',
+    name: { es: 'Criatura nocturna', en: 'Creature of the night' },
+    description: {
+      es: 'Diez sesiones empezadas a partir de las 22.',
+      en: 'Ten sessions started at 10 p.m. or later.',
+    },
+    category: 'rareza',
+    tier: 'oro',
+    rule: { type: 'nightOwlSessions', operator: 'gte', value: 10 },
+  },
+
+  // Volver tras un parón de 14+ días: escalón más fácil que 'comeback' (30).
+  {
+    slug: 'comeback-14',
+    name: { es: 'Segundo aire', en: 'Second wind' },
+    description: {
+      es: 'Volviste tras catorce días sin entrenar.',
+      en: 'You came back after fourteen days away.',
+    },
+    category: 'rareza',
+    tier: 'bronce',
+    rule: { type: 'longestGapDays', operator: 'gte', value: 14 },
+  },
+
+  // 20+ series en una sola sesión: escalón bronce bajo 'session-sets-30' (30).
+  {
+    slug: 'session-sets-20',
+    name: { es: 'Sesión bestia', en: 'Beast session' },
+    description: {
+      es: 'Veinte series en una sola sesión.',
+      en: 'Twenty sets in a single session.',
+    },
+    category: 'hitos',
+    tier: 'bronce',
+    rule: { type: 'maxSetsInSession', operator: 'gte', value: 20 },
+  },
 ]
 
 async function run() {
