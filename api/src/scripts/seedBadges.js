@@ -584,6 +584,46 @@ const BADGES = [
     tier: 'bronce',
     rule: { type: 'maxSetsInSession', operator: 'gte', value: 20 },
   },
+
+  // === Wave 6: calendario (forma de la semana y del mes, solo desde Session) ===
+  // Cuatro semanas distintas con sesión dentro de un mismo mes natural.
+  {
+    slug: 'iron-month',
+    name: { es: 'Mes de hierro', en: 'Iron month' },
+    description: {
+      es: 'Entrenaste en cuatro semanas distintas dentro de un mismo mes.',
+      en: 'Trained in four different weeks within the same calendar month.',
+    },
+    category: 'constancia',
+    tier: 'bronce',
+    rule: { type: 'maxDistinctWeeksInMonth', operator: 'gte', value: 4 },
+  },
+
+  // Sábado y domingo entrenados en la misma semana.
+  {
+    slug: 'weekend-warrior',
+    name: { es: 'Fin de semana guerrero', en: 'Weekend warrior' },
+    description: {
+      es: 'Entrenaste el sábado y el domingo de la misma semana.',
+      en: 'Trained on both Saturday and Sunday of the same week.',
+    },
+    category: 'constancia',
+    tier: 'bronce',
+    rule: { type: 'weekendPairs', operator: 'gte', value: 1 },
+  },
+
+  // Una semana con más kilos movidos que la anterior.
+  {
+    slug: 'weekly-volume-up',
+    name: { es: 'Volumen semanal', en: 'Weekly volume up' },
+    description: {
+      es: 'Moviste más kilos que la semana anterior.',
+      en: 'Lifted more total weight than the previous week.',
+    },
+    category: 'volumen',
+    tier: 'plata',
+    rule: { type: 'beatPrevWeekVolume', operator: 'gte', value: 1 },
+  },
 ]
 
 async function run() {

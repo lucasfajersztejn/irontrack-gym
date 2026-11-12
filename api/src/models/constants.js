@@ -157,6 +157,9 @@ export const BADGE_RULE_TYPES = [
   'distinctExercises',  // nº de ejercicios distintos del catálogo ejecutados
   'maxBodyPartsIn30DayWindow', // más partes distintas en cualquier ventana de 30 días
   'cardioSessions',     // nº de sesiones con alguna serie completada de cardio
+  'maxDistinctWeeksInMonth', // en el mes con más semanas ISO distintas entrenadas
+  'weekendPairs',       // nº de semanas con sesión en sábado Y en domingo
+  'beatPrevWeekVolume', // nº de semanas con más volumen (kg) que la semana anterior
 ];
 
 /** Comparadores de la regla declarativa. */

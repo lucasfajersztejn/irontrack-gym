@@ -178,6 +178,14 @@ export function computeUserMetrics(
   // dayKey -> partes del cuerpo entrenadas ese día (base de la ventana de 30 días).
   const dayBodyParts = new Map()
   let cardioSessions = 0
+  // Forma de calendario: semanas ISO distintas por mes natural (monthKey ->
+  // Set de weekStartMs), días de la semana entrenados (weekStartMs -> Set de
+  // weekday) y volumen (kg) por semana (weekStartMs -> kg). El volumen solo
+  // existe para semanas con alguna serie de peso válida: una semana sin volumen
+  // registrado no sirve de referencia para "superó a la anterior".
+  const monthWeeks = new Map()
+  const weekWeekdays = new Map()
+  const weekVolume = new Map()
 
   for (const s of sessions) {
     // Día, mes, semana, día-de-semana y hora en la zona donde se entrenó.
@@ -187,6 +195,10 @@ export function computeUserMetrics(
     weekCounts.set(weekStartMs, (weekCounts.get(weekStartMs) ?? 0) + 1)
     if (!weekDays.has(weekStartMs)) weekDays.set(weekStartMs, new Set())
     weekDays.get(weekStartMs).add(dayKey)
+    if (!monthWeeks.has(monthKey)) monthWeeks.set(monthKey, new Set())
+    monthWeeks.get(monthKey).add(weekStartMs)
+    if (!weekWeekdays.has(weekStartMs)) weekWeekdays.set(weekStartMs, new Set())
+    weekWeekdays.get(weekStartMs).add(weekday)
     if (weekday === 0 || weekday === 6) weekendSessions += 1 // domingo o sábado
     // Franjas horarias locales fijas: madrugada = antes de las 07:00, noche =
     // 22:00 o más tarde. El motor cuenta cuántas sesiones caen en cada franja;
@@ -244,6 +256,9 @@ export function computeUserMetrics(
 
     if (sessionVolumeKg > maxSessionVolumeKg) maxSessionVolumeKg = sessionVolumeKg
     if (sessionSets > maxSetsInSession) maxSetsInSession = sessionSets
+    if (sessionVolumeKg > 0) {
+      weekVolume.set(weekStartMs, (weekVolume.get(weekStartMs) ?? 0) + sessionVolumeKg)
+    }
 
     if (sessionHasCardio) cardioSessions += 1
     if (sessionBodyParts.size > 0) {
@@ -305,6 +320,27 @@ export function computeUserMetrics(
     if (union.size > maxBodyPartsIn30DayWindow) maxBodyPartsIn30DayWindow = union.size
   }
 
+  // Mes con más semanas ISO distintas entrenadas. Una semana que cruza dos
+  // meses cuenta en ambos, porque cada mes la ve entera con sus sesiones.
+  let maxDistinctWeeksInMonth = 0
+  for (const weeks of monthWeeks.values()) {
+    if (weeks.size > maxDistinctWeeksInMonth) maxDistinctWeeksInMonth = weeks.size
+  }
+
+  // Fin de semana completo: sábado (6) y domingo (0) en la misma semana ISO.
+  let weekendPairs = 0
+  for (const weekdays of weekWeekdays.values()) {
+    if (weekdays.has(0) && weekdays.has(6)) weekendPairs += 1
+  }
+
+  // Semanas que superan el volumen de la inmediatamente anterior (lunes -7 días).
+  // Si la anterior no tiene volumen registrado, no hay contra qué comparar.
+  let beatPrevWeekVolume = 0
+  for (const [weekStartMs, volume] of weekVolume) {
+    const prev = weekVolume.get(weekStartMs - WEEK)
+    if (prev !== undefined && volume > prev) beatPrevWeekVolume += 1
+  }
+
   return {
     sessionCount: sessions.length,
     distinctBodyParts: bodyPartsAll.size,
@@ -312,6 +348,9 @@ export function computeUserMetrics(
     distinctExercises: exercisesAll.size,
     maxBodyPartsIn30DayWindow,
     cardioSessions,
+    maxDistinctWeeksInMonth,
+    weekendPairs,
+    beatPrevWeekVolume,
     totalVolumeKg,
     totalReps,
     totalSets,
@@ -388,6 +427,12 @@ function metricForRuleType(type, metrics) {
       return metrics.maxBodyPartsIn30DayWindow
     case 'cardioSessions':
       return metrics.cardioSessions
+    case 'maxDistinctWeeksInMonth':
+      return metrics.maxDistinctWeeksInMonth
+    case 'weekendPairs':
+      return metrics.weekendPairs
+    case 'beatPrevWeekVolume':
+      return metrics.beatPrevWeekVolume
     default:
       return null
   }
