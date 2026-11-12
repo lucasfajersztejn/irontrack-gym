@@ -490,6 +490,14 @@
       "hitos": "Milestones",
       "variedad": "Variety",
       "rareza": "Rarity"
+    },
+    "detail": {
+      "earnedOn": "Earned on {{date}}",
+      "why": "How to earn it",
+      "locked": "Not earned yet. Here's what's left:",
+      "share": "Share",
+      "shareError": "Couldn't share the badge. Try again.",
+      "close": "Close"
     }
   },
   "settings": {

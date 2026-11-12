@@ -490,6 +490,14 @@
       "hitos": "Hitos",
       "variedad": "Variedad",
       "rareza": "Rareza"
+    },
+    "detail": {
+      "earnedOn": "Conseguida el {{date}}",
+      "why": "Por qué se gana",
+      "locked": "Todavía no la tienes. Esto es lo que falta:",
+      "share": "Compartir",
+      "shareError": "No se pudo compartir la medalla. Inténtalo de nuevo.",
+      "close": "Cerrar"
     }
   },
   "settings": {
