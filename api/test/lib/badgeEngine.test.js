@@ -399,6 +399,103 @@ describe('computeUserMetrics — forma de calendario (Wave 6)', () => {
   })
 })
 
+describe('computeUserMetrics — récords personales (Wave 7)', () => {
+  // Sesión con un ejercicio y sus series. Los ids son strings: el motor los
+  // normaliza con String(), igual que con los ObjectId reales de Mongo.
+  function trained(day, exercise, tracking, sets, hour = 10) {
+    return {
+      startedAt: new Date(`2026-03-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:00:00Z`),
+      entries: [
+        {
+          exercise,
+          tracking,
+          sets: sets.map((s, i) => ({ order: i, completed: true, ...s })),
+        },
+      ],
+    }
+  }
+
+  it('el primer registro de un ejercicio cuenta como primer récord', () => {
+    const m = computeUserMetrics([
+      trained(1, 'bench', 'weight_reps', [{ weightKg: 60, reps: 8 }]),
+    ])
+    expect(m.prCount).toBe(1)
+  })
+
+  it('una mejora posterior del 1RM estimado suma otro récord', () => {
+    const m = computeUserMetrics([
+      trained(1, 'bench', 'weight_reps', [{ weightKg: 60, reps: 8 }]), // e1RM 76.0
+      trained(2, 'bench', 'weight_reps', [{ weightKg: 70, reps: 8 }]), // e1RM 88.7
+    ])
+    expect(m.prCount).toBe(2)
+  })
+
+  it('una serie que no supera el mejor 1RM estimado no suma', () => {
+    const m = computeUserMetrics([
+      trained(1, 'bench', 'weight_reps', [{ weightKg: 100, reps: 5 }]), // e1RM 116.7
+      // Menos peso y más reps: e1RM 112.0 < 116.7, no es récord.
+      trained(2, 'bench', 'weight_reps', [{ weightKg: 80, reps: 12 }]),
+      // Mismo peso y reps que el récord: igual no es mejora.
+      trained(3, 'bench', 'weight_reps', [{ weightKg: 100, reps: 5 }]),
+    ])
+    expect(m.prCount).toBe(1)
+  })
+
+  it('varias mejoras del mismo ejercicio en la MISMA sesión cuentan una sola vez', () => {
+    const m = computeUserMetrics([
+      trained(1, 'bench', 'weight_reps', [{ weightKg: 60, reps: 8 }]),
+      // Tres series seguidas cada una mejor que la anterior: un solo récord.
+      trained(2, 'bench', 'weight_reps', [
+        { weightKg: 65, reps: 8 },
+        { weightKg: 70, reps: 8 },
+        { weightKg: 75, reps: 8 },
+      ]),
+    ])
+    expect(m.prCount).toBe(2) // 1 (primera sesión) + 1 (sesión 2)
+  })
+
+  it('un ejercicio distinto en la misma sesión suma su propio récord', () => {
+    const m = computeUserMetrics([
+      {
+        startedAt: new Date('2026-03-01T10:00:00Z'),
+        entries: [
+          { exercise: 'bench', tracking: 'weight_reps', sets: [{ order: 0, completed: true, weightKg: 60, reps: 8 }] },
+          { exercise: 'squat', tracking: 'weight_reps', sets: [{ order: 0, completed: true, weightKg: 100, reps: 5 }] },
+        ],
+      },
+    ])
+    expect(m.prCount).toBe(2)
+  })
+
+  it('en tracking reps compara por número de repeticiones', () => {
+    const m = computeUserMetrics([
+      trained(1, 'pullup', 'reps', [{ reps: 8 }]), // primer récord
+      trained(2, 'pullup', 'reps', [{ reps: 8 }]), // igual: no suma
+      trained(3, 'pullup', 'reps', [{ reps: 10 }]), // mejora: suma
+    ])
+    expect(m.prCount).toBe(2)
+  })
+
+  it('no depende del orden de entrada: ordena una copia por startedAt', () => {
+    const chronological = [
+      trained(1, 'bench', 'weight_reps', [{ weightKg: 60, reps: 8 }]),
+      trained(2, 'bench', 'weight_reps', [{ weightKg: 70, reps: 8 }]),
+    ]
+    const reversed = [...chronological].reverse()
+    expect(computeUserMetrics(reversed).prCount).toBe(2)
+    // El array del caller no se reordena como efecto secundario.
+    expect(reversed[0].startedAt.getUTCDate()).toBe(2)
+  })
+
+  it('ignora series no completadas y tracking sin récord (tiempo)', () => {
+    const m = computeUserMetrics([
+      trained(1, 'bench', 'weight_reps', [{ weightKg: 200, reps: 5, completed: false }]),
+      trained(2, 'plank', 'time', [{ durationSec: 60 }]),
+    ])
+    expect(m.prCount).toBe(0)
+  })
+})
+
 describe('evaluateBadges', () => {
   const metrics = { maxStreak: 7, sessionCount: 12, totalVolumeKg: 15000 }
 

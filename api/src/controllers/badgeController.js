@@ -31,6 +31,7 @@ export const getBadges = async (req, res, next) => {
       UserBadge.find({ user: userId }).select('badge unlockedAt progress').lean(),
       Session.find({ user: userId, endedAt: { $ne: null } })
         .select(SESSION_METRIC_SELECT)
+        .sort({ startedAt: 1 })
         .lean(),
       User.findById(userId).select('weeklyGoal createdAt').lean(),
     ])

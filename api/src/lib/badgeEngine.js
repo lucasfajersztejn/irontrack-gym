@@ -138,6 +138,76 @@ function maxConsecutiveSteps(msValues, step) {
 }
 
 /**
+ * Cuenta los récords personales batidos a lo largo del histórico.
+ *
+ * Un "récord" es una mejora del mejor valor de un ejercicio:
+ *  - weight_reps: mejor 1RM estimado (Epley `w * (1 + r/30)`, redondeado a 0,1
+ *    igual que statsController.getRecords, para que el muro y los récords de
+ *    la app digan lo mismo).
+ *  - reps: mejor número de repeticiones.
+ * Otros trackings (tiempo, distancia) no tienen récord en este motor.
+ *
+ * Reglas, decididas así a propósito:
+ *  - El orden importa: "batir" solo tiene sentido frente a lo anterior. Por eso
+ *    la función ordena una COPIA por startedAt y no depende de que el caller lo
+ *    haga (el sort de la consulta es defensa en profundidad, no el contrato).
+ *  - La PRIMERA vez que se registra un ejercicio cuenta como su primer récord:
+ *    pasar de no tener marca a tener una es lograr un récord.
+ *  - Máximo UN récord por (sesión, ejercicio): si en la misma sesión mejoras
+ *    cinco veces el mismo ejercicio, es una sesión con un récord, no cinco. Un
+ *    ejercicio distinto en esa sesión sí suma el suyo.
+ *  - Solo series completadas con valor positivo (como en el resto del motor).
+ */
+function countPersonalRecords(sessions) {
+  const chronological = [...sessions].sort(
+    (a, b) => new Date(a.startedAt) - new Date(b.startedAt),
+  )
+  // exerciseId -> mejor valor histórico (1RM estimado o reps). Un único número
+  // basta porque el tracking de un ejercicio no cambia entre sesiones.
+  const bestByExercise = new Map()
+  let prCount = 0
+
+  for (const session of chronological) {
+    // Ejercicios que ya han sumado récord en ESTA sesión.
+    const recordedThisSession = new Set()
+
+    for (const entry of session.entries ?? []) {
+      if (!entry.exercise) continue
+      const exId = String(entry.exercise)
+      const isWeightReps = entry.tracking === 'weight_reps'
+      if (!isWeightReps && entry.tracking !== 'reps') continue
+
+      for (const set of entry.sets ?? []) {
+        if (!set.completed) continue
+        const r = set.reps ?? 0
+        let value
+        if (isWeightReps) {
+          const w = set.weightKg ?? 0
+          if (w <= 0 || r <= 0) continue
+          value = Math.round(w * (1 + r / 30) * 10) / 10
+        } else {
+          if (r <= 0) continue
+          value = r
+        }
+
+        // Sin marca previa (undefined) es la primera vez: cuenta como récord.
+        // Un valor igual o menor que la marca no lo es.
+        const previous = bestByExercise.get(exId)
+        if (previous === undefined || value > previous) {
+          bestByExercise.set(exId, value)
+          if (!recordedThisSession.has(exId)) {
+            recordedThisSession.add(exId)
+            prCount += 1
+          }
+        }
+      }
+    }
+  }
+
+  return prCount
+}
+
+/**
  * Convierte las sesiones cerradas en las métricas que el motor compara.
  * Entrada: documentos de sesión (lean) con startedAt, timeZone y entries[].sets[].
  * Solo cuentan las series `completed` con peso y reps > 0 para el volumen,
@@ -351,6 +421,7 @@ export function computeUserMetrics(
     maxDistinctWeeksInMonth,
     weekendPairs,
     beatPrevWeekVolume,
+    prCount: countPersonalRecords(sessions),
     totalVolumeKg,
     totalReps,
     totalSets,
@@ -433,6 +504,8 @@ function metricForRuleType(type, metrics) {
       return metrics.weekendPairs
     case 'beatPrevWeekVolume':
       return metrics.beatPrevWeekVolume
+    case 'prCount':
+      return metrics.prCount
     default:
       return null
   }
@@ -514,8 +587,12 @@ export async function evaluateAndPersist(userId) {
     // Solo sesiones cerradas: una sesión en curso no cuenta como entreno hecho
     // ni para el conteo ni para la racha. timeZone entra porque el día/semana
     // local de cada sesión se deriva de ella.
+    // sort por startedAt: el conteo de récords depende del orden (cada mejora
+    // se compara con la anterior). computeUserMetrics ordena por dentro igual,
+    // así que este sort es explícito, no el único garante.
     Session.find({ user: userId, endedAt: { $ne: null } })
       .select(SESSION_METRIC_SELECT)
+      .sort({ startedAt: 1 })
       .lean(),
     Badge.find().lean(),
     UserBadge.find({ user: userId }).select('badge').lean(),

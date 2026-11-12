@@ -160,6 +160,7 @@ export const BADGE_RULE_TYPES = [
   'maxDistinctWeeksInMonth', // en el mes con más semanas ISO distintas entrenadas
   'weekendPairs',       // nº de semanas con sesión en sábado Y en domingo
   'beatPrevWeekVolume', // nº de semanas con más volumen (kg) que la semana anterior
+  'prCount',            // nº de veces que se batió un récord personal (por ejercicio y sesión)
 ];
 
 /** Comparadores de la regla declarativa. */
