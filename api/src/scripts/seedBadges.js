@@ -44,7 +44,10 @@ const BADGES = [
   },
   {
     slug: 'streak-30',
-    name: { es: 'Mes de hierro', en: 'Iron month' },
+    // El nombre "Mes de hierro" pasó a 'iron-month' (entrenar todas las semanas
+    // de un mes), que es su lectura literal. La racha de 30 días es "Racha de
+    // fuego", como figuraba en el listado original de insignias.
+    name: { es: 'Racha de fuego', en: 'Fire streak' },
     description: {
       es: 'Treinta días seguidos entrenando.',
       en: 'Thirty days training in a row.',
