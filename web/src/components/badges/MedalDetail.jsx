@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { enUS, es } from 'date-fns/locale'
 import { TrophyIcon } from '../icons/NavIcons.jsx'
 import { HEX_CLIP, localized } from '../../lib/badgeDisplay.js'
+import { badgeArtUrl } from '../../lib/badgeArt.js'
 import { shareBadge } from '../../lib/shareBadge.js'
 
 /*
@@ -39,6 +40,7 @@ export default function MedalDetail({ badge, lang, onClose }) {
   const name = localized(badge.name, lang)
   const why = localized(badge.description, lang)
   const { unlocked, progress } = badge
+  const artUrl = badgeArtUrl(badge)
   const earnedDate =
     unlocked && badge.unlockedAt
       ? format(new Date(badge.unlockedAt), 'PPP', {
@@ -146,16 +148,23 @@ export default function MedalDetail({ badge, lang, onClose }) {
           </svg>
         </button>
 
-        <div
-          className={`flex h-36 w-36 items-center justify-center ${
-            unlocked ? 'bg-accent/20' : 'bg-surface-3'
-          }`}
-          style={{ clipPath: HEX_CLIP }}
-        >
-          <TrophyIcon
-            className={`h-14 w-14 ${unlocked ? 'text-accent' : 'text-text-muted'}`}
-          />
-        </div>
+        {artUrl ? (
+          // El SVG es el medallón completo (ver lib/badgeArt.js): el oro trae
+          // su propio halo, coherente con Glow-Is-Earned. alt="" porque el
+          // nombre ya está en el <h2> que titula el diálogo.
+          <img src={artUrl} alt="" draggable={false} className="h-36 w-36" />
+        ) : (
+          <div
+            className={`flex h-36 w-36 items-center justify-center ${
+              unlocked ? 'bg-accent/20' : 'bg-surface-3'
+            }`}
+            style={{ clipPath: HEX_CLIP }}
+          >
+            <TrophyIcon
+              className={`h-14 w-14 ${unlocked ? 'text-accent' : 'text-text-muted'}`}
+            />
+          </div>
+        )}
 
         <div className="flex flex-col items-center gap-2 text-center">
           <h2

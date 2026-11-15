@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128"><defs>
+<linearGradient id="msesionbestia" x1="0" y1="0" x2="0.35" y2="1">
+<stop offset="0" stop-color="#f0b784"/><stop offset=".45" stop-color="#c2733a"/><stop offset="1" stop-color="#7a4119"/></linearGradient>
+<linearGradient id="rsesionbestia" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffd9b5" stop-opacity=".95"/><stop offset=".5" stop-color="#ffffff" stop-opacity="0"/>
+<stop offset="1" stop-color="#000000" stop-opacity=".45"/></linearGradient>
+<radialGradient id="fsesionbestia" cx=".4" cy=".3" r=".9">
+<stop offset="0" stop-color="#262c35"/><stop offset=".6" stop-color="#1a1410"/><stop offset="1" stop-color="#07090d"/></radialGradient>
+<filter id="gsesionbestia" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>
+<filter id="ssesionbestia" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.5"/></filter>
+</defs><path d="M124.00 64.00L94.00 115.96L34.00 115.96L4.00 64.00L34.00 12.04L94.00 12.04Z" fill="url(#msesionbestia)"/><path d="M124.00 64.00L94.00 115.96L34.00 115.96L4.00 64.00L34.00 12.04L94.00 12.04Z" fill="none" stroke="url(#rsesionbestia)" stroke-width="2.6"/><path d="M116.00 64.00L90.00 109.03L38.00 109.03L12.00 64.00L38.00 18.97L90.00 18.97Z" fill="#000" opacity=".35" filter="url(#ssesionbestia)"/><path d="M109.50 64.00L86.75 103.40L41.25 103.40L18.50 64.00L41.25 24.60L86.75 24.60Z" fill="url(#fsesionbestia)"/><path d="M109.50 64.00L86.75 103.40L41.25 103.40L18.50 64.00L41.25 24.60L86.75 24.60Z" fill="none" stroke="#7a4119" stroke-opacity=".7" stroke-width="1.6"/><g transform="translate(64.0 64.0) scale(1.16)"><g fill="#c9d1d9" stroke="none"><path d="M-11 4c0-6 5-10 11-10s11 4 11 10c0 5-4 10-11 10S-11 9-11 4z"/><ellipse cx="-11" cy="-7" rx="4" ry="5.4" transform="rotate(-20 -11 -7)"/><ellipse cx="-3" cy="-12.5" rx="3.8" ry="5.2"/><ellipse cx="5.4" cy="-12" rx="3.8" ry="5.2"/><ellipse cx="12.4" cy="-6" rx="3.8" ry="5.2" transform="rotate(22 12.4 -6)"/></g><g fill="none" stroke="#39d353" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M-13 -16l-3-5M0 -19v-5M13 -16l3-5"/></g></g><path d="M24 22 L104 22" stroke="#fff" stroke-opacity=".3" stroke-width="3" stroke-linecap="round" filter="url(#ssesionbestia)"/></svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128"><defs>
+<linearGradient id="mimparable" x1="0" y1="0" x2="0.35" y2="1">
+<stop offset="0" stop-color="#ffeaa0"/><stop offset=".45" stop-color="#e3b23c"/><stop offset="1" stop-color="#9a6a12"/></linearGradient>
+<linearGradient id="rimparable" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#fff6cf" stop-opacity=".95"/><stop offset=".5" stop-color="#ffffff" stop-opacity="0"/>
+<stop offset="1" stop-color="#000000" stop-opacity=".45"/></linearGradient>
+<radialGradient id="fimparable" cx=".4" cy=".3" r=".9">
+<stop offset="0" stop-color="#262c35"/><stop offset=".6" stop-color="#191508"/><stop offset="1" stop-color="#07090d"/></radialGradient>
+<filter id="gimparable" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>
+<filter id="simparable" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.5"/></filter>
+</defs><path d="M124.00 64.00L94.00 115.96L34.00 115.96L4.00 64.00L34.00 12.04L94.00 12.04Z" fill="#39d353" opacity="0.55" filter="url(#gimparable)"/><path d="M124.00 64.00L94.00 115.96L34.00 115.96L4.00 64.00L34.00 12.04L94.00 12.04Z" fill="url(#mimparable)"/><path d="M124.00 64.00L94.00 115.96L34.00 115.96L4.00 64.00L34.00 12.04L94.00 12.04Z" fill="none" stroke="url(#rimparable)" stroke-width="2.6"/><path d="M116.00 64.00L90.00 109.03L38.00 109.03L12.00 64.00L38.00 18.97L90.00 18.97Z" fill="#000" opacity=".35" filter="url(#simparable)"/><path d="M109.50 64.00L86.75 103.40L41.25 103.40L18.50 64.00L41.25 24.60L86.75 24.60Z" fill="url(#fimparable)"/><path d="M109.50 64.00L86.75 103.40L41.25 103.40L18.50 64.00L41.25 24.60L86.75 24.60Z" fill="none" stroke="#9a6a12" stroke-opacity=".7" stroke-width="1.6"/><g transform="translate(64.0 64.0) scale(1.16)"><g transform="translate(0 5) scale(1.1)" opacity="1"><path d="M0 -17c2.6 7.6 9 10.2 9 17.6a9 9 0 0 1-18 0c0-4.2 2.4-7.6 4.2-9.2.7 3.8 2.6 5.9 4.6 6.3C-2.6 -8-1.3 -12.6 0 -17z" fill="#39d353"/></g><g fill="#39d353" stroke="none"><path d="M-11 -11l3.4 5.6L0 -12l7.6 6.6L11 -11l-2 8.4h-18z"/></g></g><path d="M24 22 L104 22" stroke="#fff" stroke-opacity=".3" stroke-width="3" stroke-linecap="round" filter="url(#simparable)"/></svg>

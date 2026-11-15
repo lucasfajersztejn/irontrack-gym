@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBadges } from '../lib/useBadges.js'
 import { HEX_CLIP, localized } from '../lib/badgeDisplay.js'
+import { badgeArtUrl } from '../lib/badgeArt.js'
 import { TrophyIcon } from '../components/icons/NavIcons.jsx'
 import MedalDetail from '../components/badges/MedalDetail.jsx'
 
@@ -20,8 +21,9 @@ import MedalDetail from '../components/badges/MedalDetail.jsx'
   comparte una ganada: el muro no tiene acciones por tarjeta, para que tocar
   una medalla siempre signifique lo mismo.
 
-  El hexágono es clip-path, no una imagen: hasta que haya arte SVG por insignia
-  (iconUrl), el propio hexágono + un icono genérico es el medallón.
+  Cada insignia tiene su medallón SVG (ver lib/badgeArt.js), que se pinta como
+  <img>. Si una insignia sembrada aún no tiene arte, se cae al hexágono
+  clip-path + icono genérico, así una medalla nueva nunca sale rota.
 */
 
 const CATEGORY_ORDER = ['constancia', 'volumen', 'hitos', 'variedad', 'rareza']
@@ -112,6 +114,7 @@ export default function Medals() {
 function BadgeTile({ badge, lang, t, onSelect }) {
   const { unlocked, progress } = badge
   const name = localized(badge.name, lang)
+  const artUrl = badgeArtUrl(badge)
 
   // El botón lleva el estado en el aria-label. Sin esto, un lector de pantalla
   // leería el nombre y luego sueltos "Conseguida" o "3/5", sin contexto.
@@ -132,21 +135,33 @@ function BadgeTile({ badge, lang, t, onSelect }) {
         aria-label={ariaLabel}
         className="press flex w-full flex-col items-center gap-2 rounded-card text-center transition-transform"
       >
-        <span
-          // El hexágono. Desbloqueada: relleno de acento tenue + icono verde.
-          // Bloqueada: superficie elevada (surface-3, un escalón por encima del
-          // fondo para que el medallón se lea) + icono a plena opacidad muted, que
-          // es la silueta. Antes era surface-2 + icono al 35%: casi invisible
-          // sobre el fondo, así que el muro parecía mostrar solo las ganadas.
-          className={`flex aspect-square w-full items-center justify-center ${
-            unlocked ? 'bg-accent/20' : 'bg-surface-3'
-          }`}
-          style={{ clipPath: HEX_CLIP }}
-        >
-          <TrophyIcon
-            className={`h-6 w-6 ${unlocked ? 'text-accent' : 'text-text-muted'}`}
+        {artUrl ? (
+          // El SVG ya es el medallón completo (hexágono, material por tier y, en
+          // el oro, su halo). Por eso no lleva fondo ni clip-path: pintarlos
+          // debajo recortaría o duplicaría la forma. alt="" porque el nombre y
+          // el estado ya están en el aria-label del botón.
+          <img
+            src={artUrl}
+            alt=""
+            loading="lazy"
+            draggable={false}
+            className="aspect-square w-full"
           />
-        </span>
+        ) : (
+          // Fallback para insignias sembradas aún sin arte: hexágono clip-path
+          // + icono genérico. Bloqueada en surface-3 (un escalón sobre el fondo
+          // para que la silueta se lea); ganada en acento tenue.
+          <span
+            className={`flex aspect-square w-full items-center justify-center ${
+              unlocked ? 'bg-accent/20' : 'bg-surface-3'
+            }`}
+            style={{ clipPath: HEX_CLIP }}
+          >
+            <TrophyIcon
+              className={`h-6 w-6 ${unlocked ? 'text-accent' : 'text-text-muted'}`}
+            />
+          </span>
+        )}
 
         <span
           className={`block line-clamp-2 text-xs font-medium ${
