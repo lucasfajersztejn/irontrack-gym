@@ -21,6 +21,7 @@ const UserContext = createContext({
   linkedProviders: [],
   refetch: () => {},
   updateUser: () => {},
+  clearUser: () => {},
 })
 
 export function UserProvider({ children }) {
@@ -93,6 +94,18 @@ export function UserProvider({ children }) {
     setUser((prev) => (prev ? { ...prev, ...partial } : prev))
   }, [])
 
+  /*
+    clearUser: deja al usuario como invitado SIN ir al servidor. Es lo que se
+    usa tras sign-out y borrado de cuenta: la cookie ya no existe, así que un
+    refetch de /api/me solo provoca un 401 inútil (ruido en consola) para
+    acabar en el mismo `null`. Ponerlo a null a mano es inmediato y le basta a
+    ProtectedRoute para echar a la landing.
+  */
+  const clearUser = useCallback(() => {
+    setUser(null)
+    setLoading(false)
+  }, [])
+
   const value = {
     user,
     loading,
@@ -101,6 +114,7 @@ export function UserProvider({ children }) {
     linkedProviders,
     refetch: fetchMe,
     updateUser,
+    clearUser,
   }
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>

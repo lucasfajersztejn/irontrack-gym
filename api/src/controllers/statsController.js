@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import Session from '../models/session.model.js'
 import { MUSCLES } from '../models/constants.js'
+import { attachExerciseNames } from '../lib/exerciseNames.js'
 
 /*
   Stats: agregaciones globales por usuario que no caben en un controller
@@ -190,6 +191,10 @@ export const getRecords = async (req, res, next) => {
       if (!b.latestAt) return -1
       return new Date(b.latestAt) - new Date(a.latestAt)
     })
+
+    // Nombre bilingüe del catálogo para que la UI lo pinte en el idioma activo;
+    // `exerciseName` (snapshot) queda como respaldo para ejercicios borrados.
+    await attachExerciseNames(records)
 
     res.json({ records })
   } catch (err) {

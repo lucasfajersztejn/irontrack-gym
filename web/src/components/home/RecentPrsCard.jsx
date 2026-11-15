@@ -97,7 +97,15 @@ export default function RecentPrsCard() {
               <div className="flex items-baseline justify-between gap-2">
                 <span className="min-w-0 flex-1 truncate text-sm text-text">
                   {resolveExerciseName(
-                    { _id: pr.exerciseId, name: pr.exerciseName ? { [lang]: pr.exerciseName, es: pr.exerciseName, en: pr.exerciseName } : null },
+                    {
+                      _id: pr.exerciseId,
+                      // name bilingüe del catálogo; snapshot solo de respaldo.
+                      name:
+                        pr.name ??
+                        (pr.exerciseName
+                          ? { es: pr.exerciseName, en: pr.exerciseName }
+                          : null),
+                    },
                     user?.exerciseAliases ?? null,
                     lang,
                   )}

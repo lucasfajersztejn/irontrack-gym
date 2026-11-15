@@ -55,7 +55,7 @@ function formatRest(seconds, t) {
 export default function Settings() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { user, linkedProviders, refetch } = useUser()
+  const { user, linkedProviders, clearUser } = useUser()
   const { settings, save, savingKey, savedKey, error } = useSettings()
 
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -97,7 +97,9 @@ export default function Settings() {
 
   async function handleSignOut() {
     await signOut()
-    await refetch()
+    // clearUser en vez de refetch: la cookie ya se borró, así que pedir
+    // /api/me solo da un 401 inútil para acabar en el mismo invitado.
+    clearUser()
     navigate('/', { replace: true })
   }
 
@@ -106,10 +108,10 @@ export default function Settings() {
     setDeleteError(null)
     try {
       await deleteAccount()
-      // La cookie ya está borrada por el servidor: el refetch devuelve 401 y
-      // deja `user` en null, que es lo que ProtectedRoute necesita ver para
-      // no intentar repintar una pantalla de usuario sin usuario.
-      await refetch()
+      // La cuenta ya no existe y la cookie está borrada: dejamos `user` en null
+      // a mano (lo que ProtectedRoute necesita para no repintar una pantalla de
+      // usuario sin usuario) en vez de un refetch que solo devolvería 401.
+      clearUser()
       navigate('/', { replace: true })
     } catch (err) {
       setDeleteError(err.message ?? t('settings.delete.error'))

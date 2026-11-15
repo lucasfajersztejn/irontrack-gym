@@ -141,9 +141,12 @@ export default function RecordsCard() {
                           {resolveExerciseName(
                             {
                               _id: rec.exerciseId,
-                              name: rec.exerciseName
-                                ? { [lang]: rec.exerciseName, es: rec.exerciseName, en: rec.exerciseName }
-                                : null,
+                              // name bilingüe del catálogo; snapshot de respaldo.
+                              name:
+                                rec.name ??
+                                (rec.exerciseName
+                                  ? { es: rec.exerciseName, en: rec.exerciseName }
+                                  : null),
                             },
                             user?.exerciseAliases ?? null,
                             lang,
