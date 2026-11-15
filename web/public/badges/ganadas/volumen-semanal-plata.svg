@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128"><defs>
+<linearGradient id="mvolumensemanal" x1="0" y1="0" x2="0.35" y2="1">
+<stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#b9c3cc"/><stop offset="1" stop-color="#6b7681"/></linearGradient>
+<linearGradient id="rvolumensemanal" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset=".5" stop-color="#ffffff" stop-opacity="0"/>
+<stop offset="1" stop-color="#000000" stop-opacity=".45"/></linearGradient>
+<radialGradient id="fvolumensemanal" cx=".4" cy=".3" r=".9">
+<stop offset="0" stop-color="#262c35"/><stop offset=".6" stop-color="#13181f"/><stop offset="1" stop-color="#07090d"/></radialGradient>
+<filter id="gvolumensemanal" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>
+<filter id="svolumensemanal" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.5"/></filter>
+</defs><path d="M124.00 64.00L94.00 115.96L34.00 115.96L4.00 64.00L34.00 12.04L94.00 12.04Z" fill="url(#mvolumensemanal)"/><path d="M124.00 64.00L94.00 115.96L34.00 115.96L4.00 64.00L34.00 12.04L94.00 12.04Z" fill="none" stroke="url(#rvolumensemanal)" stroke-width="2.6"/><path d="M116.00 64.00L90.00 109.03L38.00 109.03L12.00 64.00L38.00 18.97L90.00 18.97Z" fill="#000" opacity=".35" filter="url(#svolumensemanal)"/><path d="M109.50 64.00L86.75 103.40L41.25 103.40L18.50 64.00L41.25 24.60L86.75 24.60Z" fill="url(#fvolumensemanal)"/><path d="M109.50 64.00L86.75 103.40L41.25 103.40L18.50 64.00L41.25 24.60L86.75 24.60Z" fill="none" stroke="#6b7681" stroke-opacity=".7" stroke-width="1.6"/><g transform="translate(64.0 64.0) scale(1.16)"><g fill="#c9d1d9" stroke="none"><rect x="-17" y="2" width="7.6" height="12" rx="2" fill="#8b949e"/><rect x="-6" y="-3" width="7.6" height="17" rx="2" fill="#26a641"/><rect x="5" y="-10" width="7.6" height="24" rx="2" fill="#39d353"/></g><g fill="none" stroke="#c9d1d9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M-14 -8l10-6 8-5"/></g><g fill="#c9d1d9" stroke="none"><path d="M12 -19l7 2-5 5z"/></g></g><path d="M24 22 L104 22" stroke="#fff" stroke-opacity=".3" stroke-width="3" stroke-linecap="round" filter="url(#svolumensemanal)"/></svg>

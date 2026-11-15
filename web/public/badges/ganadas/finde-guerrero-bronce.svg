@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128"><defs>
+<linearGradient id="mfindeguerrero" x1="0" y1="0" x2="0.35" y2="1">
+<stop offset="0" stop-color="#f0b784"/><stop offset=".45" stop-color="#c2733a"/><stop offset="1" stop-color="#7a4119"/></linearGradient>
+<linearGradient id="rfindeguerrero" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffd9b5" stop-opacity=".95"/><stop offset=".5" stop-color="#ffffff" stop-opacity="0"/>
+<stop offset="1" stop-color="#000000" stop-opacity=".45"/></linearGradient>
+<radialGradient id="ffindeguerrero" cx=".4" cy=".3" r=".9">
+<stop offset="0" stop-color="#262c35"/><stop offset=".6" stop-color="#1a1410"/><stop offset="1" stop-color="#07090d"/></radialGradient>
+<filter id="gfindeguerrero" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>
+<filter id="sfindeguerrero" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.5"/></filter>
+</defs><path d="M124.00 64.00L94.00 115.96L34.00 115.96L4.00 64.00L34.00 12.04L94.00 12.04Z" fill="url(#mfindeguerrero)"/><path d="M124.00 64.00L94.00 115.96L34.00 115.96L4.00 64.00L34.00 12.04L94.00 12.04Z" fill="none" stroke="url(#rfindeguerrero)" stroke-width="2.6"/><path d="M116.00 64.00L90.00 109.03L38.00 109.03L12.00 64.00L38.00 18.97L90.00 18.97Z" fill="#000" opacity=".35" filter="url(#sfindeguerrero)"/><path d="M109.50 64.00L86.75 103.40L41.25 103.40L18.50 64.00L41.25 24.60L86.75 24.60Z" fill="url(#ffindeguerrero)"/><path d="M109.50 64.00L86.75 103.40L41.25 103.40L18.50 64.00L41.25 24.60L86.75 24.60Z" fill="none" stroke="#7a4119" stroke-opacity=".7" stroke-width="1.6"/><g transform="translate(64.0 64.0) scale(1.16)"><rect x="-7.00" y="9.00" width="6" height="6" rx="1.80" fill="#39d353"/><rect x="1.00" y="9.00" width="6" height="6" rx="1.80" fill="#39d353"/><g fill="#c9d1d9" stroke="none"><path d="M0 -17l12 4v9c0 7-5 12-12 15-7-3-12-8-12-15v-9z"/></g><g fill="none" stroke="#0d1117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M-4.6 -4l3.6 3.6 6-6.4"/></g></g><path d="M24 22 L104 22" stroke="#fff" stroke-opacity=".3" stroke-width="3" stroke-linecap="round" filter="url(#sfindeguerrero)"/></svg>
