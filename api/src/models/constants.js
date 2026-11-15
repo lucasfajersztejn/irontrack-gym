@@ -130,9 +130,9 @@ export const BADGE_TIERS = ['bronce', 'plata', 'oro'];
 
 /**
  * Tipos de regla que el MOTOR sabe evaluar hoy. Una insignia con un `type`
- * fuera de esta lista (p.ej. `earlyBird`, aplazado por la zona horaria) existe
- * en el catálogo pero se queda bloqueada: el motor la ignora en silencio en vez
- * de romper. Así el catálogo puede adelantarse al motor sin acoplarse a él.
+ * fuera de esta lista existe en el catálogo pero se queda bloqueada: el motor
+ * la ignora en silencio en vez de romper. Así el catálogo puede adelantarse al
+ * motor (sembrar una insignia antes de enseñarle la métrica) sin acoplarse a él.
  */
 export const BADGE_RULE_TYPES = [
   'streak',             // racha máxima de días consecutivos con sesión
