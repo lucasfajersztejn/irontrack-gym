@@ -319,7 +319,11 @@ export async function seedDemoUser({ now = new Date() } = {}) {
           barInputMode: 'plates',
           defaultBarWeightKg: 20,
           restTimerSec: 120,
-          weeklyGoal: 4,
+          // 2 y no el default 4: la demo siembra ~2 sesiones por semana, así
+          // que con meta 2 el progreso semanal se ve cumplido y las insignias
+          // goal-week (maxGoalWeekStreak) se desbloquean en la vitrina. Con 4
+          // quedarían siempre a medias y bloqueadas.
+          weeklyGoal: 2,
           suggestProgression: true,
         },
         favoriteExercises: [],
