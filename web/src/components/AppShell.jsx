@@ -77,8 +77,6 @@ function bottomLinkClass({ isActive }) {
 const PROVIDER_LABELS = {
   google: 'Google',
   github: 'GitHub',
-  microsoft: 'Microsoft',
-  discord: 'Discord',
 }
 
 function providerLabel(providers) {
