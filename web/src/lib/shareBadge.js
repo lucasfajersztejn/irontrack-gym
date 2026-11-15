@@ -16,6 +16,8 @@
   respeta el invariante de "sin email ni servicios de terceros".
 */
 
+import { badgeArtUrl } from './badgeArt.js'
+
 const WIDTH = 1080
 const HEIGHT = 1920
 
@@ -114,10 +116,40 @@ function drawTrophy(ctx, cx, cy, size) {
   ctx.restore()
 }
 
+/*
+  Carga el SVG de arte de la insignia como <img> y espera a decodificarlo.
+
+  Por qué <img> + drawImage y no fetch + Path2D: un <img> de origen propio
+  (/badges/… se sirve desde el mismo dominio) se pinta en el canvas sin
+  "ensuciarlo". Un canvas tainted haría que toBlob() lanzara SecurityError y
+  la tarjeta no se podría compartir. Mismo origen = toBlob sigue funcionando.
+  El decode() espera a que el SVG esté rasterizable; si falla, quien llama cae
+  al hexágono genérico en vez de bloquear el compartir.
+*/
+async function loadArtImage(url) {
+  const img = new Image()
+  img.src = url
+  await img.decode()
+  return img
+}
+
 // Pinta la tarjeta completa y devuelve un Blob PNG. Es asíncrona porque espera
-// a las fuentes y a toBlob.
-export async function renderBadgeCard({ name, why, earnedLabel }) {
+// a las fuentes, al arte y a toBlob.
+export async function renderBadgeCard({ name, why, earnedLabel, slug, tier }) {
   await ensureFonts()
+
+  // Una insignia sin arte mapeado (slug nuevo) devuelve null y pinta el
+  // hexágono genérico, igual que antes de que existiera el arte.
+  const artUrl = badgeArtUrl({ slug, tier, unlocked: true })
+  let artImg = null
+  if (artUrl) {
+    try {
+      artImg = await loadArtImage(artUrl)
+    } catch {
+      // Arte roto o no servido: seguimos con el fallback genérico.
+      artImg = null
+    }
+  }
 
   const canvas = document.createElement('canvas')
   canvas.width = WIDTH
@@ -137,11 +169,17 @@ export async function renderBadgeCard({ name, why, earnedLabel }) {
   ctx.fillStyle = glow
   ctx.fillRect(0, 0, WIDTH, HEIGHT)
 
+  // El glow se queda detrás también con arte: los SVG dorados traen su propio
+  // halo, y el resplandor verde de fondo es la marca de "ganada" de la tarjeta.
   const hexSize = 480
-  drawHexagon(ctx, glowX, glowY, hexSize)
-  ctx.fillStyle = 'rgba(57, 211, 83, 0.2)'
-  ctx.fill()
-  drawTrophy(ctx, glowX, glowY, 200)
+  if (artImg) {
+    ctx.drawImage(artImg, glowX - hexSize / 2, glowY - hexSize / 2, hexSize, hexSize)
+  } else {
+    drawHexagon(ctx, glowX, glowY, hexSize)
+    ctx.fillStyle = 'rgba(57, 211, 83, 0.2)'
+    ctx.fill()
+    drawTrophy(ctx, glowX, glowY, 200)
+  }
 
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
@@ -189,8 +227,8 @@ function downloadBlob(blob, filename) {
   usuario la cerró (no es un error) y 'downloaded' si se cayó a descarga.
   Lanza solo si no se pudo generar la imagen ni descargarla.
 */
-export async function shareBadge({ slug, name, why, earnedLabel }) {
-  const blob = await renderBadgeCard({ name, why, earnedLabel })
+export async function shareBadge({ slug, name, why, earnedLabel, tier }) {
+  const blob = await renderBadgeCard({ name, why, earnedLabel, slug, tier })
   const filename = `irontrack-${slug}.png`
 
   const file = new File([blob], filename, { type: 'image/png' })
