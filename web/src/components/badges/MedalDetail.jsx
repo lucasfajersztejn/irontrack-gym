@@ -88,6 +88,7 @@ export default function MedalDetail({ badge, lang, onClose }) {
     try {
       await shareBadge({
         slug: badge.slug,
+        tier: badge.tier,
         name,
         why,
         earnedLabel: t('medals.detail.earnedOn', { date: earnedDate }),
