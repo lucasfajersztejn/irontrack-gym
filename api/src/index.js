@@ -23,6 +23,8 @@ import routineRoutes from './routes/routineRoutes.js'
 import sessionRoutes from './routes/sessionRoutes.js'
 import statsRoutes from './routes/statsRoutes.js'
 import badgeRoutes from './routes/badgeRoutes.js'
+import demoRoutes from './routes/demoRoutes.js'
+import adminRoutes from './routes/adminRoutes.js'
 
 connectDB()
 
@@ -74,7 +76,11 @@ app.use(
  * se consume una sola vez). Si `express.json()` lo lee primero para poblar
  * `req.body`, Better Auth recibe un stream vacío y los POST (callbacks OAuth,
  * sign-out, etc.) rompen. La doc de Better Auth lo advierte explícitamente.
+ *
+ * El login demo va ANTES de ese handler por la misma razón de orden: Better Auth
+ * captura todo `/api/auth/*` y respondería 404 a una ruta que no conoce.
  */
+app.use('/api/auth/demo', demoRoutes)
 app.all('/api/auth/*', toNodeHandler(auth))
 
 app.use(express.json({ limit: '100kb' }))
@@ -85,6 +91,7 @@ app.use('/api/routines', routineRoutes)
 app.use('/api/sessions', sessionRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/badges', badgeRoutes)
+app.use('/api/admin', adminRoutes)
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', project: 'IronTrack API' })

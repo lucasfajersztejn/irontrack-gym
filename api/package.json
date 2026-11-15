@@ -9,7 +9,8 @@
     "test:watch": "vitest",
     "seed": "node src/scripts/seedExercises.js",
     "seed:badges": "node src/scripts/seedBadges.js",
-    "backfill:badges": "node src/scripts/backfillBadges.js"
+    "backfill:badges": "node src/scripts/backfillBadges.js",
+    "seed:demo": "node src/scripts/seedDemoUser.js"
   },
   "dependencies": {
     "better-auth": "^1.2.0",
