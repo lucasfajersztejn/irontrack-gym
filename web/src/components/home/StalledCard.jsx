@@ -73,9 +73,13 @@ function StalledLiftRow({ ex }) {
   const name = resolveExerciseName(
     {
       _id: ex.exerciseId,
-      name: ex.exerciseName
-        ? { [lang]: ex.exerciseName, es: ex.exerciseName, en: ex.exerciseName }
-        : null,
+      // name bilingüe del catálogo (backend) para traducir; el snapshot
+      // exerciseName solo como respaldo si el ejercicio ya no existe.
+      name:
+        ex.name ??
+        (ex.exerciseName
+          ? { es: ex.exerciseName, en: ex.exerciseName }
+          : null),
     },
     user?.exerciseAliases ?? null,
     lang,

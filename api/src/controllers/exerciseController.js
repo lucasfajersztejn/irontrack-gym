@@ -3,6 +3,7 @@ import { z } from 'zod'
 import Exercise from '../models/exercise.model.js'
 import Session from '../models/session.model.js'
 import User from '../models/user.model.js'
+import { attachExerciseNames } from '../lib/exerciseNames.js'
 import {
   MUSCLES,
   BODY_PARTS,
@@ -796,6 +797,9 @@ export const getRecentPrs = async (req, res, next) => {
     // Más reciente primero. La UI se queda con los N que le interesen.
     prs.sort((a, b) => new Date(b.achievedAt) - new Date(a.achievedAt))
 
+    // Nombre bilingüe del catálogo para traducir en la UI; snapshot de respaldo.
+    await attachExerciseNames(prs)
+
     res.json({ sinceDays, prs })
   } catch (err) {
     next(err)
@@ -942,6 +946,9 @@ export const getStalled = async (req, res, next) => {
         b.sessionsSince - a.sessionsSince ||
         new Date(b.lastSessionAt) - new Date(a.lastSessionAt),
     )
+
+    // Nombre bilingüe del catálogo para traducir en la UI; snapshot de respaldo.
+    await attachExerciseNames(stalled)
 
     res.json({ stalled })
   } catch (err) {
