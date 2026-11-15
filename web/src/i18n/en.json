@@ -18,7 +18,7 @@
     "signInError": "Couldn't sign in. Please try again.",
     "or": "or",
     "demo": "Enter as demo",
-    "demoSoon": "Available in phase 3",
+    "demoError": "Couldn't open the demo. Please try again.",
     "legal": "By continuing you accept the <terms>Terms</terms> and <privacy>Privacy Policy</privacy>.",
     "heatmapWeeks": "Last {{count}} weeks",
     "heatmapStreak": "Streak · {{count}} days"
