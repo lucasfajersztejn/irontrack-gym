@@ -198,7 +198,11 @@ export async function renderSessionCard({ detail, summary, t, locale }) {
   // CSS (el canvas no tiene font-variant-numeric).
   const panelX = 120
   const panelW = WIDTH - panelX * 2
-  const panelY = heroY + 300
+  // heroY + 236 y no + 300: con un título de dos líneas todo el bloque baja
+  // ~112 px, y con el valor original la tercera fila de "ejercicios
+  // principales" se montaba encima del pie "IronTrack". Este hueco deja la
+  // lista despejada tanto con título de una línea como de dos.
+  const panelY = heroY + 236
   const rowH = 100
   const panelH = rowH * 3 + 24
   roundedRectPath(ctx, panelX, panelY, panelW, panelH, 44)
@@ -225,7 +229,7 @@ export async function renderSessionCard({ detail, summary, t, locale }) {
 
   // Top ejercicios. Si la sesión no tiene series completadas no hay lista que
   // pintar, y la sección se omite en vez de dejar un encabezado vacío.
-  let listY = panelY + panelH + 90
+  let listY = panelY + panelH + 74
   if (stats.topExercises.length > 0) {
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
