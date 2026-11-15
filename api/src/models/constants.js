@@ -85,7 +85,7 @@ export const DEFAULT_BAR_WEIGHTS_KG = {
 // Usuario
 // ---------------------------------------------------------------------------
 
-export const OAUTH_PROVIDERS = ['google', 'github', 'microsoft', 'discord'];
+export const OAUTH_PROVIDERS = ['google', 'github'];
 
 export const LOCALES = ['es', 'en'];
 

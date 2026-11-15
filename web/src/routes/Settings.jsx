@@ -43,8 +43,6 @@ const BAR_WEIGHT_STEP = 2.5
 const PROVIDER_NAMES = {
   google: 'Google',
   github: 'GitHub',
-  microsoft: 'Microsoft',
-  discord: 'Discord',
 }
 
 function formatRest(seconds, t) {

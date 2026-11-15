@@ -39,7 +39,10 @@ export const auth = betterAuth({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     },
-    // github, microsoft, discord — pendiente de credenciales (spec §5).
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    },
   },
 
   user: {
@@ -96,12 +99,11 @@ export const auth = betterAuth({
        *
        * `trustedProviders` controla qué proveedores podemos CONFIAR cuando
        * dicen "este email está verificado". Google lo verifica, siempre:
-       * incluimos Google. GitHub lo verifica si el usuario marcó el email como
-       * primario; si lo añadimos aquí, lo mismo. Microsoft y Discord vendrán
-       * después.
+       * incluimos Google. GitHub solo marca como verificado el email primario
+       * del usuario, así que enlazar por email con GitHub también es seguro.
        */
       enabled: true,
-      trustedProviders: ['google'],
+      trustedProviders: ['google', 'github'],
     },
   },
 

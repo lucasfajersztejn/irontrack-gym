@@ -3,9 +3,9 @@
   redondeado (radius 14) sobre --color-surface-2, con una pastilla cuadrada
   interna que lleva el icono de marca y un label a su derecha.
 
-  Soporta estado disabled porque GitHub/Microsoft/Discord están pendientes
-  de credenciales en el backend. Un chip "Pronto" aparece a la derecha solo
-  en ese caso.
+  Soporta estado disabled y un chip "Pronto" a la derecha para proveedores
+  que aún no están activos en el backend. Hoy Google y GitHub están activos,
+  así que ningún botón lo usa; se mantiene para el próximo proveedor.
 */
 import { useTranslation } from 'react-i18next'
 

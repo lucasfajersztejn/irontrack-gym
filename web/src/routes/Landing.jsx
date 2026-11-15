@@ -2,12 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { signInWithProvider } from '../lib/auth.js'
 import Logo from '../components/icons/Logo.jsx'
-import {
-  GoogleIcon,
-  GitHubIcon,
-  MicrosoftIcon,
-  DiscordIcon,
-} from '../components/icons/ProviderIcons.jsx'
+import { GoogleIcon, GitHubIcon } from '../components/icons/ProviderIcons.jsx'
 import OAuthButton from '../components/OAuthButton.jsx'
 import HeatmapPreview from '../components/HeatmapPreview.jsx'
 import LegalFooter from '../components/LegalFooter.jsx'
@@ -20,9 +15,9 @@ import LegalFooter from '../components/LegalFooter.jsx'
   Mantener ambos en el mismo archivo evita duplicar textos y variantes de
   copy; los breakpoints `lg:` cambian el layout sin cambiar los datos.
 
-  Solo Google está wired en el backend. Los otros tres proveedores se
-  renderizan deshabilitados con el chip "Pronto" para no engañar al usuario
-  (ver spec §5 y config/auth.js:39).
+  Google y GitHub están activos en el backend (config/auth.js). Los dos
+  botones son reales; no hay proveedores pendientes, así que ningún botón
+  lleva el chip "Pronto" (ver spec §5).
 
   El label del botón se compone con t('landing.continueWith') + el nombre de
   marca; guardamos solo el nombre (Google, GitHub…) en PROVIDERS porque es un
@@ -31,10 +26,8 @@ import LegalFooter from '../components/LegalFooter.jsx'
 */
 
 const PROVIDERS = [
-  { id: 'google',    name: 'Google',    icon: GoogleIcon,    enabled: true },
-  { id: 'github',    name: 'GitHub',    icon: GitHubIcon,    enabled: false },
-  { id: 'microsoft', name: 'Microsoft', icon: MicrosoftIcon, enabled: false },
-  { id: 'discord',   name: 'Discord',   icon: DiscordIcon,   enabled: false },
+  { id: 'google', name: 'Google', icon: GoogleIcon, enabled: true },
+  { id: 'github', name: 'GitHub', icon: GitHubIcon, enabled: true },
 ]
 
 function OAuthStack({ onError }) {
