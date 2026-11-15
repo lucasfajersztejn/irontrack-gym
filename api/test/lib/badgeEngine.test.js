@@ -522,9 +522,19 @@ describe('evaluateBadges', () => {
   })
 
   it('ignora un tipo de regla que el motor aún no sabe medir', () => {
-    const badges = [badge({ type: 'earlyBird', operator: 'lt', value: 7 })]
+    // Tipo ficticio a propósito: representa una insignia que el catálogo sembró
+    // antes de enseñarle la métrica al motor. (earlyBirdSessions, en cambio, sí
+    // se mide — ver la prueba siguiente.)
+    const badges = [badge({ type: 'metricaFutura', operator: 'lt', value: 7 })]
     const unlocked = evaluateBadges(badges, metrics)
     expect(unlocked).toHaveLength(0)
+  })
+
+  it('desbloquea early-bird cuando hay bastantes sesiones madrugadoras', () => {
+    const badges = [badge({ type: 'earlyBirdSessions', operator: 'gte', value: 5 })]
+    const unlocked = evaluateBadges(badges, { ...metrics, earlyBirdSessions: 5 })
+    expect(unlocked).toHaveLength(1)
+    expect(unlocked[0].metricValue).toBe(5)
   })
 
   it('guarda el valor real que disparó el desbloqueo', () => {

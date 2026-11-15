@@ -448,9 +448,10 @@ export function computeUserMetrics(
 // ---------------------------------------------------------------------------
 
 /**
- * Métrica que mide cada tipo de regla. Un tipo desconocido (p.ej. earlyBird,
- * aún sin implementar) devuelve null: su insignia no se puede evaluar y se
- * queda bloqueada en silencio, en vez de romper la evaluación del resto.
+ * Métrica que mide cada tipo de regla. Un tipo desconocido (uno que el catálogo
+ * sembró antes de que el motor aprendiera su métrica) devuelve null: su insignia
+ * no se puede evaluar y se queda bloqueada en silencio, en vez de romper la
+ * evaluación del resto.
  */
 function metricForRuleType(type, metrics) {
   switch (type) {
