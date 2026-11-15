@@ -1,49 +1,78 @@
-import { BODY_VIEWBOX, shapesFor } from '../../lib/muscleShapes.js'
+import {
+  BODY_VIEWBOX,
+  SILHOUETTE,
+  HAIR,
+  DECOR,
+  shapesFor,
+  allMuscleShapes,
+} from '../../lib/muscleShapes.js'
 
 /*
-  Cara del cuerpo con capa de siluetas musculares.
+  Una cara del cuerpo (frente o espalda) como SVG vectorial.
 
-  Extraído de MuscleMap.jsx para que MiniMuscleMap (Home) reutilice el
-  mismo render sin arrastrar la card, el flip 3D ni la leyenda. El
-  algoritmo de fusión (lighten gris + multiply color) vive aquí para que
-  ambas superficies pinten exactamente igual — si lo tocamos en un sitio
-  y no en el otro, dos pantallas enseñarían dos variantes del mismo
-  músculo.
+  Extraído de MuscleMap.jsx para que otras superficies puedan reutilizar el
+  render sin arrastrar la card, el flip 3D ni la leyenda.
+
+  El arte es vectorial (no un render ráster), así que cada músculo es un
+  trazado con relleno plano: no hace falta el truco viejo de dos pasadas
+  (lighten gris + multiply) que existía solo para teñir una foto. Las capas,
+  de atrás a delante:
+
+    1. SILHOUETTE — el contorno del cuerpo, gris claro.
+    2. músculos de base (allMuscleShapes) + DECOR (manos, pies, espinilla),
+       en gris muscular: la figura siempre se ve "con músculos".
+    3. `layers` — los músculos entrenados, encendidos con color y opacidad.
+    4. HAIR — el pelo, encima.
 
   API — `layers`
     Cada entrada: { muscles: [id...], color: 'var(--color-...)', opacity }.
-    El orden del array define el z-order; lo que va antes queda debajo.
-    `view` elige qué plano del cuerpo se mapea: 'front' o 'back'.
+    El orden define el z-order; lo que va antes queda debajo. El consumidor
+    decide colores y opacidad; aquí solo pintamos.
 */
 
-export const FLOOR_GRAY = '#787878'
+// Gris de los músculos sin encender y del contorno. color-mix para que se
+// adapten al tema sin hardcodear un hex que solo valga en oscuro.
+const BODY_FILL = 'var(--color-surface-3)'
+const MUSCLE_FILL = 'color-mix(in srgb, var(--color-text-muted) 32%, var(--color-surface-3))'
+const HAIR_FILL = 'color-mix(in srgb, var(--color-text-muted) 55%, var(--color-surface-3))'
 
-export function HeatLayer({ view, layers, blend, forceColor }) {
+export default function BodyFace({ view, layers = [], label, className }) {
+  const { width, height } = BODY_VIEWBOX
   return (
     <svg
-      viewBox={`0 0 ${BODY_VIEWBOX.width} ${BODY_VIEWBOX.height}`}
-      preserveAspectRatio="none"
-      aria-hidden
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      style={{ mixBlendMode: blend }}
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-label={label}
+      className={`${className} h-full w-full`}
     >
+      <g fill={BODY_FILL}>
+        {SILHOUETTE[view].map((d, i) => (
+          <path key={`b${i}`} d={d} />
+        ))}
+      </g>
+
+      <g fill={MUSCLE_FILL}>
+        {allMuscleShapes(view).map((d, i) => (
+          <path key={`m${i}`} d={d} />
+        ))}
+        {DECOR[view].map((d, i) => (
+          <path key={`d${i}`} d={d} />
+        ))}
+      </g>
+
       {layers.map((layer, i) => (
-        <g key={i} opacity={layer.opacity} fill={forceColor ?? layer.color}>
+        <g key={`l${i}`} fill={layer.color} opacity={layer.opacity}>
           {shapesFor(view, layer.muscles).map((d, j) => (
             <path key={j} d={d} />
           ))}
         </g>
       ))}
-    </svg>
-  )
-}
 
-export default function BodyFace({ view, src, layers, alt, className }) {
-  return (
-    <div className={`${className} isolate overflow-hidden`}>
-      <img src={src} alt={alt} className="h-full w-full object-contain" />
-      <HeatLayer view={view} layers={layers} blend="lighten" forceColor={FLOOR_GRAY} />
-      <HeatLayer view={view} layers={layers} blend="multiply" />
-    </div>
+      <g fill={HAIR_FILL}>
+        {HAIR[view].map((d, i) => (
+          <path key={`h${i}`} d={d} />
+        ))}
+      </g>
+    </svg>
   )
 }

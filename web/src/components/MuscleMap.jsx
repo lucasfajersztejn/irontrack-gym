@@ -1,41 +1,23 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import bodyFront from '../assets/muscles/body-front.webp'
-import bodyBack from '../assets/muscles/body-back.webp'
 import { BODY_VIEWBOX } from '../lib/muscleShapes.js'
 import BodyFace from './stats/BodyFace.jsx'
 
 /*
-  Mapa corporal de la semana. Colorea los músculos sobre un render anatómico
+  Mapa corporal de la semana. Colorea los músculos sobre una figura vectorial
   que gira en 3D entre frente y espalda.
 
-  Cómo se colorea un PNG
-  ----------------------
-  Los renders son imágenes rasterizadas, así que no hay regiones que colorear
-  por selector. Encima va una capa SVG con la SILUETA de cada músculo
-  (`lib/muscleShapes.js`, derivadas de la propia imagen; ver el script en
-  tools/muscle-shapes). No son manchas redondas encima del músculo: el
-  contorno sigue el dibujo.
-
-  Dos pasadas superpuestas por capa, cada una con su modo de fusión:
-
-  1. `lighten` con un gris medio. Solo sube los píxeles oscuros y deja intacto
-     el cuerpo, que ya es más claro. Existe por el pantalón del render:
-     multiply sobre un gris casi negro da un granate invisible y los glúteos
-     no se veían.
-  2. `multiply` con el color real de la capa. Multiply y no un relleno opaco
-     porque conserva las estriaciones del dibujo debajo: el músculo se tiñe,
-     no se tapa.
-
-  El contenedor lleva `isolation: isolate` para que la fusión no escape de la
-  card y tiña el fondo de la página.
+  La figura es un SVG (no un render ráster), así que cada músculo es una región
+  con relleno plano que se enciende por selector. El dibujo vive en
+  `lib/muscleShapes.js`, generado desde el arte vectorial por
+  tools/muscle-shapes/vectorize.mjs. `BodyFace` pinta cada cara.
 
   API — `layers`
   --------------
   Cada entrada del array es una capa independiente: una lista de muscle ids,
   un color (CSS var — p. ej. `var(--color-muscle)`) y una opacidad. Permite
   pintar el mapa con el acento rojo del volumen, con ámbar para
-  recuperación, con gris para los músculos descuidados — o cualquier
+  recuperación, con azul para los músculos descuidados — o cualquier
   combinación. El orden del array manda el z-order: lo que va antes queda
   debajo. El consumidor decide; aquí solo pintamos.
 
@@ -84,16 +66,14 @@ export default function MuscleMap({ title, subtitle, layers = [], legendItems = 
         >
           <BodyFace
             view="front"
-            src={bodyFront}
             layers={layers}
-            alt={t('weekStats.bodyFrontAlt')}
+            label={t('weekStats.bodyFrontAlt')}
             className="absolute inset-0 [backface-visibility:hidden] [-webkit-backface-visibility:hidden]"
           />
           <BodyFace
             view="back"
-            src={bodyBack}
             layers={layers}
-            alt={t('weekStats.bodyBackAlt')}
+            label={t('weekStats.bodyBackAlt')}
             className="absolute inset-0 [transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden]"
           />
         </div>
