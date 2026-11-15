@@ -5,6 +5,7 @@ import { mongodbAdapter } from 'better-auth/adapters/mongodb'
 import Session from '../models/session.model.js'
 import Routine from '../models/routine.model.js'
 import Exercise from '../models/exercise.model.js'
+import { DEMO_ACCOUNT } from '../models/constants.js'
 
 /**
  * Better Auth necesita un `MongoClient` nativo, no la conexión de Mongoose
@@ -79,6 +80,17 @@ export const auth = betterAuth({
     deleteUser: {
       enabled: true,
       beforeDelete: async (user) => {
+        /**
+         * La cuenta demo es compartida (vitrina para reclutadores). Si un
+         * visitante pulsa "Borrar cuenta" en Ajustes, dejaría la demo rota
+         * para todos hasta el próximo reseed. Lanzar aquí aborta el borrado de
+         * Better Auth: el visitante ve el error de Ajustes y la cuenta
+         * sobrevive. El reseed admin sigue pudiendo recrearla porque borra las
+         * colecciones de IronTrack directamente, sin pasar por este hook.
+         */
+        if (user.email?.toLowerCase() === DEMO_ACCOUNT.email) {
+          throw new Error('La cuenta demo no se puede borrar')
+        }
         await Promise.all([
           Session.deleteMany({ user: user.id }),
           Routine.deleteMany({ user: user.id }),

@@ -166,6 +166,14 @@ export const BADGE_RULE_TYPES = [
 /** Comparadores de la regla declarativa. */
 export const BADGE_RULE_OPERATORS = ['gte', 'gt', 'lte', 'lt', 'eq'];
 
+/**
+ * Cuenta demo compartida (showcase para reclutadores). Es un usuario que crea
+ * `npm run seed:demo`; el login demo (POST /api/auth/demo) solo la busca y nunca
+ * la crea. El email va en `.local`, un dominio que no existe en internet: nadie
+ * puede recibir ni reclamar esa cuenta por correo.
+ */
+export const DEMO_ACCOUNT = { email: 'demo@irontrack.local', username: 'demo' }
+
 /** Usernames que no se pueden registrar porque chocan con rutas de la app. */
 export const RESERVED_USERNAMES = [
   'admin', 'api', 'login', 'logout', 'signup', 'settings', 'profile', 'u',

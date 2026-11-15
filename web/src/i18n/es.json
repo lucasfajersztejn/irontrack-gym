@@ -18,7 +18,7 @@
     "signInError": "No se pudo iniciar sesión. Vuelve a intentarlo.",
     "or": "o",
     "demo": "Entrar como demo",
-    "demoSoon": "Disponible en la fase 3",
+    "demoError": "No se pudo entrar en la demo. Vuelve a intentarlo.",
     "legal": "Al continuar aceptas los <terms>Términos</terms> y la <privacy>Privacidad</privacy>.",
     "heatmapWeeks": "Últimas {{count}} semanas",
     "heatmapStreak": "Racha · {{count}} días"

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { signInWithProvider } from '../lib/auth.js'
+import { useNavigate } from 'react-router-dom'
+import { signInWithProvider, signInAsDemo } from '../lib/auth.js'
+import { useUser } from '../contexts/UserContext.jsx'
 import Logo from '../components/icons/Logo.jsx'
 import { GoogleIcon, GitHubIcon } from '../components/icons/ProviderIcons.jsx'
 import OAuthButton from '../components/OAuthButton.jsx'
@@ -65,16 +67,40 @@ function OAuthStack({ onError }) {
   )
 }
 
-function DemoLink() {
+/*
+  Entrada a la cuenta demo compartida (lib/auth.js). Es un enlace de texto y no
+  un botón de proveedor: la demo no es OAuth y no debe competir con Google y
+  GitHub. Usa el mismo patrón busy/error que OAuthStack.
+*/
+function DemoLink({ onError }) {
   const { t } = useTranslation()
+  const { refetch } = useUser()
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
+
+  async function handle() {
+    setBusy(true)
+    try {
+      await signInAsDemo()
+      // La cookie ya es de la demo, pero UserContext sigue marcando al invitado.
+      // Refrescar antes de navegar evita que /home rebote de vuelta a la landing.
+      await refetch()
+      navigate('/home', { replace: true })
+    } catch (err) {
+      console.error('Login demo falló:', err)
+      onError?.(t('landing.demoError'))
+      setBusy(false)
+    }
+  }
+
   return (
     <button
       type="button"
-      disabled
-      className="w-full cursor-not-allowed text-center text-sm font-medium text-link opacity-60"
-      title={t('landing.demoSoon')}
+      onClick={handle}
+      disabled={busy}
+      className="w-full text-center text-sm font-medium text-link disabled:cursor-wait disabled:opacity-60"
     >
-      {t('landing.demo')}
+      {busy ? t('landing.redirecting') : t('landing.demo')}
     </button>
   )
 }
@@ -125,7 +151,7 @@ export default function Landing() {
           <p className="text-center text-sm text-error">{error}</p>
         )}
 
-        <DemoLink />
+        <DemoLink onError={setError} />
         <LegalFooter />
       </div>
 
@@ -194,7 +220,7 @@ export default function Landing() {
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <DemoLink />
+            <DemoLink onError={setError} />
 
             <div className="mt-6">
               <LegalFooter />

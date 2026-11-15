@@ -21,6 +21,13 @@ let mongod
 beforeAll(async () => {
   mongod = await MongoMemoryServer.create()
   await mongoose.connect(mongod.getUri())
+  /*
+    config/auth.js abre su propio MongoClient nativo leyendo MONGO_URI al
+    importarse (Better Auth no acepta la conexión de Mongoose). Apuntarlo a la
+    misma Mongo en memoria permite a los tests de auth ejecutar el flujo real
+    (sesión forjada + getSession) sin tocar Atlas.
+  */
+  process.env.MONGO_URI = mongod.getUri()
 })
 
 afterEach(async () => {

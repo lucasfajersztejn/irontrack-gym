@@ -1,4 +1,5 @@
 import { createAuthClient } from 'better-auth/react'
+import { api } from './api.js'
 
 /*
   Cliente de Better Auth. En dev el proxy de Vite (ver vite.config.js) hace
@@ -52,6 +53,17 @@ function unwrap({ data, error }) {
 */
 export async function listLinkedProviders() {
   return unwrap(await authClient.listAccounts()) ?? []
+}
+
+/*
+  Entrada a la cuenta demo compartida. No es OAuth: el backend firma la sesión
+  de la cuenta demo y responde con la cookie (ver api/src/controllers/
+  demoController.js). Va por `api()` porque ahí ya están credentials: 'include'
+  y el manejo de errores HTTP. El llamador debe refrescar UserContext después,
+  porque la cookie cambia el usuario pero no avisa al frontend.
+*/
+export function signInAsDemo() {
+  return api('/api/auth/demo', { method: 'POST' })
 }
 
 /*
