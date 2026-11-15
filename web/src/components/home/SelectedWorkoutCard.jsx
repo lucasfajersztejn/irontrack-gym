@@ -5,6 +5,7 @@ import { resolveExerciseName } from '../../lib/exerciseName.js'
 import { useSessionDetail } from '../../lib/useSessionDetail.js'
 import { useExerciseProgress } from '../../lib/useExerciseProgress.js'
 import { breakdownForSession } from '../../lib/useWeeklyStats.js'
+import { shareSession } from '../../lib/shareSession.js'
 import ExerciseCurve from '../stats/ExerciseCurve.jsx'
 import MuscleChips from '../MuscleChips.jsx'
 import { ChevronRightIcon } from '../icons/NavIcons.jsx'
@@ -151,6 +152,9 @@ export default function SelectedWorkoutCard({ sessions = [], loading }) {
   // Cerrada de arranque, Home abre escaneable; al abrirla se montan las
   // filas y recién ahí disparan sus fetches de progreso.
   const [open, setOpen] = useState(false)
+  // Estado del botón compartir. Vive aquí y no en un hook: solo lo usa este
+  // botón, y reiniciarlo al cambiar de sesión es lo que queremos.
+  const [shareState, setShareState] = useState('idle') // idle | busy | error
 
   // Mantén la selección sincronizada con la sesión más reciente mientras
   // no la haya cambiado el usuario (o cuando la elegida deja de existir
@@ -168,6 +172,30 @@ export default function SelectedWorkoutCard({ sessions = [], loading }) {
 
   const { detail, loading: loadingDetail } = useSessionDetail(selectedId)
   const breakdown = useMemo(() => breakdownForSession(detail), [detail])
+
+  // Resumen de la lista (routineName) para el título de la tarjeta; el detalle
+  // trae las series. Si la sesión elegida ya no está, quien pinta cae a
+  // detail.routineName.
+  const selectedSummary = useMemo(
+    () => recent.find((s) => s._id === selectedId) ?? null,
+    [recent, selectedId],
+  )
+
+  async function handleShare() {
+    if (!detail) return
+    setShareState('busy')
+    try {
+      await shareSession({
+        detail,
+        summary: selectedSummary,
+        t,
+        locale: i18n.language,
+      })
+      setShareState('idle')
+    } catch {
+      setShareState('error')
+    }
+  }
 
   if (loading) {
     return (
@@ -256,7 +284,20 @@ export default function SelectedWorkoutCard({ sessions = [], loading }) {
               )
             })}
           </div>
+          <button
+            type="button"
+            onClick={handleShare}
+            disabled={!detail || shareState === 'busy'}
+            className="press rounded-control border border-border bg-surface px-2.5 py-1 text-xs font-medium text-text transition-colors hover:bg-surface-2 disabled:opacity-60"
+          >
+            {t('home.shareSession')}
+          </button>
         </div>
+      )}
+      {open && shareState === 'error' && (
+        <p role="alert" className="text-right text-xs text-error">
+          {t('home.shareSessionError')}
+        </p>
       )}
 
       {open && (loadingDetail && !detail ? (
