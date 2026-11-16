@@ -118,8 +118,8 @@ describe('Rutinas — flujos felices', () => {
 
     await request(app).patch('/api/routines/reorder').send({ ids: [r2._id, r1._id] }).expect(204)
 
-    const stored = await Routine.find({ user: userA }).sort({ order: 1 }).lean()
-    expect(stored.map((r) => r.name)).toEqual(['Dos', 'Uno'])
+    const { body: list } = await request(app).get('/api/routines').expect(200)
+    expect(list.map((r) => r.name)).toEqual(['Dos', 'Uno'])
   })
 })
 

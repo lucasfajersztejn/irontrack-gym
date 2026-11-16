@@ -57,6 +57,7 @@ export async function listRoutines(req, res, next) {
           name: 1,
           description: 1,
           isSystemTemplate: 1,
+          order: 1,
           timesUsed: 1,
           lastUsedAt: 1,
           createdAt: 1,
