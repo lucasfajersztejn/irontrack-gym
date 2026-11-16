@@ -58,7 +58,7 @@ async function fetchHeatmap(from, to) {
   return Array.isArray(resp) ? resp : []
 }
 
-function buildCells(sessions, start, end, today, year) {
+export function buildCells(sessions, start, end, today, year) {
   const localToday = startOfLocalDay(today)
   const todayKey = toLocalDayKey(localToday)
   const counts = new Map()
