@@ -1,15 +1,6 @@
-/**
- * Valores compartidos por todos los modelos.
- *
- * ¿Por qué un archivo aparte? Para no repetir strings sueltos ("barbell",
- * "weight_reps") por media docena de ficheros. Si mañana añades un tipo de
- * tracking, lo cambias aquí y se actualiza en todas partes. Un string repetido
- * a mano en 5 sitios es un typo esperando a pasar.
- */
+/** Enums and business rules shared by all models */
 
-// ---------------------------------------------------------------------------
-// Taxonomía del catálogo de ejercicios (viene de ExerciseGymGifsDB)
-// ---------------------------------------------------------------------------
+// Exercise catalog taxonomy (from ExerciseGymGifsDB)
 
 export const MUSCLES = [
   'abductors', 'abs', 'adductors', 'biceps', 'calves', 'cardio', 'delts',
@@ -21,12 +12,7 @@ export const BODY_PARTS = [
   'arms', 'legs', 'chest', 'back', 'core', 'shoulders', 'cardio',
 ];
 
-/**
- * Músculo fino -> parte del cuerpo, para las medallas de variedad ("entrena
- * todos los grupos"). Es un mapa de PRESENTACIÓN del motor de insignias: no
- * sustituye al `bodyPart` del catálogo de ejercicios, que es la fuente de
- * verdad para filtrar. Aquí solo decidimos qué cuenta como "grupo distinto".
- */
+/** Fine muscle to body part, for variety badges */
 export const MUSCLE_TO_BODY_PART = {
   quads: 'legs',
   glutes: 'legs',
@@ -56,125 +42,99 @@ export const EQUIPMENT = [
 
 export const CATEGORIES = ['strength', 'stretching', 'cardio', 'plyometrics'];
 
-// ---------------------------------------------------------------------------
-// Tipos de tracking: determinan qué campos lleva cada serie
-// ---------------------------------------------------------------------------
+// Tracking types: define each set's fields
 
 export const TRACKING_TYPES = [
-  'weight_reps',   // press banca, sentadilla     -> weightKg + reps
-  'reps',          // dominadas, flexiones        -> reps (+ addedWeightKg)
-  'time',          // plancha, isométricos        -> durationSec
-  'distance_time', // cinta, bici, remo           -> distanceM + durationSec
+  'weight_reps',
+  'reps',
+  'time',
+  'distance_time',
 ];
 
-/** Equipamiento que implica barra: su peso cuenta en el total levantado. */
+/** Equipment that implies a bar */
 export const BAR_EQUIPMENT = ['barbell', 'ez-bar', 'smith'];
 
-/**
- * Pesos de barra por defecto, en KILOGRAMOS.
- * El multipower (smith) varía mucho entre máquinas por el contrapeso, así que
- * el valor es orientativo y el usuario debería poder ajustarlo.
- */
+/** Default bar weights, in kg */
 export const DEFAULT_BAR_WEIGHTS_KG = {
   barbell: 20,
   'ez-bar': 7,
   smith: 15,
 };
 
-// ---------------------------------------------------------------------------
-// Usuario
-// ---------------------------------------------------------------------------
+// User
 
 export const OAUTH_PROVIDERS = ['google', 'github'];
 
 export const LOCALES = ['es', 'en'];
 
 export const PRIVACY_LEVELS = [
-  'private', // por defecto: nadie lo ve
-  'link',    // accesible con enlace directo, no sale en el buscador
-  'public',  // sale en el buscador
+  'private',
+  'link',
+  'public',
 ];
 
-/** Cómo se introduce el peso en ejercicios con barra. */
+/** How weight is entered on bar exercises */
 export const BAR_INPUT_MODES = [
-  'plates', // el usuario escribe discos POR LADO -> la app suma la barra
-  'total',  // el usuario escribe el peso total ya calculado
+  'plates',
+  'total',
 ];
 
-// ---------------------------------------------------------------------------
-// Reglas de negocio
-// ---------------------------------------------------------------------------
+// Business rules
 
-/**
- * Si una sesión supera este tiempo sin cerrarse, se cierra automáticamente y
- * se marca durationEstimated. Cubre el caso "se olvidó de darle a terminar y
- * se fue a casa".
- */
+/** Open sessions are auto-closed after this many hours */
 export const MAX_SESSION_HOURS = 4;
 
-// ---------------------------------------------------------------------------
-// Insignias (Fase 3) — catálogo declarativo
-// ---------------------------------------------------------------------------
+// Badges (Phase 3): declarative catalog
 
-/** Familias de insignia. La categoría agrupa el muro, no cambia la evaluación. */
+/** Badge families; they group the wall only */
 export const BADGE_CATEGORIES = [
-  'constancia', // rachas de días con sesión
-  'volumen',    // kilos acumulados
-  'hitos',      // sesión nº 100, primer récord…
-  'variedad',   // entrenar todos los grupos en un mes
-  'rareza',     // madrugador y similares
+  'constancia',
+  'volumen',
+  'hitos',
+  'variedad',
+  'rareza',
 ];
 
-/** Niveles. Solo estético/ordenación; no implican jerarquía de evaluación. */
+/** Badge tiers; cosmetic ordering only */
 export const BADGE_TIERS = ['bronce', 'plata', 'oro'];
 
-/**
- * Tipos de regla que el MOTOR sabe evaluar hoy. Una insignia con un `type`
- * fuera de esta lista existe en el catálogo pero se queda bloqueada: el motor
- * la ignora en silencio en vez de romper. Así el catálogo puede adelantarse al
- * motor (sembrar una insignia antes de enseñarle la métrica) sin acoplarse a él.
- */
+/** Rule types the engine can evaluate */
 export const BADGE_RULE_TYPES = [
-  'streak',             // racha máxima de días consecutivos con sesión
-  'sessionCount',       // nº de sesiones cerradas
-  'totalVolumeKg',      // suma de weightKg × reps de las series completadas
-  'totalReps',          // suma de reps de todas las series completadas
-  'totalSets',          // nº de series completadas (cualquier tracking)
-  'maxSessionVolumeKg', // mayor volumen (kg) en una sola sesión
-  'maxSetsInSession',   // más series completadas en una sola sesión
-  'maxWeightSingleKg',  // mayor peso levantado en una sola serie
-  'maxGoalWeekStreak',  // semanas consecutivas cumpliendo la meta semanal
-  'distinctActiveMonths', // nº de meses naturales distintos con sesión
-  'distinctActiveDays', // nº de días distintos con sesión (días del heatmap)
-  'maxDaysInWeek',      // más días distintos entrenados en una misma semana
-  'longestGapDays',     // mayor separación en días entre dos sesiones seguidas
-  'weekendSessions',    // nº de sesiones en sábado o domingo (hora local)
-  'earlyBirdSessions',  // nº de sesiones empezadas antes de las 07:00 locales
-  'nightOwlSessions',   // nº de sesiones empezadas a las 22:00 locales o más tarde
-  'accountAgeDays',     // días desde el alta de la cuenta
-  'distinctBodyParts',  // nº de partes del cuerpo distintas entrenadas (alguna vez)
-  'maxBodyPartsInWeek', // más partes del cuerpo distintas en una misma semana ISO
-  'distinctExercises',  // nº de ejercicios distintos del catálogo ejecutados
-  'maxBodyPartsIn30DayWindow', // más partes distintas en cualquier ventana de 30 días
-  'cardioSessions',     // nº de sesiones con alguna serie completada de cardio
-  'maxDistinctWeeksInMonth', // en el mes con más semanas ISO distintas entrenadas
-  'weekendPairs',       // nº de semanas con sesión en sábado Y en domingo
-  'beatPrevWeekVolume', // nº de semanas con más volumen (kg) que la semana anterior
-  'prCount',            // nº de veces que se batió un récord personal (por ejercicio y sesión)
+  'streak',
+  'sessionCount',
+  'totalVolumeKg',
+  'totalReps',
+  'totalSets',
+  'maxSessionVolumeKg',
+  'maxSetsInSession',
+  'maxWeightSingleKg',
+  'maxGoalWeekStreak',
+  'distinctActiveMonths',
+  'distinctActiveDays',
+  'maxDaysInWeek',
+  'longestGapDays',
+  'weekendSessions',
+  'earlyBirdSessions',
+  'nightOwlSessions',
+  'accountAgeDays',
+  'distinctBodyParts',
+  'maxBodyPartsInWeek',
+  'distinctExercises',
+  'maxBodyPartsIn30DayWindow',
+  'cardioSessions',
+  'maxDistinctWeeksInMonth',
+  'weekendPairs',
+  'beatPrevWeekVolume',
+  'prCount',
 ];
 
-/** Comparadores de la regla declarativa. */
+/** Declarative rule comparators */
 export const BADGE_RULE_OPERATORS = ['gte', 'gt', 'lte', 'lt', 'eq'];
 
-/**
- * Cuenta demo compartida (showcase para reclutadores). Es un usuario que crea
- * `npm run seed:demo`; el login demo (POST /api/auth/demo) solo la busca y nunca
- * la crea. El email va en `.local`, un dominio que no existe en internet: nadie
- * puede recibir ni reclamar esa cuenta por correo.
- */
+/** Shared demo account */
 export const DEMO_ACCOUNT = { email: 'demo@irontrack.local', username: 'demo' }
 
-/** Usernames que no se pueden registrar porque chocan con rutas de la app. */
+/** Usernames that collide with app routes */
 export const RESERVED_USERNAMES = [
   'admin', 'api', 'login', 'logout', 'signup', 'settings', 'profile', 'u',
   'me', 'new', 'edit', 'delete', 'search', 'explore', 'about', 'help',

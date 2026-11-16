@@ -1,19 +1,7 @@
+// Info popover explaining the RIR (reps in reserve) scale.
+
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-/*
-  Pequeño botón (i) al lado del input de RIR. Al pulsarlo se abre un popover
-  anclado abajo-izquierda con la definición de RIR y la escala. Se cierra
-  al tocar fuera o al pulsar Escape.
-
-  ¿Por qué no `title` nativo? En móvil el `title` solo aparece con long-press
-  en algunos navegadores y nunca es descubrible. La app es mobile-first y el
-  usuario que no sabe qué significa "RIR" necesita verlo al pulsar, no al
-  mantener pulsado.
-
-  Un popover por serie sería ruidoso; renderizamos solo uno por entry
-  (la primera serie), que es suficiente para explicar la columna completa.
-*/
 
 export default function RirInfoPopover() {
   const { t } = useTranslation()

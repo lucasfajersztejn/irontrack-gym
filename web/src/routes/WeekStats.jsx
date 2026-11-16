@@ -1,3 +1,5 @@
+// Weekly stats dashboard: week navigator, progress, collapsible sessions and muscle map (history lives here).
+
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -17,30 +19,7 @@ import { ChevronRightIcon } from '../components/icons/NavIcons.jsx'
 import ExerciseProgressRow from '../components/stats/ExerciseProgressRow.jsx'
 import { useMuscleRecency } from '../lib/useMuscleRecency.js'
 
-// Cuántas semanas atrás se puede navegar, tanto con las flechas como en el
-// salto rápido del desplegable (que lista TODAS estas semanas agrupadas por
-// mes, tengan sesiones o no: es un navegador de tiempo, no un índice de
-// actividad). Un año es de sobra para un diario de gimnasio.
 const MAX_WEEKS_BACK = 52
-
-/*
-  Dashboard semanal — se monta como panel dentro de Home y (temporalmente)
-  bajo /stats/week para no romper bookmarks. Antes era su propia ruta con
-  header + outlet; al fundir /stats/week dentro de Home dejamos el cuerpo
-  igual y envolvemos con un wrapper que no añade spacing externo (Home ya
-  compone el ritmo vertical entre bloques).
-
-  Composición (sin cambios respecto a la versión previa):
-    1. Progress card (objetivo editable).
-    2. Lista de sesiones. Cada sesión es colapsable; al desplegar muestra:
-       - Chips de grupos trabajados (primarios con verde, secundarios en
-         gris para que la jerarquía se lea de un vistazo).
-       - Lista de ejercicios con sus series completadas (pills peso×reps).
-       - Botón borrar sesión.
-
-  La agregación por-músculo (ex-sección "By muscle group") se eliminó: la
-  misma información vive ahora dentro de cada sesión expandida.
-*/
 
 const DEFAULT_GOAL = 4
 
@@ -62,22 +41,11 @@ function fmtDuration(seconds, t) {
   return t('weekStats.minutes', { m })
 }
 
-/*
-  Prop `embedded`: cuando viene desde Home el wrapper externo no debe
-  acotar ancho (Home ya decide `max-w-6xl`) ni mostrar el título "Semana
-  N" ni el enlace "← volver". Fuera de ese caso (si volviéramos a
-  exponer la ruta /stats/week) el wrapper vuelve al formato standalone.
-*/
 export default function WeekDashboard({ embedded = false }) {
   const { t, i18n } = useTranslation()
   const { user, refetch: refetchUser } = useUser()
 
-  // offset en semanas hacia atrás: 0 = esta semana, 1 = la pasada…
   const [weekOffset, setWeekOffset] = useState(0)
-  // El lunes de ESTA semana se fija una vez al montar; el resto se deriva
-  // restando semanas. Recalcularlo en cada render haría que, si el usuario
-  // deja la pestaña abierta al cruzar la medianoche del domingo, "esta
-  // semana" saltara sin avisar. Para esta vista es aceptable fijarlo.
   const currentMonday = useMemo(() => mondayOf(new Date()), [])
   const weekStart = useMemo(() => {
     const d = new Date(currentMonday)
@@ -95,10 +63,6 @@ export default function WeekDashboard({ embedded = false }) {
   const [sessionToDelete, setSessionToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
-  // Cambiar de semana cierra cualquier sesión expandida: su id no está en la
-  // lista nueva y dejarla "abierta" sería estado fantasma. Se resetea en el
-  // propio handler (no en un efecto) para no encadenar renders con un setState
-  // dentro de useEffect.
   function changeWeek(next) {
     setWeekOffset(next)
     setOpenSession(null)
@@ -111,10 +75,6 @@ export default function WeekDashboard({ embedded = false }) {
     [weekly.sessions],
   )
 
-  // Modo del mapa muscular: volumen (default, igual que antes), recuperación
-  // (<72h desde el último estímulo primario) o descuidado (≥14d o nunca).
-  // La recencia solo alimenta los dos modos nuevos — volumen sigue leyendo
-  // de `muscles` (semana en curso), no del endpoint histórico.
   const [muscleMapMode, setMuscleMapMode] = useState('volume')
   const recency = useMuscleRecency()
 
@@ -267,10 +227,6 @@ export default function WeekDashboard({ embedded = false }) {
   )
 }
 
-// Rango lunes–domingo de una semana, formateado corto: "27 oct – 2 nov".
-// Formateamos los dos extremos igual aunque caigan en el mismo mes: es una
-// línea más de texto, pero se lee sin ambigüedad y evita ramas por
-// mismo-mes / mismo-año que aportan poco.
 function weekRange(weekStart, locale) {
   const end = new Date(weekStart)
   end.setDate(end.getDate() + 6)
@@ -278,13 +234,6 @@ function weekRange(weekStart, locale) {
   return `${fmt.format(weekStart)} – ${fmt.format(end)}`
 }
 
-/*
-  Semanas del desplegable: de la actual hacia atrás hasta MAX_WEEKS_BACK,
-  agrupadas por mes. Es un navegador de tiempo, no un índice de actividad:
-  lista todas las semanas del año tengan sesiones o no, para poder saltar a
-  cualquier punto. Deriva cada lunes restando semanas al lunes de hoy (sin
-  arrastrar husos ni cambios de horario). Pura, sin red.
-*/
 function weeksByMonth(currentMonday, locale) {
   const groups = []
   const byKey = new Map()
@@ -311,16 +260,6 @@ function weeksByMonth(currentMonday, locale) {
   return groups
 }
 
-/*
-  Navegador de semana. Card "Semana" con flecha atrás (más antiguo), un
-  disparador central que abre el desplegable de salto rápido, y flecha
-  adelante (más reciente). La flecha adelante se desactiva en la semana
-  actual — no se viaja al futuro — y la de atrás al tope de MAX_WEEKS_BACK.
-
-  El desplegable es un salto rápido a las últimas DROPDOWN_WEEKS semanas; las
-  flechas cubren el grano fino más allá de esa ventana. Se cierra al elegir,
-  al tocar fuera (backdrop) o con Escape.
-*/
 function WeekNavigator({
   weekStart,
   weekNumber,
@@ -337,8 +276,6 @@ function WeekNavigator({
   const atCurrent = offset === 0
   const atOldest = offset >= MAX_WEEKS_BACK
 
-  // Salto rápido: todas las semanas del año agrupadas por mes (navegador de
-  // tiempo). Memoizado por lunes/locale; no depende de abrir el menú.
   const months = useMemo(
     () => weeksByMonth(currentMonday, locale),
     [currentMonday, locale],
@@ -394,10 +331,6 @@ function WeekNavigator({
 
           {open && (
             <>
-              {/*
-                Backdrop que captura el toque fuera para cerrar. Transparente
-                y bajo el panel; el panel va por encima con z mayor.
-              */}
               <button
                 type="button"
                 aria-hidden
@@ -573,12 +506,6 @@ function ProgressCard({
   )
 }
 
-/*
-  Card de sesión. Cabecera siempre visible (fecha, rutina, duración, borrar);
-  al expandir aparece una zona interna con bg más oscuro (bg-bg/50) que
-  marca "detalle" sin añadir border. Dentro: chips de músculos + lista de
-  ejercicios con pills de series completadas.
-*/
 function SessionCard({ summary, detail, isOpen, onToggle, onDelete, locale }) {
   const { t, i18n } = useTranslation()
   const { user } = useUser()
@@ -691,30 +618,15 @@ function SessionCard({ summary, detail, isOpen, onToggle, onDelete, locale }) {
   )
 }
 
-/*
-  Umbrales de los modos nuevos. 72 h es la ventana clásica de recuperación
-  muscular después de un estímulo de fuerza moderado (el valor real depende
-  del grupo y el volumen; aquí aplicamos el mismo para todos como primera
-  iteración). 14 d es la frontera a partir de la cual "no has entrenado
-  este grupo" deja de ser una pausa normal y empieza a leerse como
-  descuido o desbalance.
-*/
 const RECOVERY_WINDOW_MS = 72 * 60 * 60 * 1000
 const NEGLECTED_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
 const MAP_MODES = ['volume', 'recovery', 'neglected']
 
-/*
-  Mapeo mode → { layers, legendItems, subtitle }. Función pura fuera del
-  componente: devuelve toda la configuración visual, aísla el switch y
-  facilita leer el contrato que recibe MuscleMap.
-*/
 function buildMapView(mode, weekMuscles, recovering, neglected, t) {
   if (mode === 'volume') {
     const worked = weekMuscles.primary.length + weekMuscles.secondary.length
     return {
-      // Secundarios primero para que los primarios queden por encima si
-      // algún día un músculo aparece en ambas listas por error.
       layers: [
         { muscles: weekMuscles.secondary, color: 'var(--color-muscle)', opacity: 0.34 },
         { muscles: weekMuscles.primary, color: 'var(--color-muscle)', opacity: 0.95 },
@@ -754,7 +666,6 @@ function buildMapView(mode, weekMuscles, recovering, neglected, t) {
           : t('weekStats.muscleMap.subRecovery', { count: recovering.length }),
     }
   }
-  // 'neglected'
   return {
     layers: [
       { muscles: neglected, color: 'var(--color-neglected)', opacity: 0.85 },
@@ -776,11 +687,6 @@ function buildMapView(mode, weekMuscles, recovering, neglected, t) {
 function MuscleMapSection({ mode, onModeChange, weekMuscles, byMuscle, now }) {
   const { t } = useTranslation()
 
-  // Para la clasificación recuperación/descuidado nos fiamos SOLO del `now`
-  // del servidor: evitamos que un reloj local desincronizado haga saltar
-  // "recuperación" al inicio o viceversa. Si el endpoint aún no respondió
-  // (o falló), los buckets quedan vacíos; la UI lo mostrará como empty
-  // state de cada modo.
   const { recovering, neglected } = useMemo(() => {
     if (!byMuscle || !now) {
       return { recovering: [], neglected: [] }
@@ -838,13 +744,6 @@ function MuscleMapSection({ mode, onModeChange, weekMuscles, byMuscle, now }) {
   )
 }
 
-/*
-  Segmented control de 3 modos. Tres botones de igual peso dentro de una
-  pill grande. El activo se levanta con bg-surface-2 + texto pleno; los
-  inactivos se quedan text-muted. aria-pressed por botón; el contenedor
-  no necesita role="tablist" porque los modos no están asociados a
-  tabpanels separados — es un switch sobre la misma vista.
-*/
 function MuscleModeTabs({ mode, onChange }) {
   const { t } = useTranslation()
   return (
@@ -871,25 +770,9 @@ function MuscleModeTabs({ mode, onChange }) {
   )
 }
 
-/*
-  Lista plana de músculos sueltos, todos del mismo color, para los modos
-  en los que el "qué ves" es una lista única (no dos niveles). Se usa en
-  Descuidado para que el usuario pueda LEER los 13 grupos azules que no
-  se han trabajado, además de verlos pintados — sobre el raster oscuro
-  algunos quedan solapados y la lista resuelve la ambigüedad.
-*/
 function MuscleChipList({ muscles, color, textColor }) {
   const { t } = useTranslation()
   if (muscles.length === 0) return null
-  /*
-    `color` es el pigmento de la capa pintada en el mapa. `textColor` es
-    opcional: cuando el `color` queda demasiado oscuro para leer sobre el
-    fondo de la card (p. ej. el azul saturado del modo Descuidado), el
-    llamador pasa una variante más clara de la misma familia para el texto
-    y el borde. El fondo del chip se mantiene como mezcla translúcida del
-    pigmento del mapa — así el chip sigue teniendo el mismo color que el
-    músculo pintado, no un azul random.
-  */
   const fg = textColor ?? color
   return (
     <ul className="flex flex-wrap gap-1.5 px-1">
@@ -909,12 +792,6 @@ function MuscleChipList({ muscles, color, textColor }) {
   )
 }
 
-/*
-  Lista plana de los músculos trabajados esta semana. Primarios en rojo
-  pleno, secundarios en rojo claro. No reusa MuscleChips porque ese pinta
-  en verde y vive en las sesiones expandidas. Solo se renderiza en modo
-  Volumen — en los otros, el chip equivale a la leyenda del mapa.
-*/
 function VolumeChipList({ primary, secondary }) {
   const { t } = useTranslation()
   if (primary.length === 0 && secondary.length === 0) return null

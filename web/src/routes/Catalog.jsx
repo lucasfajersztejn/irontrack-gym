@@ -1,3 +1,5 @@
+// Exercise catalog route: paginated browse and search, with custom exercise creation.
+
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ExerciseCard from '../components/catalog/ExerciseCard.jsx'
@@ -8,21 +10,6 @@ import SearchInput from '../components/catalog/SearchInput.jsx'
 import CustomExerciseSheet from '../components/catalog/CustomExerciseSheet.jsx'
 import ExerciseHelpSheet from '../components/training/ExerciseHelpSheet.jsx'
 import { useCatalog } from '../lib/useCatalog.js'
-
-/*
-  Pantalla de catálogo. Un solo estado de filtros centralizado, un solo hook
-  que lo traduce a GET /api/exercises. Dos renderizaciones distintas del
-  resultado:
-  - Desktop: grid de ExerciseCard con GIF prominente (lectura exploratoria).
-  - Mobile: lista de ExerciseRow con thumbnail (lectura rápida entre series).
-
-  Dos árboles por breakpoint en vez de un prop responsive porque las piezas
-  tienen ritmos diferentes (grid 4 col, lista 1 col densa) y mezclar lógica
-  acababa en un montón de ifs anidados.
-
-  Crear ejercicio custom se dispara desde el header y comparte la hoja con
-  el picker del editor de rutinas (CustomExerciseSheet).
-*/
 
 function Skeleton({ className }) {
   return <div className={`animate-pulse rounded-container bg-surface-2 ${className}`} />
@@ -76,11 +63,6 @@ function EmptyState() {
   )
 }
 
-/*
-  ErrorState: fallback cuando el GET /api/exercises revienta (red, 500,
-  sesión caducada). Mensaje honesto + sugerencia de recarga. No muestra
-  stack traces: el detalle del error vive en consola para debugging.
-*/
 function ErrorState() {
   const { t } = useTranslation()
   return (
@@ -117,14 +99,6 @@ export default function Catalog() {
   const [infoExercise, setInfoExercise] = useState(null)
   const { loading, error, exercises, refetch } = useCatalog(filters)
 
-  /*
-    Paginación en cliente. El backend devuelve hasta 200 ejercicios por
-    combinación de filtros; mostrar los 200 de golpe satura la vista. En su
-    lugar renderizamos 16 (una fila en 1 col, dos filas en 2 col, cuatro en
-    4 col) y un botón "ver más" que suma 16 por clic. Cuando cambian los
-    filtros, el visibleCount se reinicia: no tiene sentido conservar scroll
-    cuando el set de resultados es otro.
-  */
   const update = (patch) => {
     setFilters((f) => ({ ...f, ...patch }))
     setVisibleCount(PAGE_SIZE)
@@ -182,7 +156,6 @@ export default function Catalog() {
         <EmptyState />
       ) : (
         <>
-          {/* Desktop: grid de cards. onClick dispara el modal de info. */}
           <div className="hidden grid-cols-2 gap-3 md:grid md:grid-cols-3 lg:grid-cols-4">
             {visible.map((ex) => (
               <ExerciseCard
@@ -192,7 +165,6 @@ export default function Catalog() {
               />
             ))}
           </div>
-          {/* Mobile: lista de filas */}
           <div className="flex flex-col gap-2 md:hidden">
             {visible.map((ex) => (
               <ExerciseRow
@@ -224,11 +196,6 @@ export default function Catalog() {
         onClose={() => setCreateOpen(false)}
         onCreated={() => {
           setCreateOpen(false)
-          // Si el usuario tiene filtros activos que no casan con el nuevo
-          // ejercicio, mostrarlo igualmente obligaría a inventar visibilidad
-          // extra. Refetch respeta los filtros actuales: si el ejercicio
-          // encaja aparece arriba (orden alfabético); si no, el usuario
-          // relaja filtros y lo encuentra.
           refetch()
         }}
         initialName={filters.search}

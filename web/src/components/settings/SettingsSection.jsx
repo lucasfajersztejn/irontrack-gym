@@ -1,19 +1,4 @@
-/*
-  Grupo de ajustes: un kicker en mayúsculas y una card con las filas
-  separadas por divisores.
-
-  Los grupos no están ordenados por tipo de dato (números, textos, toggles)
-  sino por el momento en el que el usuario los toca: lo que cambia cómo se
-  entrena, lo que cambia la app, y la cuenta. Un ajuste se busca por para-qué,
-  no por qué forma tiene su control.
-
-  El indicador de guardado vive aquí, al lado del título del grupo, y no en
-  cada fila. Los campos se guardan solos al cambiar, así que hace falta
-  confirmación visible; pero reservar hueco para ella dentro de cada fila
-  empuja el layout cada vez que aparece. Un solo indicador por grupo está
-  siempre a la vista del control que acabas de tocar (los grupos son cortos)
-  y no mueve nada. `aria-live="polite"` para que también se anuncie.
-*/
+// Settings section wrapper.
 export default function SettingsSection({ title, status, children }) {
   return (
     <section className="flex flex-col gap-3">

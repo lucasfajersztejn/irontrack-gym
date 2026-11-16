@@ -1,17 +1,11 @@
+// Onboarding route: first-time username selection with client-side validation.
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api.js'
 import { useUser } from '../contexts/UserContext.jsx'
 import Logo from '../components/icons/Logo.jsx'
-
-/*
-  Primer login: elegir username. Las reglas las impone el backend con Zod
-  (minúsculas, 3-20, [a-z0-9_-], lista de reservados). Replicamos las más
-  obvias para feedback inmediato, pero cualquier violación la mostramos tal
-  como venga del servidor para no mantener dos verdades. Reservados y
-  duplicados responden 409; validación de forma, 400.
-*/
 
 const RULES = /^[a-z0-9_-]{3,20}$/
 
@@ -42,8 +36,6 @@ export default function Onboarding() {
       if (err.status === 409) {
         setError(t('onboarding.errors.taken'))
       } else if (err.status === 400 && err.payload?.issues?.[0]?.message) {
-        // Mensaje de forma del backend: lo mostramos tal cual para no mantener
-        // dos verdades sobre las reglas de username (ver cabecera del archivo).
         setError(err.payload.issues[0].message)
       } else {
         setError(t('onboarding.errors.generic'))

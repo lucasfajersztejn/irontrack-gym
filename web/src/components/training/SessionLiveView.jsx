@@ -1,3 +1,5 @@
+// Live workout view: session header, exercise cards, rest timer, finish/cancel and offline status.
+
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SessionExerciseCard from './SessionExerciseCard.jsx'
@@ -15,16 +17,6 @@ import { useUser } from '../../contexts/UserContext.jsx'
 import { useAutoFlush, useOfflineState } from '../../lib/offlineQueue.js'
 import { api } from '../../lib/api.js'
 
-/*
-  Vista "live" de la sesión activa. Compone el header (nombre + cronómetro
-  vivo + status de guardado) con la lista de SessionExerciseCard y las dos
-  acciones del flujo: añadir ejercicio (sheet reusada del editor de rutinas)
-  y terminar sesión (confirm modal → POST /finish desde el parent).
-
-  La vista NO conoce la red directamente: useSessionLive hace el debounced
-  PATCH, y el prop `onFinish` dispara el cierre arriba (Training.jsx) para
-  que la navegación vuelva al picker con un solo setSession(null).
-*/
 export default function SessionLiveView({ session, onFinish, onCancel, finishing, cancelling }) {
   const { t } = useTranslation()
   const {
@@ -53,12 +45,6 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
   const dismissToast = (id) =>
     setToasts((xs) => xs.filter((t) => t.id !== id))
 
-  /*
-    PR detection: wrapper del toggle de completar. Si pasa de "no completado"
-    a "completado" y la serie supera el baseline histórico, mostramos toast.
-    El baseline vive en el ref de useExerciseHistory, así que llamadas
-    sucesivas a detectPR con la misma marca devuelven null (no re-notifican).
-  */
   const toggleSetCompleteWithPR = (entryIndex, setIndex, completed) => {
     const entry = entries[entryIndex]
     const set = entry?.sets?.[setIndex]
@@ -76,38 +62,18 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
     }
   }
 
-  /*
-    Descanso por defecto del usuario. REST_DEFAULT_SEC solo cubre el hueco
-    entre el primer render y la respuesta de `/api/me`; es el mismo número
-    que el default del campo en el modelo, así que la barra no cambia de
-    duración al cargar el usuario.
-  */
   const { user } = useUser()
   const restSec = user?.settings?.restTimerSec ?? REST_DEFAULT_SEC
 
-  // Cola offline: drena al montar y en cada evento `online`. El indicador
-  // `offline` + pendientes se pinta en el header; mientras haya cola en vuelo,
-  // el botón de terminar sesión queda deshabilitado (ver más abajo) para
-  // evitar que el usuario crea cerrada una sesión cuyo último PATCH no ha
-  // viajado todavía.
   useAutoFlush(api)
   const { online, pending } = useOfflineState()
 
-  // Al salir de la vista (terminar sesión, navegar fuera) no queremos que el
-  // store se quede con un descanso a medias que reaparezca en la próxima.
-  // Esto cubre también el caso de ir a Ajustes y poner el descanso en Off:
-  // al volver no hay cuenta atrás heredada esperando.
   useEffect(() => stopRest, [stopRest])
 
   const alreadyIds = entries.map((e) =>
     typeof e.exercise === 'string' ? e.exercise : e.exercise?._id,
   )
 
-  // Durante el entreno el usuario NO reagrupa supersets a mano (fricción
-  // alta en gym); solo puede DESHACER un bloque si prefiere ejecutarlos
-  // por separado. Separar borra el groupId de todos los miembros del
-  // bloque — se escribe en el PATCH debounced igual que cualquier otro
-  // cambio de entries.
   const ungroupBlock = (firstIndex) => {
     setEntries((es) => {
       const gid = es[firstIndex]?.groupId
@@ -136,14 +102,6 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
             </p>
           </div>
         )}
-        {/*
-          Igual que el editor de rutinas: agrupamos entries contiguos del
-          mismo groupId en SupersetBlock. Durante el entreno el usuario puede
-          separar un bloque (para hacer los ejercicios con descanso) pero no
-          crear nuevos — crear bloques es flujo de planificación, no de
-          ejecución, y añadir un botón "agrupar" en vivo invita a errores
-          mientras suda.
-        */}
         {groupEntries(entries).map((block, bi) => {
           const isSuperset = block.items.length > 1
           const rows = block.items.map(({ entry, index }) => {
@@ -194,24 +152,7 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
         + {t('training.addExercise')}
       </button>
 
-      {/*
-        Finalizar vs Cancelar: dos acciones de cierre con pesos distintos.
-        Finalizar guarda la sesión como entreno real. Cancelar la borra
-        sin dejar rastro — es la salida para cuando el usuario arranca
-        por error (toca el FAB sin querer, equivoca la rutina). Separadas
-        visualmente: finalizar en acento, cancelar como texto discreto
-        destructivo. Las dos pasan por ConfirmModal.
-      */}
       <div className="flex flex-col gap-2">
-        {/*
-          Terminar sesión requiere red: `POST /:id/finish` no está en la cola
-          offline (necesita respuesta inmediata del backend que incrementa
-          timesUsed en la rutina y marca endedAt). Si el usuario pulsa sin
-          conexión perderíamos la intención; mejor desactivarlo y explicarlo.
-          El `pending > 0` cubre el caso raro de "ya tengo red pero queda un
-          PATCH en vuelo": cerrar ahí cerraría una sesión antes de que el
-          último cambio viaje.
-        */}
         <button
           type="button"
           onClick={() => setConfirmFinishOpen(true)}
@@ -275,17 +216,6 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
         destructive
       />
 
-      {/*
-        Barra de descanso. No se monta si el usuario puso el descanso en Off
-        (`restTimerSec: 0`) desde Ajustes: ahí la decisión es "no quiero
-        cronómetro", y una barra fija ocupando el borde inferior de la
-        pantalla no es algo que se pueda ignorar.
-
-        El hueco de abajo va con ella: la barra es `fixed`, así que no ocupa
-        sitio en el flujo, y sin este div el panel de stats queda tapado al
-        final del scroll. Vive aquí y no en el padding de AppShell porque la
-        barra solo existe durante una sesión activa.
-      */}
       {restSec > 0 && (
         <>
           <div aria-hidden className="h-16 md:h-20" />
@@ -298,12 +228,6 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
   )
 }
 
-/*
-  Header compacto: nombre de la rutina (o "libre") + indicador tenue del
-  estado de guardado. El tiempo transcurrido vive abajo en SessionStatsCard
-  (decisión de UX: durante el entreno el reloj no aporta cada vez que miras
-  — como información de contexto en el panel de stats sí).
-*/
 function SessionHeader({ session, status, online, pending }) {
   const { t } = useTranslation()
   const subtitle = session.routineName ?? t('training.resumeSubFree')
@@ -316,12 +240,6 @@ function SessionHeader({ session, status, online, pending }) {
         </h2>
         <StatusDot status={status} />
       </div>
-      {/*
-        Badge offline. Solo aparece cuando hay algo que contar — sin red o
-        con cola pendiente. Se elige deliberadamente discreto: no es un
-        error, es información de contexto. Si el usuario quiere terminar
-        verá el mensaje explícito debajo del botón.
-      */}
       {(!online || pending > 0) && (
         <OfflineBadge online={online} pending={pending} />
       )}
@@ -359,8 +277,6 @@ function StatusDot({ status }) {
   const map = {
     saving: { label: t('training.saving'), color: 'bg-text-muted' },
     saved: { label: t('training.saved'), color: 'bg-accent' },
-    // `queued` no es error: el PATCH quedó en IndexedDB y saldrá al volver
-    // la red. Usamos el mismo tono muted que `saving` para no alarmar.
     queued: { label: t('training.queued'), color: 'bg-text-muted' },
     error: { label: t('training.saveError'), color: 'bg-error' },
   }

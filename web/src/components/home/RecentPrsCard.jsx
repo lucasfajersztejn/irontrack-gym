@@ -1,25 +1,10 @@
+// Home card listing the user's most recent personal records.
+
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../../contexts/UserContext.jsx'
 import { useRecentPrs } from '../../lib/useRecentPrs.js'
 import { resolveExerciseName } from '../../lib/exerciseName.js'
 import { TrophyIcon } from '../icons/NavIcons.jsx'
-
-/*
-  "PRs recientes" en Home — ventana del último mes.
-
-  El backend devuelve filas ordenadas por fecha desc, sin deduplicar: si
-  el usuario batió peso máx + 1RM el mismo día, vienen las dos. Aquí
-  mostramos las 5 primeras tal cual, porque mezclar "mejor set" y "mejor
-  estimación" en la misma línea esconde información.
-
-  Estado vacío: en lugar de ocultar la card, mostramos un mensaje suave.
-  La ausencia también es información — "este mes no ha habido PRs" es un
-  push honesto a volver al trabajo sin inventar urgencia.
-
-  Fecha relativa simple (hoy/ayer/N días). No se usa Intl.RelativeTimeFormat
-  porque "Hace 2 días" en móvil ocupa media línea; un `2d` tabular es más
-  denso y el componente MuscleChips ya usa este mismo lenguaje telegráfico.
-*/
 
 const PR_LABEL_KEYS = {
   heaviest: 'home.prHeaviest',
@@ -27,16 +12,12 @@ const PR_LABEL_KEYS = {
   reps: 'home.prReps',
 }
 
-// 3 en móvil y 5 en desktop: con 5 filas apiladas (dos líneas cada una)
-// la card ocupa media pantalla en un 360x844 y el bloque de Actividad
-// de abajo queda fuera de vista. 3 filas dejan el flujo con aire.
 const MAX_ROWS_MOBILE = 3
 const MAX_ROWS_DESKTOP = 5
 
 function formatValue(kind, value) {
   if (value == null) return '—'
   if (kind === 'reps') return `${value}`
-  // weight_reps + 1rm llegan en kg; una decimal es suficiente para leer.
   return `${Number(value).toFixed(1)} kg`
 }
 
@@ -56,9 +37,6 @@ export default function RecentPrsCard() {
   const lang = i18n.language?.startsWith('en') ? 'en' : 'es'
   const { loading, prs } = useRecentPrs(30)
 
-  // El tope efectivo: en mobile cortamos antes para no competir en altura
-  // con el bloque Actividad de abajo. En desktop el ancho sobra y dejamos
-  // la lista más larga.
   const visible = prs.slice(0, MAX_ROWS_DESKTOP)
 
   return (
@@ -84,10 +62,6 @@ export default function RecentPrsCard() {
       ) : (
         <ul className="flex flex-col gap-1.5">
           {visible.map((pr, idx) => (
-            // Dos líneas por fila: arriba nombre + valor, abajo tipo +
-            // días. Las filas 4 y 5 solo se muestran a partir de md:
-            // en móvil 3 bastan para dar señal sin desplazar el bloque
-            // de Actividad fuera del viewport inicial.
             <li
               key={`${pr.exerciseId}-${pr.kind}-${idx}`}
               className={`flex flex-col gap-0.5 rounded-card bg-surface-2 px-2.5 py-1.5 md:px-3 md:py-2 ${
@@ -99,7 +73,6 @@ export default function RecentPrsCard() {
                   {resolveExerciseName(
                     {
                       _id: pr.exerciseId,
-                      // name bilingüe del catálogo; snapshot solo de respaldo.
                       name:
                         pr.name ??
                         (pr.exerciseName

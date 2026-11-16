@@ -1,10 +1,7 @@
+// Catalog search box.
+
 import { useTranslation } from 'react-i18next'
 
-/*
-  Input de búsqueda. Icono de lupa a la izquierda, botón "limpiar" cuando
-  hay texto. El debounce vive en useCatalog, no aquí: este componente es
-  controlado y plano.
-*/
 export default function SearchInput({ value, onChange }) {
   const { t } = useTranslation()
   return (

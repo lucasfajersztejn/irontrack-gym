@@ -1,3 +1,5 @@
+// Medals route: badges grouped by category, with earned state and detail view.
+
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBadges } from '../lib/useBadges.js'
@@ -6,38 +8,14 @@ import { badgeArtUrl } from '../lib/badgeArt.js'
 import { TrophyIcon } from '../components/icons/NavIcons.jsx'
 import MedalDetail from '../components/badges/MedalDetail.jsx'
 
-/*
-  Muro de insignias (Fase 3).
-
-  Grid de hexágonos agrupados por categoría. Las desbloqueadas se encienden en
-  verde; las bloqueadas quedan en grafito con la silueta visible y una barra de
-  progreso — ver lo que falta es lo que motiva (spec §6.4).
-
-  El verde respeta la regla ≤10% de DESIGN.md: solo las ganadas lo llevan, y en
-  un muro recién estrenado serán pocas. No hay glow por medalla (Glow-Is-Earned):
-  la jerarquía la da el color de relleno, no un halo repetido N veces.
-
-  Cada medalla es un botón que abre el detalle (MedalDetail). Ahí es donde se
-  comparte una ganada: el muro no tiene acciones por tarjeta, para que tocar
-  una medalla siempre signifique lo mismo.
-
-  Cada insignia tiene su medallón SVG (ver lib/badgeArt.js), que se pinta como
-  <img>. Si una insignia sembrada aún no tiene arte, se cae al hexágono
-  clip-path + icono genérico, así una medalla nueva nunca sale rota.
-*/
-
 const CATEGORY_ORDER = ['constancia', 'volumen', 'hitos', 'variedad', 'rareza']
 
 export default function Medals() {
   const { t, i18n } = useTranslation()
   const lang = i18n.language?.startsWith('en') ? 'en' : 'es'
   const { loading, error, badges, counts } = useBadges()
-  // Guardamos la insignia abierta (no un índice): sobrevive a que la lista
-  // se reordene y el detalle sigue apuntando a la misma medalla.
   const [selected, setSelected] = useState(null)
 
-  // Agrupa por categoría respetando el orden canónico. El backend ya ordena,
-  // pero agrupamos aquí para no acoplar la vista a ese orden.
   const groups = useMemo(() => {
     const byCat = new Map()
     for (const b of badges) {
@@ -116,8 +94,6 @@ function BadgeTile({ badge, lang, t, onSelect }) {
   const name = localized(badge.name, lang)
   const artUrl = badgeArtUrl(badge)
 
-  // El botón lleva el estado en el aria-label. Sin esto, un lector de pantalla
-  // leería el nombre y luego sueltos "Conseguida" o "3/5", sin contexto.
   const stateLabel = unlocked
     ? t('medals.earned')
     : progress.current != null
@@ -125,8 +101,6 @@ function BadgeTile({ badge, lang, t, onSelect }) {
       : null
   const ariaLabel = stateLabel ? `${name}. ${stateLabel}` : name
 
-  // Dentro de un <button> solo vale contenido de frase, así que todo son <span>
-  // con display de bloque. Un <div> o <p> aquí es HTML inválido.
   return (
     <li>
       <button
@@ -136,10 +110,6 @@ function BadgeTile({ badge, lang, t, onSelect }) {
         className="press flex w-full flex-col items-center gap-2 rounded-card text-center transition-transform"
       >
         {artUrl ? (
-          // El SVG ya es el medallón completo (hexágono, material por tier y, en
-          // el oro, su halo). Por eso no lleva fondo ni clip-path: pintarlos
-          // debajo recortaría o duplicaría la forma. alt="" porque el nombre y
-          // el estado ya están en el aria-label del botón.
           <img
             src={artUrl}
             alt=""
@@ -148,9 +118,6 @@ function BadgeTile({ badge, lang, t, onSelect }) {
             className="aspect-square w-full"
           />
         ) : (
-          // Fallback para insignias sembradas aún sin arte: hexágono clip-path
-          // + icono genérico. Bloqueada en surface-3 (un escalón sobre el fondo
-          // para que la silueta se lea); ganada en acento tenue.
           <span
             className={`flex aspect-square w-full items-center justify-center ${
               unlocked ? 'bg-accent/20' : 'bg-surface-3'
@@ -178,9 +145,6 @@ function BadgeTile({ badge, lang, t, onSelect }) {
         ) : (
           progress.current != null && (
             <span className="flex w-full flex-col items-center gap-1">
-              {/* Pista sobre surface-2 (no bg) para que el carril se vea aunque
-                  el progreso sea 0%. Relleno neutro, no verde: el verde señala
-                  "ganada"; aquí es "lo que llevas", no un logro. */}
               <span className="block h-1 w-full overflow-hidden rounded-full bg-surface-2">
                 <span
                   className="block h-full rounded-full bg-text-muted"

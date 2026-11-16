@@ -1,3 +1,5 @@
+// Progress chart for one exercise over a selectable range, with KPIs.
+
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -11,29 +13,12 @@ import {
   YAxis,
 } from 'recharts'
 
-/*
-  Curva histórica + KPIs de un ejercicio. Extraído del antiguo CurveBlock
-  interno de ExerciseProgressRow para poder reutilizarlo en
-  SelectedWorkoutCard (Home) con dos extras:
-
-    - `range`: '12w' | 'year' | 'all'. Filtra los puntos en cliente
-      (el endpoint devuelve todos). Los KPIs se recalculan sobre el
-      subconjunto filtrado — "max en este rango" es un dato más útil
-      que "max histórico" cuando el usuario navega por ventanas.
-    - `highlightDate`: fecha ISO de la sesión seleccionada. Si existe
-      dentro del rango, pintamos un ReferenceDot grande encima del
-      punto para marcarlo como "estás viendo ESTE día".
-
-  Formatea las fechas con el locale activo y respeta prefers-reduced-motion.
-*/
-
 function cutoffFor(range, now = new Date()) {
   if (range === 'all') return null
   if (range === 'year') {
     const d = new Date(now.getFullYear(), 0, 1)
     return d.getTime()
   }
-  // Default 12 semanas (84 días).
   return now.getTime() - 84 * 86_400_000
 }
 
@@ -60,9 +45,6 @@ export default function ExerciseCurve({
     [i18n.language],
   )
 
-  // prefers-reduced-motion decide `isAnimationActive`. Valor estable al
-  // montar: suficiente en este contexto (no cambiamos rango sin remount
-  // del gráfico porque Recharts re-anima ya).
   const reduceMotion =
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -100,9 +82,6 @@ export default function ExerciseCurve({
   const highlight = useMemo(() => {
     if (!highlightDate || filtered.length === 0) return null
     const target = new Date(highlightDate).getTime()
-    // Buscamos el punto exacto (no un vecino). Si la sesión seleccionada
-    // no cae dentro del rango filtrado, no pintamos nada — es
-    // intencional: el ReferenceDot fuera del dominio flota feo.
     const match = filtered.find(
       (p) => new Date(p.date).getTime() === target,
     )

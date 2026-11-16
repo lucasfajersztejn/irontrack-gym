@@ -1,30 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 
-/*
-  Datos del heatmap. Vive aparte de useHomeData porque el rango temporal
-  cambia a demanda del usuario (12 semanas, este año, un año anterior) y
-  disparar un refetch global por cambiar de pestaña sería un desperdicio.
-
-  Dos hooks:
-  - useHeatmap(range)        → intensidad por día en el rango, en un sólo
-                               request al endpoint /api/sessions/heatmap.
-  - useAvailableHeatmapRanges() → probe de años anteriores con datos.
-
-  Decisiones:
-  - "12w" vive siempre, apunta a las últimas 12 semanas ISO (lunes-domingo).
-  - Un año abarca de la semana ISO que contiene el 1 de enero a la que
-    contiene el 31 de diciembre; los días fuera del año se devuelven como
-    isOutside=true para que el render los pinte invisibles pero mantenga la
-    rejilla alineada a lunes.
-  - El backend devuelve UNA fila por sesión con su `intensity ∈ [0, 1]` o
-    null (ver sessionController.getHeatmap). El cliente agrupa por día local
-    y se queda con el `max` del día — una sesión dura no se diluye con una
-    posterior de movilidad.
-  - El probe de años anteriores lanza una petición por año con limit=1 hasta
-    el primer año sin datos (máx 4 años atrás): un usuario recién registrado
-    hace una sola petición y no "ve" años pasados.
-*/
+// Heatmap data hook.
 
 const MAX_YEARS_BACK = 4
 
@@ -34,8 +11,6 @@ function startOfLocalDay(d) {
   return r
 }
 
-// `end` es el domingo a las 00:00; el backend filtra con startedAt <= to, así
-// que sin llevarlo al final del día se pierden las sesiones de ese domingo.
 function endOfLocalDay(d) {
   const r = new Date(d)
   r.setHours(23, 59, 59, 999)
@@ -49,7 +24,7 @@ function addDays(d, n) {
 }
 
 function dayFromMon(d) {
-  return (d.getDay() + 6) % 7 // 0 = lunes … 6 = domingo
+  return (d.getDay() + 6) % 7
 }
 
 function toLocalDayKey(d) {
@@ -87,7 +62,7 @@ function buildCells(sessions, start, end, today, year) {
   const localToday = startOfLocalDay(today)
   const todayKey = toLocalDayKey(localToday)
   const counts = new Map()
-  const intensities = new Map() // key -> max intensity no-null del día
+  const intensities = new Map()
   for (const s of sessions) {
     const key = toLocalDayKey(new Date(s.startedAt))
     counts.set(key, (counts.get(key) ?? 0) + 1)
@@ -147,9 +122,6 @@ export function useHeatmap(range, today = new Date()) {
     return () => {
       cancelled = true
     }
-    // today es un new Date() en el render del padre; dependemos solo de range
-    // para no refetchear por cada tick de reloj. Si el usuario deja la pestaña
-    // abierta pasada la medianoche, un click a otro rango refresca sin más.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range])
 

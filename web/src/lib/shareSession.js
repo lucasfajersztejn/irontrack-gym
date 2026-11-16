@@ -1,18 +1,4 @@
-/*
-  Genera la tarjeta de un entreno terminado para compartir (Stories, 9:16) y la
-  entrega al usuario. Mismo flujo que shareBadge.js: canvas nativo, hoja de
-  compartir del sistema y descarga como respaldo en escritorio.
-
-  Las estadísticas no se recalculan desde cero: el desglose por ejercicio y
-  series completadas sale de breakdownForSession (useWeeklyStats.js), la misma
-  función que pinta la card del Home. Así la tarjeta y la pantalla no pueden
-  contradecirse por dos implementaciones distintas.
-
-  El texto de la imagen llega ya traducido (`t` de i18next, pasado por quien
-  llama). El canvas no pasa por el DOM, así que no puede usar react-i18next
-  directamente, y mantener cadenas en español fijas dentro del módulo rompería
-  el modo inglés.
-*/
+// Renders a session share card to a PNG.
 
 import { breakdownForSession } from './useWeeklyStats.js'
 import {
@@ -29,9 +15,6 @@ import {
 const WIDTH = 1080
 const HEIGHT = 1920
 
-// Paleta de index.css, duplicada porque el canvas no lee variables CSS. El
-// verde solo aparece como resplandor y como etiqueta de volumen: en esta
-// tarjeta el protagonista son las cifras, no el color de marca.
 const COLORS = {
   bg: '#0d1117',
   surface: '#161b22',
@@ -42,17 +25,7 @@ const COLORS = {
 
 const TOP_EXERCISES = 3
 
-/*
-  Reduce una sesión a las cifras de la tarjeta. Es pura (sin canvas ni DOM)
-  para poder probarla sin navegador.
-
-  Volumen = Σ weightKg × reps, SOLO para tracking 'weight_reps'. Un plank o
-  una carrera no tienen "peso × reps", así que sumarlos inflaría el total y
-  rompería la comparación entre semanas (invariante 7 de CLAUDE.md).
-  Las repeticiones sí cuentan para cualquier tracking que tenga `reps`.
-
-  La duración sale de startedAt/endedAt, nunca de un contador (invariante 9).
-*/
+// Summarize a session for the share card.
 export function summarizeSession(detail) {
   const breakdown = breakdownForSession(detail)
   let volumeKg = 0
@@ -72,9 +45,6 @@ export function summarizeSession(detail) {
     return { name: ex.name, sets: ex.sets.length, volumeKg: exerciseVolume }
   })
 
-  // Top por volumen; a igualdad (cardio, o dos ejercicios sin peso) gana quien
-  // tiene más series. Así el top 3 no queda vacío de sentido en sesiones de
-  // cardio o isométricos.
   const topExercises = exercises
     .slice()
     .sort((a, b) => b.volumeKg - a.volumeKg || b.sets - a.sets)
@@ -103,9 +73,6 @@ function formatDuration(seconds, t) {
   return t('home.shareCard.minutes', { m })
 }
 
-// Dibuja un rectángulo redondeado con arcTo. Usamos el path a mano en vez de
-// ctx.roundRect porque roundRect no existe en navegadores antiguos y, sin él,
-// la tarjeta se rompería justo en el móvil de quien más la comparte.
 function roundedRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath()
   ctx.moveTo(x + r, y)
@@ -116,14 +83,7 @@ function roundedRectPath(ctx, x, y, w, h, r) {
   ctx.closePath()
 }
 
-/*
-  Pinta la tarjeta completa y devuelve un Blob PNG.
-
-  Layout de arriba abajo, pensado para que el contenido quede en la franja
-  central: en Stories las capas de la interfaz de Instagram tapan unos 250 px
-  arriba y abajo, así que el logo va en la zona inferior y las cifras no
-  quedan pegadas a los bordes.
-*/
+// Render the session card and return a PNG Blob.
 export async function renderSessionCard({ detail, summary, t, locale }) {
   await ensureFonts()
 
@@ -145,8 +105,6 @@ export async function renderSessionCard({ detail, summary, t, locale }) {
   ctx.fillStyle = COLORS.bg
   ctx.fillRect(0, 0, WIDTH, HEIGHT)
 
-  // Resplandor verde detrás del bloque de cifras, como en la tarjeta de
-  // insignia: el verde se reserva a la "luz", no a superficies de texto.
   const glow = ctx.createRadialGradient(cx, 560, 0, cx, 560, 720)
   glow.addColorStop(0, 'rgba(57, 211, 83, 0.22)')
   glow.addColorStop(1, 'rgba(57, 211, 83, 0)')
@@ -160,8 +118,6 @@ export async function renderSessionCard({ detail, summary, t, locale }) {
   ctx.font = `400 44px ${FONT_SANS}`
   let y = drawCenteredLines(ctx, [dateLabel], cx, 300, 56)
 
-  // Título: como mucho dos líneas. Una rutina con nombre largo no debe empujar
-  // el volumen fuera de la zona visible; el resto se recorta con "…".
   ctx.fillStyle = COLORS.text
   ctx.font = `600 96px ${FONT_DISPLAY}`
   let titleLines = wrapText(ctx, title, 920)
@@ -170,8 +126,6 @@ export async function renderSessionCard({ detail, summary, t, locale }) {
   }
   y = drawCenteredLines(ctx, titleLines, cx, y + 40, 112)
 
-  // Cifra protagonista: volumen total. El número y la unidad llevan tamaños
-  // distintos, así que medimos los dos para centrar el conjunto entero.
   ctx.fillStyle = COLORS.accent
   ctx.font = `600 36px ${FONT_DISPLAY}`
   drawCenteredLines(ctx, [t('home.shareCard.volume').toUpperCase()], cx, y + 80, 44)
@@ -192,16 +146,8 @@ export async function renderSessionCard({ detail, summary, t, locale }) {
   ctx.fillStyle = COLORS.muted
   ctx.fillText(' kg', heroX + numberWidth, heroY + 110)
 
-  // Panel de estadísticas: elevación por color de superficie, sin bordes.
-  // Las filas usan izquierda/derecha en vez de centrado: así los números
-  // quedan alineados por la derecha, que es lo que el tabular-nums haría en
-  // CSS (el canvas no tiene font-variant-numeric).
   const panelX = 120
   const panelW = WIDTH - panelX * 2
-  // heroY + 236 y no + 300: con un título de dos líneas todo el bloque baja
-  // ~112 px, y con el valor original la tercera fila de "ejercicios
-  // principales" se montaba encima del pie "IronTrack". Este hueco deja la
-  // lista despejada tanto con título de una línea como de dos.
   const panelY = heroY + 236
   const rowH = 100
   const panelH = rowH * 3 + 24
@@ -227,8 +173,6 @@ export async function renderSessionCard({ detail, summary, t, locale }) {
     ctx.fillText(value, panelX + panelW - 48, rowCenter)
   })
 
-  // Top ejercicios. Si la sesión no tiene series completadas no hay lista que
-  // pintar, y la sección se omite en vez de dejar un encabezado vacío.
   let listY = panelY + panelH + 74
   if (stats.topExercises.length > 0) {
     ctx.textAlign = 'left'
@@ -256,7 +200,6 @@ export async function renderSessionCard({ detail, summary, t, locale }) {
     })
   }
 
-  // Marca al pie, en la zona que las interfaces de Stories no tapan.
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
   ctx.fillStyle = COLORS.text
@@ -266,15 +209,9 @@ export async function renderSessionCard({ detail, summary, t, locale }) {
   return canvasToPngBlob(canvas)
 }
 
-/*
-  Devuelve 'shared' si se entregó a la hoja de compartir, 'cancelled' si el
-  usuario la cerró (no es un error) y 'downloaded' si se cayó a descarga.
-  Lanza solo si no se pudo generar la imagen ni descargarla.
-*/
+// Render and share a session card.
 export async function shareSession({ detail, summary, t, locale }) {
   const blob = await renderSessionCard({ detail, summary, t, locale })
   const title = summary?.routineName || detail.routineName || t('home.shareCard.untitled')
-  // Nombre por id y no por fecha: dos sesiones el mismo día no se pisan al
-  // descargarlas.
   return deliverPng(blob, `irontrack-session-${detail._id}.png`, title)
 }

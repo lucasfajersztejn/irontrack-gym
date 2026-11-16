@@ -1,11 +1,7 @@
+// Generic confirm/cancel modal for routine actions.
+
 import { useTranslation } from 'react-i18next'
 
-/*
-  Modal centrado para confirmar acciones destructivas (hoy solo "borrar
-  rutina", pero genérico). El botón primario de confirmación va en rojo
-  (text-error dentro de un fondo claro). El click fuera cierra sin
-  confirmar — es una acción reversible, no debería requerir fricción.
-*/
 export default function ConfirmModal({
   open,
   title,

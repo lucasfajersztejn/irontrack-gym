@@ -1,16 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 
-/*
-  Pide GET /api/stats/muscle-recency una vez al montar y expone
-  `{ byMuscle, now, loading, error }`. byMuscle es un objeto plano
-  keyed por muscle id; los que no tienen historial llegan como `null`,
-  así el consumidor no necesita fusionar con la lista maestra.
-
-  Patrón defensivo: un fallo aquí no debe romper /stats/week. La pantalla
-  seguirá pintando las sesiones y el modo Volumen (que no depende de este
-  endpoint); solo los modos Recuperación/Descuidado se quedan sin datos.
-*/
+// Hook for muscle recency.
 export function useMuscleRecency() {
   const [state, setState] = useState({
     loading: true,

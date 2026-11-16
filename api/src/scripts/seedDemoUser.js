@@ -1,21 +1,7 @@
-/**
- * Cuenta demo compartida: datos realistas para que un reclutador vea el
- * producto con un clic (heatmap, récords, 1RM estimado e insignias).
- *
- * Qué hace:
- *   1. Upsert del usuario demo por email (idempotente).
- *   2. Borra sus rutinas, sesiones e insignias previas (reseed limpio).
- *   3. Crea 3 plantillas (Routine) y ~55 sesiones (Session) repartidas en ~7
- *      meses, con series reales según el `tracking` de cada ejercicio.
- *   4. Evalúa las insignias con el mismo motor que usa la app al cerrar sesión.
- *
- * La misma función sirve a la CLI (`npm run seed:demo`) y a la ruta admin de
- * reseed (POST /api/admin/demo/reseed). Así no hay dos versiones de los datos.
- */
+/** Shared demo account seed: realistic data for recruiters */
 
 import dns from 'dns'
 
-// Mismo arreglo de DNS que los demás scripts y que api/src/index.js.
 if (process.env.FORCE_IPV4_DNS === '1') {
   dns.setDefaultResultOrder('ipv4first')
   dns.setServers(['8.8.8.8', '8.8.4.4'])
@@ -37,26 +23,14 @@ import { evaluateAndPersist } from '../lib/badgeEngine.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-// Zona en la que "se entrenó" la demo. Va en cada sesión (`timeZone`) porque
-// de ella salen las medallas de calendario (madrugador, fin de semana...).
 const DEMO_TIME_ZONE = 'Europe/Madrid'
 
-// Historia: 30 semanas, con dos semanas sin entrenar. El hueco hace que la
-// medalla de "vuelta tras un parón" tenga algo que mostrar.
 const WEEKS_BACK = 30
 const GAP_WEEKS = [11, 12]
 
-// Semilla fija: mismos datos en cada reseed (las fechas sí se mueven con el
-// reloj). Un número fijo hace que los tests y la demo sean reproducibles.
 const RNG_SEED = 20250101
 
-/*
-  Ejercicios del catálogo público, por slug exacto. Un slug fijo en vez de
-  "el primer ejercicio de pecho con barra" evita que la demo cambie de
-  ejercicios si cambia el orden del catálogo. El `tracking` NO se escribe aquí:
-  el builder lo lee del ejercicio real, así que una serie nunca se monta a
-  mano con campos que el tracking no tiene (invariante 7).
-*/
+// Public catalog exercises by exact slug
 export const CATALOG_SLUGS = {
   benchPress: 'barbell-bench-press',
   dumbbellBench: 'dumbbell-bench-press',
@@ -73,13 +47,7 @@ export const CATALOG_SLUGS = {
   treadmill: 'walking-on-incline-treadmill',
 }
 
-/*
-  Plantillas. Cada ejercicio lleva su progresión: `start*` es lo que se hacía
-  al principio y `gain*` lo que se sube en los 7 meses. Así los récords y el
-  1RM estimado crecen de forma creíble en vez de quedarse planos.
-  Los campos de peso/reps/tiempo/distancia dependen del tracking del ejercicio;
-  el builder usa solo los que ese tracking admite.
-*/
+// Routine templates with per-exercise progression
 export const ROUTINE_TEMPLATES = [
   {
     name: 'Empuje',
@@ -114,15 +82,9 @@ export const ROUTINE_TEMPLATES = [
   },
 ]
 
-// ---------------------------------------------------------------------------
-// Aleatoriedad determinista
-// ---------------------------------------------------------------------------
+// Deterministic randomness
 
-/**
- * Generador pseudoaleatorio con semilla (mulberry32). Usamos uno propio en vez
- * de Math.random porque Math.random no se puede fijar: cada reseed daría
- * sesiones distintas y los tests no serían reproducibles.
- */
+/** Seeded PRNG (mulberry32) */
 export function createRng(seed) {
   let a = seed >>> 0
   return () => {
@@ -138,31 +100,20 @@ function randInt(rng, min, max) {
   return min + Math.floor(rng() * (max - min + 1))
 }
 
-// Los discos se cargan de 2,5 kg: un peso como 61,3 kg no lo vería nadie en el
-// gimnasio y se nota a simple vista en la demo.
 function roundToStep(value, step) {
   return Math.round(value / step) * step
 }
 
-// ---------------------------------------------------------------------------
-// Calendario (puro)
-// ---------------------------------------------------------------------------
+// Calendar (pure)
 
 function mondayOf(date) {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
-  const dayOfWeek = (d.getUTCDay() + 6) % 7 // lunes=0 … domingo=6
+  const dayOfWeek = (d.getUTCDay() + 6) % 7
   d.setUTCDate(d.getUTCDate() - dayOfWeek)
   return d
 }
 
-/**
- * Reparte las sesiones en lunes y jueves de cada semana, saltando las semanas
- * de GAP_WEEKS. Devuelve las sesiones en orden cronológico con su plantilla
- * (rotación A, B, C) y su progresión (0 = primera sesión, 1 = la última).
- *
- * Las sesiones posteriores a `now` se descartan: una demo no puede tener
- * entrenos del futuro.
- */
+/** Session schedule: Mondays and Thursdays, skipping GAP_WEEKS */
 export function planSessionSchedule(now = new Date(), rng = createRng(RNG_SEED)) {
   const firstMonday = mondayOf(now)
   firstMonday.setUTCDate(firstMonday.getUTCDate() - 7 * (WEEKS_BACK - 1))
@@ -173,7 +124,6 @@ export function planSessionSchedule(now = new Date(), rng = createRng(RNG_SEED))
     for (const dayOffset of [0, 3]) {
       const day = new Date(firstMonday)
       day.setUTCDate(day.getUTCDate() + 7 * week + dayOffset)
-      // 17:30 UTC + hasta 20 min: son las 18:30–19:20 en Madrid, hora de gimnasio.
       const startedAt = new Date(Date.UTC(
         day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(),
         17, 30 + randInt(rng, 0, 20),
@@ -190,21 +140,14 @@ export function planSessionSchedule(now = new Date(), rng = createRng(RNG_SEED))
   }))
 }
 
-// ---------------------------------------------------------------------------
-// Series (puro): cada tracking tiene sus propios campos
-// ---------------------------------------------------------------------------
+// Sets (pure): each tracking has its own fields
 
-/**
- * Series de un ejercicio dentro de una sesión. El tracking viene del ejercicio
- * real del catálogo (no de la plantilla). Un tracking desconocido es un error
- * explícito y no un caso por defecto silencioso.
- */
+/** Sets of one exercise within a session */
 export function buildSets(templateItem, tracking, progress, rng) {
   const sets = []
   for (let order = 0; order < templateItem.sets; order += 1) {
     switch (tracking) {
       case 'weight_reps': {
-        // La última serie de cada ejercicio suele caer una rep: fatiga real.
         const fatigue = order === templateItem.sets - 1 ? 1 : 0
         const weightKg = roundToStep(templateItem.startKg + templateItem.gainKg * progress, 2.5)
         sets.push({
@@ -251,10 +194,7 @@ export function buildSets(templateItem, tracking, progress, rng) {
   return sets
 }
 
-/**
- * Campos de la plantilla (Routine) que tienen sentido para ese tracking. Los
- * `target*` son intenciones: lo que el usuario se planeó, no lo que hizo.
- */
+/** Routine template fields that apply to a tracking */
 export function targetFieldsFor(templateItem, tracking) {
   switch (tracking) {
     case 'weight_reps':
@@ -270,19 +210,10 @@ export function targetFieldsFor(templateItem, tracking) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Persistencia
-// ---------------------------------------------------------------------------
+// Persistence
 
-/**
- * Crea o reemplaza la cuenta demo con sus datos. Devuelve un resumen para la
- * CLI o la respuesta del admin.
- *
- * `now` es inyectable para tests deterministas.
- */
+/** Create or replace the demo account with its data */
 export async function seedDemoUser({ now = new Date() } = {}) {
-  // 1. Catálogo: sin ejercicios no hay sesiones que escribir. Fallamos antes de
-  // tocar ningún dato, así un reseed a medias no deja la demo sin rutinas.
   const slugs = [...new Set(ROUTINE_TEMPLATES.flatMap((r) => r.exercises.map((e) => e.slug)))]
   const catalog = await Exercise.find({ slug: { $in: slugs }, createdBy: null }).lean()
   const bySlug = new Map(catalog.map((ex) => [ex.slug, ex]))
@@ -296,12 +227,6 @@ export async function seedDemoUser({ now = new Date() } = {}) {
   const schedule = planSessionSchedule(now)
   const firstSessionAt = schedule[0].startedAt
 
-  // 2. Usuario. Upsert por email, sin validadores: `username: 'demo'` está en
-  // RESERVED_USERNAMES para que ningún usuario real lo reclame, y esa misma
-  // lista bloquearía el alta de la propia demo. Es una vía de operador, no de
-  // usuario, así que la saltamos a propósito.
-  // `timestamps: false` porque fijamos createdAt a mano: la cuenta parece tener
-  // ~7 meses, así las medallas de antigüedad se ven como en una cuenta real.
   await User.updateOne(
     { email: DEMO_ACCOUNT.email },
     {
@@ -312,17 +237,11 @@ export async function seedDemoUser({ now = new Date() } = {}) {
         privacy: 'private',
         createdAt: new Date(firstSessionAt.getTime() - 2 * DAY_MS),
         updatedAt: now,
-        // Valores por defecto del schema, escritos a mano: `settings` es un
-        // subdocumento y así el reseed deja la cuenta exactamente como la demo.
         settings: {
           locale: 'es',
           barInputMode: 'plates',
           defaultBarWeightKg: 20,
           restTimerSec: 120,
-          // 2 y no el default 4: la demo siembra ~2 sesiones por semana, así
-          // que con meta 2 el progreso semanal se ve cumplido y las insignias
-          // goal-week (maxGoalWeekStreak) se desbloquean en la vitrina. Con 4
-          // quedarían siempre a medias y bloqueadas.
           weeklyGoal: 2,
           suggestProgression: true,
         },
@@ -334,14 +253,12 @@ export async function seedDemoUser({ now = new Date() } = {}) {
   )
   const user = await User.findOne({ email: DEMO_ACCOUNT.email }).select('_id').lean()
 
-  // 3. Reseed limpio: todo lo de la demo sale y vuelve a entrar desde cero.
   await Promise.all([
     Session.deleteMany({ user: user._id }),
     Routine.deleteMany({ user: user._id }),
     UserBadge.deleteMany({ user: user._id }),
   ])
 
-  // 4. Plantillas.
   const routineDocs = await Routine.insertMany(
     ROUTINE_TEMPLATES.map((template, order) => ({
       user: user._id,
@@ -359,8 +276,6 @@ export async function seedDemoUser({ now = new Date() } = {}) {
     })),
   )
 
-  // 5. Sesiones. El rng avanza en orden fijo, así que el mismo `now` da los
-  // mismos datos siempre.
   const rng = createRng(RNG_SEED)
   const sessionSchedule = planSessionSchedule(now, rng)
   const sessionDocs = sessionSchedule.map(({ startedAt, routineIndex, progress }) => {
@@ -379,7 +294,6 @@ export async function seedDemoUser({ now = new Date() } = {}) {
         const exercise = bySlug.get(item.slug)
         return {
           exercise: exercise._id,
-          // El nombre en español: la cuenta demo arranca en locale 'es'.
           exerciseName: exercise.name.es || exercise.name.en,
           muscle: exercise.muscle,
           tracking: exercise.tracking,
@@ -391,7 +305,6 @@ export async function seedDemoUser({ now = new Date() } = {}) {
   })
   await Session.insertMany(sessionDocs)
 
-  // Contadores de uso de cada plantilla, igual que hace la app al crear sesiones.
   for (let i = 0; i < routineDocs.length; i += 1) {
     const usedBy = sessionDocs.filter((s) => s.routine.equals(routineDocs[i]._id))
     const lastUsedAt = usedBy.reduce((max, s) => (s.startedAt > max ? s.startedAt : max), usedBy[0].startedAt)
@@ -401,9 +314,6 @@ export async function seedDemoUser({ now = new Date() } = {}) {
     )
   }
 
-  // 6. Insignias: el mismo motor que se dispara al cerrar una sesión real.
-  // Sin catálogo de insignias no hay nada que desbloquear; no es un error de la
-  // demo, pero se avisa para que el operador sepa por qué el muro sale vacío.
   const catalogBadges = await Badge.countDocuments()
   if (catalogBadges === 0) {
     console.warn('[seed:demo] El catálogo de insignias está vacío. Ejecuta `npm run seed:badges`.')
@@ -419,10 +329,7 @@ export async function seedDemoUser({ now = new Date() } = {}) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// CLI: solo si se ejecuta directamente (`npm run seed:demo`). Al importarlo
-// desde la ruta admin o desde los tests no se conecta ni se desconecta nada.
-// ---------------------------------------------------------------------------
+// CLI: only when run directly (npm run seed:demo)
 
 const isMain =
   Boolean(process.argv[1]) &&

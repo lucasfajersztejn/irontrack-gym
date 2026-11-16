@@ -1,12 +1,4 @@
-/*
-  Botón "Continuar con <Proveedor>" del mockup 01-landing. Un rectángulo
-  redondeado (radius 14) sobre --color-surface-2, con una pastilla cuadrada
-  interna que lleva el icono de marca y un label a su derecha.
-
-  Soporta estado disabled y un chip "Pronto" a la derecha para proveedores
-  que aún no están activos en el backend. Hoy Google y GitHub están activos,
-  así que ningún botón lo usa; se mantiene para el próximo proveedor.
-*/
+// OAuth sign-in button.
 import { useTranslation } from 'react-i18next'
 
 export default function OAuthButton({
@@ -17,9 +9,6 @@ export default function OAuthButton({
   comingSoon = false,
 }) {
   const { t } = useTranslation()
-  // Cuando el proveedor aún no está disponible, el chip "Pronto" es decoración
-  // visual: el estado real lo lleva el aria-label para lectores de pantalla,
-  // así no se les lee "Pronto" como si fuera un segundo botón.
   const ariaLabel = comingSoon
     ? t('landing.comingSoonAria', { label })
     : undefined
@@ -35,11 +24,6 @@ export default function OAuthButton({
         'border border-transparent',
         disabled
           ? 'cursor-not-allowed opacity-60'
-          // -translate-y-px es un empujón de 1 px al pasar el cursor: hace
-          // sentir el botón como un elemento físico. Combinado con el
-          // active:scale[0.99] genera una micro-respuesta "sube y hunde"
-          // sin pedir motion lib ni keyframes. prefers-reduced-motion
-          // (index.css) lo neutraliza llevando transition-duration a 0.
           : 'hover:-translate-y-px hover:border-border hover:bg-surface-3 active:scale-[0.99]',
       ].join(' ')}
     >

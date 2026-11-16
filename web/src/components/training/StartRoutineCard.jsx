@@ -1,18 +1,8 @@
+// Card to pick a routine and start a session from it.
+
 import { useTranslation } from 'react-i18next'
 import { PlayIcon } from '../icons/NavIcons.jsx'
 
-/*
-  Card del picker: visualmente hermana de RoutineCard pero semánticamente es
-  un botón (dispara `onStart` y crea una sesión), no un enlace al editor.
-  Mantener los dos componentes separados evita que RoutineCard acabe con un
-  prop `mode="edit"|"train"` y dos ramas de JSX dentro: cada card hace una
-  cosa.
-
-  El pin verde con icono play a la derecha da jerarquía al CTA sin usar
-  bg-accent en toda la superficie (regla de memoria "CTA accent restraint":
-  verde sólido grande se lee fosforito; mejor panel tintado + accent en el
-  elemento de acción).
-*/
 export default function StartRoutineCard({ routine, onStart, disabled = false }) {
   const { t } = useTranslation()
 

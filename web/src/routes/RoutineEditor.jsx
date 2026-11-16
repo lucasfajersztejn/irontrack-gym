@@ -1,3 +1,5 @@
+// Routine editor route: create and edit a workout template and its exercises.
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -11,27 +13,6 @@ import { api } from '../lib/api.js'
 import { groupEntries, mergeWithNext, unmergeAt } from '../lib/supersets.js'
 import { routineMuscles } from '../lib/exerciseMuscles.js'
 
-/*
-  Editor único para crear y editar rutinas. La ruta /routines/new monta sin
-  id y el editor arranca vacío; /routines/:id monta con id y el editor espera
-  al detalle poblado del backend para prellenar.
-
-  Estado local único: { name, description, entries[] } donde cada entry es
-  { exercise: fullObject, targetSets, targetReps, targetWeightKg,
-    targetDurationSec, targetDistanceM, notes }.
-
-  Al guardar, se mapea a la forma del backend ({ exercise: id, order, ... }).
-  El backend reemplaza el array entero (decisión documentada en el
-  controller), así que no distinguimos entre "añadir ejercicio nuevo" y
-  "editar un ejercicio existente": todo es un sync del array completo.
-*/
-
-/*
-  Defaults al añadir un ejercicio al editor. Series es el único campo que
-  prellenamos — reps y peso quedan vacíos para que el usuario los ponga a
-  conciencia (reps objetivo es opcional; peso de arranque depende del
-  usuario). Para cardio sí tiene sentido un punto de partida razonable.
-*/
 const TRACKING_DEFAULTS = {
   weight_reps: { targetSets: 3 },
   reps: { targetSets: 3 },
@@ -45,7 +26,7 @@ function normalize(routine) {
     name: routine.name ?? '',
     description: routine.description ?? '',
     entries: (routine.exercises ?? []).map((e) => ({
-      exercise: e.exercise, // ya viene populado del backend
+      exercise: e.exercise,
       targetSets: e.targetSets ?? null,
       targetReps: e.targetReps ?? null,
       targetWeightKg: e.targetWeightKg ?? null,
@@ -91,9 +72,6 @@ export default function RoutineEditor() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(null)
 
-  // Snapshot inicial para detectar cambios no guardados. Comparación JSON
-  // porque el objeto es serializable y comparar referencia a referencia da
-  // falso positivo cada vez que React re-renderiza.
   const initialRef = useRef(null)
   useEffect(() => {
     if (!isNew && routine) {
@@ -108,11 +86,6 @@ export default function RoutineEditor() {
   const isDirty =
     initialRef.current !== null && JSON.stringify(state) !== initialRef.current
 
-  /*
-    beforeunload: dispara el aviso nativo del navegador si el usuario cierra
-    la pestaña o recarga con cambios sin guardar. No cubre la navegación
-    interna (SPA), eso lo manejamos con el modal de confirmación nuestro.
-  */
   useEffect(() => {
     if (!isDirty) return
     const handler = (e) => {
@@ -140,16 +113,6 @@ export default function RoutineEditor() {
     }))
   }
 
-  /*
-    Reordena entries respetando las superseries. Si el vecino inmediato
-    comparte groupId con el entry, hacemos un swap simple (reordena dentro
-    del grupo). Si no — porque el entry está en la frontera de su bloque,
-    o es solo y el vecino está dentro de otro grupo —, un swap plano
-    partiría visualmente la superserie: entonces reordenamos a nivel de
-    BLOQUE, intercambiando el bloque del entry con el bloque adyacente al
-    completo. Así "Mover arriba" sobre el primer ejercicio de una superserie
-    sube los tres juntos, no deja uno colgando por delante.
-  */
   function move(i, dir) {
     setState((s) => {
       const entries = s.entries
@@ -179,9 +142,6 @@ export default function RoutineEditor() {
     setState((s) => ({ ...s, entries: s.entries.filter((_, idx) => idx !== i) }))
   }
 
-  // Merge/unmerge para la UI de supersets. mergeWithNext toma el entry en
-  // `index` y lo agrupa con el siguiente; unmergeAt saca el entry de su
-  // grupo (si queda solo un miembro, también se saca por consistencia).
   function groupWithNext(i) {
     setState((s) => ({ ...s, entries: mergeWithNext(s.entries, i) }))
   }
@@ -230,7 +190,7 @@ export default function RoutineEditor() {
       } else {
         await api(`/api/routines/${id}`, { method: 'PATCH', body: payload })
       }
-      initialRef.current = JSON.stringify(state) // marca "limpio" antes de navegar
+      initialRef.current = JSON.stringify(state)
       navigate('/routines')
     } catch (err) {
       setSaveError(err)
@@ -322,14 +282,6 @@ export default function RoutineEditor() {
         </label>
       </section>
 
-      {/*
-        Chips de grupos trabajados: primarios en verde, secundarios en gris
-        con etiqueta "sec.". Solo aparecen cuando la rutina tiene ejercicios
-        ya elegidos (si no, el bloque quedaría vacío y añadiría ruido). Se
-        pintan como un bloque autónomo entre el formulario de nombre y la
-        lista de ejercicios: así el usuario ve, de un vistazo, el perfil
-        muscular total de la plantilla antes de bajar a editar series.
-      */}
       {state.entries.length > 0 && (() => {
         const { primary, secondary } = routineMuscles(state.entries)
         if (primary.length === 0 && secondary.length === 0) return null
@@ -362,14 +314,6 @@ export default function RoutineEditor() {
             <p className="text-sm text-text-muted">{t('routines.emptySub')}</p>
           </div>
         ) : (
-          /*
-            Renderizamos agrupando por bloques: cada bloque es un run de
-            entries CONSECUTIVOS con el mismo groupId. Los bloques con más
-            de 1 miembro se envuelven en SupersetBlock (borde acento + chip
-            "SUPERSET"); los de 1 miembro renderizan la fila sin wrapper. El
-            botón "Agrupar con el siguiente" aparece entre bloques consecutivos
-            cuando no están ya enlazados; "Separar" aparece a nivel de bloque.
-          */
           <div className="flex flex-col gap-2">
             {groupEntries(state.entries).map((block, bi, blocks) => {
               const isSuperset = block.items.length > 1
@@ -401,14 +345,6 @@ export default function RoutineEditor() {
                     rows
                   )}
                   {canLinkToNext && (
-                    /*
-                      Conector a todo ancho entre dos bloques: dos líneas
-                      acento + chip central con el texto. Imposible de pasar
-                      por alto — el usuario tenía razón de que el pill
-                      centrado anterior quedaba casi invisible entre dos
-                      cards grandes. Click en toda la fila, incluidas las
-                      líneas, dispara el agrupamiento.
-                    */
                     <button
                       type="button"
                       onClick={() => groupWithNext(lastEntryIndex)}
@@ -454,13 +390,6 @@ export default function RoutineEditor() {
         </p>
       )}
 
-      {/*
-        Save bar al final del flujo, no sticky. En mobile un sticky + teclado
-        virtual produce la típica barra flotando a media pantalla sobre otros
-        inputs. Mejor que el usuario scrollee hasta el final — hay un ancla
-        clara y no se come layout. El padding-bottom del main contenedor
-        (ya aplicado por AppShell) deja espacio sobre la bottom-nav.
-      */}
       <div className="flex flex-wrap justify-end gap-2 pt-2">
         <button
           type="button"

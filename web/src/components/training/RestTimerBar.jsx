@@ -1,3 +1,5 @@
+// Rest timer bar driven by the session store, with manual adjust and stop controls.
+
 import { useEffect, useRef, useState } from 'react'
 import { useReducedMotion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
@@ -6,41 +8,6 @@ import {
   REST_STEP_SEC,
   useSessionStore,
 } from '../../stores/sessionStore.js'
-
-/*
-  Barra de descanso de la sesión activa.
-
-  Es FIJA y está SIEMPRE en pantalla mientras entrenas, como la bottom-nav:
-  en reposo muestra un botón "Descansar 2:00", en marcha la cuenta atrás.
-  Nunca arranca sola.
-
-  Por qué manual y no automática al marcar una serie: el usuario decide
-  cuándo empieza a descansar, que no coincide con cuándo apunta el dato
-  (a veces anotas tres series de golpe, a veces descansas antes de apuntar).
-  Un cronómetro que se dispara solo obliga a pararlo, que es trabajo extra
-  justo cuando menos apetece. Y quien prefiera el cronómetro de su móvil
-  simplemente no lo pulsa.
-
-  La duración de arranque la decide el usuario en Ajustes
-  (`settings.restTimerSec`) y entra por prop: este componente repinta cada
-  segundo, así que cuanto menos sepa de dónde salen sus datos, mejor. Quien
-  lee la preferencia es SessionLiveView, que además no monta la barra si el
-  usuario la puso en Off.
-
-  Posición: sobre la bottom-nav en móvil (la nav es z-30, esto z-40 con el
-  offset justo encima) y abajo de la columna de contenido en desktop, donde
-  la navegación es sidebar. Suma env(safe-area-inset-bottom) para no quedar
-  bajo la barra de gestos del iPhone.
-
-  Tono: sin glow verde. DESIGN.md reserva el halo al CTA de iniciar entreno
-  (Glow-Is-Earned); aquí el verde entra en el progreso y en el estado
-  "terminado", y la barra se apoya en superficie elevada + blur.
-
-  El tiempo restante se deriva de `restEndsAt` (timestamp) en cada tick, no
-  de un contador que decrementa: ver la nota de invariante en
-  sessionStore.js. Este componente es el único suscrito al store, así que el
-  tick de 1 s no repinta la lista de ejercicios.
-*/
 
 function format(seconds) {
   const s = Math.max(0, seconds)
@@ -76,8 +43,6 @@ export default function RestTimerBar({ restSec = REST_DEFAULT_SEC }) {
   const adjustRest = useSessionStore((s) => s.adjustRest)
   const stopRest = useSessionStore((s) => s.stopRest)
 
-  // Fuerza el repintado una vez por segundo mientras haya descanso. El valor
-  // del contador no se usa: lo que se pinta sale de Date.now().
   const [, tick] = useState(0)
   useEffect(() => {
     if (!restEndsAt) return
@@ -89,15 +54,6 @@ export default function RestTimerBar({ restSec = REST_DEFAULT_SEC }) {
   const remaining = running ? Math.ceil((restEndsAt - Date.now()) / 1000) : 0
   const done = running && remaining <= 0
 
-  /*
-    Al llegar a cero: una vibración corta (lo único que se nota con los
-    cascos puestos y el móvil en el bolsillo; sin audio, que necesita gesto
-    previo del usuario y molesta en sala) y vuelta al estado de reposo a los
-    4 s, para que la barra quede lista para el siguiente descanso sin pedir
-    un toque de más.
-
-    El ref evita repetir la vibración en cada tick posterior al cero.
-  */
   const buzzedRef = useRef(false)
   useEffect(() => {
     if (!running) {
@@ -111,7 +67,6 @@ export default function RestTimerBar({ restSec = REST_DEFAULT_SEC }) {
     return () => clearTimeout(id)
   }, [done, running, reduce, stopRest])
 
-  // Proporción que queda, para la pista de progreso que se vacía.
   const ratio = restTotalSec > 0 ? Math.max(0, remaining / restTotalSec) : 0
 
   return (
@@ -135,11 +90,6 @@ export default function RestTimerBar({ restSec = REST_DEFAULT_SEC }) {
                 <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
                   {done ? t('training.rest.done') : t('training.rest.label')}
                 </p>
-                {/*
-                  aria-live solo en la cifra y como "off": el lector de
-                  pantalla no debe cantar cada segundo. El cambio relevante
-                  (terminó el descanso) va en el texto de arriba.
-                */}
                 <p
                   aria-live="off"
                   className={`tabular font-display text-2xl font-semibold leading-none ${
@@ -151,11 +101,6 @@ export default function RestTimerBar({ restSec = REST_DEFAULT_SEC }) {
               </div>
 
               {!done && (
-                /*
-                  −30 se desactiva cuando ya queda menos de un paso: restar
-                  más de lo que queda solo podría llevar el descanso a cero,
-                  y para eso ya está "Parar", que no hace vibrar el móvil.
-                */
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
@@ -185,12 +130,6 @@ export default function RestTimerBar({ restSec = REST_DEFAULT_SEC }) {
               </button>
             </div>
 
-            {/*
-              Pista de progreso. Sin transition en el ancho: el tick ya llega
-              cada segundo y animar entre ticks hace que el borde "patine"
-              medio segundo por detrás del número, que es justo lo que delata
-              un cronómetro impreciso.
-            */}
             <div className="h-1 overflow-hidden rounded-pill bg-bg" role="presentation">
               <div
                 className={`h-full rounded-pill ${done ? 'bg-accent' : 'bg-accent/70'}`}
@@ -199,12 +138,6 @@ export default function RestTimerBar({ restSec = REST_DEFAULT_SEC }) {
             </div>
           </div>
         ) : (
-          /*
-            Reposo. Un solo objetivo táctil a todo el ancho: en el gimnasio
-            se pulsa sin mirar, y un botón ancho perdona la puntería mucho
-            mejor que un icono pequeño. Borde en vez de relleno accent para
-            que no compita con el CTA de terminar sesión.
-          */
           <button
             type="button"
             onClick={() => startRest(restSec)}
