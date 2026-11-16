@@ -34,6 +34,14 @@ function startOfLocalDay(d) {
   return r
 }
 
+// `end` es el domingo a las 00:00; el backend filtra con startedAt <= to, así
+// que sin llevarlo al final del día se pierden las sesiones de ese domingo.
+function endOfLocalDay(d) {
+  const r = new Date(d)
+  r.setHours(23, 59, 59, 999)
+  return r
+}
+
 function addDays(d, n) {
   const r = new Date(d)
   r.setDate(r.getDate() + n)
@@ -121,7 +129,7 @@ export function useHeatmap(range, today = new Date()) {
     let cancelled = false
     const { start, end, year } = resolveHeatmapRange(range, today)
     setState((s) => ({ ...s, loading: true }))
-    fetchHeatmap(start, end)
+    fetchHeatmap(start, endOfLocalDay(end))
       .then((sessions) => {
         if (cancelled) return
         const cells = buildCells(sessions, start, end, today, year)
