@@ -8,7 +8,7 @@ import { useExerciseProgress } from '../../lib/useExerciseProgress.js'
 import { suggestDeload } from '../../lib/suggestProgression.js'
 import { resolveExerciseName } from '../../lib/exerciseName.js'
 import { ChevronRightIcon } from '../icons/NavIcons.jsx'
-import ExerciseCurve from '../stats/ExerciseCurve.jsx'
+import ExerciseCurve from '../stats/LazyExerciseCurve.jsx'
 
 export default function StalledCard() {
   const { t } = useTranslation()

@@ -8,7 +8,7 @@ import { useSessionDetail } from '../../lib/useSessionDetail.js'
 import { useExerciseProgress } from '../../lib/useExerciseProgress.js'
 import { breakdownForSession } from '../../lib/useWeeklyStats.js'
 import { shareSession } from '../../lib/shareSession.js'
-import ExerciseCurve from '../stats/ExerciseCurve.jsx'
+import ExerciseCurve from '../stats/LazyExerciseCurve.jsx'
 import MuscleChips from '../MuscleChips.jsx'
 import { ChevronRightIcon } from '../icons/NavIcons.jsx'
 

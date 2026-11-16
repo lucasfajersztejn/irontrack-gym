@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { resolveExerciseName } from '../../lib/exerciseName.js'
 import { useExerciseProgress } from '../../lib/useExerciseProgress.js'
 import { ChevronRightIcon } from '../icons/NavIcons.jsx'
-import ExerciseCurve from './ExerciseCurve.jsx'
+import ExerciseCurve from './LazyExerciseCurve.jsx'
 
 export default function ExerciseProgressRow({
   ex,
