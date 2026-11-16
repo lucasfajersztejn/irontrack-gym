@@ -1,13 +1,8 @@
+// Routine list card: name, exercise count, usage and last-used date.
+
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronRightIcon } from '../icons/NavIcons.jsx'
-
-/*
-  Card de "mis rutinas". El summary del backend llega con exerciseCount,
-  timesUsed y lastUsedAt — tres datos que pintar; no hace falta pedir
-  detalle para la lista. La fecha "usada hace X" se formatea con el locale
-  del usuario via Intl.RelativeTimeFormat.
-*/
 
 function relativeDate(dateIso, locale) {
   if (!dateIso) return null
@@ -25,17 +20,10 @@ function relativeDate(dateIso, locale) {
 export default function RoutineCard({ routine, flatLeft = false }) {
   const { t, i18n } = useTranslation()
   const lastUsed = relativeDate(routine.lastUsedAt, i18n.language)
-  // listRoutines ya hace $lookup + $setUnion, así que llega único y ordenable;
-  // cortamos a 4 chips para que el ancho de la card no explote con rutinas
-  // "full body" y el resto queda contado con "+N".
   const muscles = Array.isArray(routine.muscles) ? routine.muscles : []
   const visibleMuscles = muscles.slice(0, 4)
   const extraMuscles = muscles.length - visibleMuscles.length
 
-  // flatLeft: cuando SortableRoutineCard envuelve esta card pegada a su
-  // franja numerada, la esquina redondeada del lado izquierdo deja un
-  // arco visible entre strip y card. Con el borde recto a la izquierda
-  // las dos superficies encajan como un solo "slot".
   const radiusClass = flatLeft
     ? 'rounded-r-container rounded-l-none'
     : 'rounded-container'

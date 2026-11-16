@@ -1,34 +1,8 @@
+// Confirmation modal for permanent account deletion.
+
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-/*
-  Confirmación de borrado de cuenta.
-
-  No reutiliza ConfirmModal a propósito. Ese modal sirve para acciones
-  destructivas pero recuperables (borrar una sesión, una rutina), donde un
-  botón rojo es fricción suficiente. Esto no se puede deshacer y no hay copia
-  de seguridad, así que pide tres cosas que un "¿seguro?" no pide:
-
-  1. **Decir qué se borra**, en una lista, no en una frase vaga. El usuario
-     tiene que poder calcular lo que pierde antes de escribir nada.
-  2. **Escribir el propio username.** Es el freno real: no se puede hacer
-     por inercia ni con el móvil en el bolsillo. Hace de verificación humana
-     donde no podemos mandar un email de confirmación (solo OAuth, sin
-     dominio propio verificado — spec §5).
-  3. **Un botón que no se puede pulsar** hasta que el nombre coincide.
-
-  La comparación tolera el "@" y las mayúsculas: el username es siempre
-  minúsculas en la base, y escribir "@lucas" es exactamente la intención que
-  buscamos. Ser estricto con eso solo castiga a quien ya ha decidido.
-
-  Cerrar (fuera, Escape, Cancelar) no borra nada, así que no se le pone
-  fricción: la salida de un modal destructivo tiene que ser la vía fácil.
-
-  No lleva prop `open`: quien lo abre lo monta y quien lo cierra lo
-  desmonta. Así el campo de confirmación nace vacío por construcción, sin un
-  efecto que lo limpie — y lo tecleado en un intento anterior no puede dejar
-  el botón de borrar habilitado al volver a abrir.
-*/
 export default function DeleteAccountModal({
   username,
   busy,
@@ -40,31 +14,9 @@ export default function DeleteAccountModal({
   const [value, setValue] = useState('')
   const panelRef = useRef(null)
 
-  /*
-    Al cerrar, el foco vuelve al botón que abrió el modal. Sin esto cae al
-    <body> y quien navega con teclado tiene que recorrer la pantalla entera
-    para volver a donde estaba.
-
-    Quién era ese botón se captura en el PRIMER RENDER, no en un efecto:
-    React aplica el `autoFocus` del input durante el commit, antes de que
-    corra ningún efecto, así que para cuando se ejecuta un `useEffect` el
-    elemento activo ya es el campo de confirmación y el modal acabaría
-    devolviéndose el foco a sí mismo. Medido en el navegador: el foco se
-    quedaba en el <body> al cerrar.
-
-    El argumento de useRef se evalúa en cada render pero solo se usa el
-    primero, que ocurre antes de tocar el DOM.
-  */
   const openerRef = useRef(document.activeElement)
   const inputRef = useRef(null)
 
-  /*
-    Foco inicial en el campo de confirmación, puesto a mano en vez de con
-    `autoFocus`. El atributo lo aplica React durante el commit y en pruebas
-    en el navegador no siempre llegaba: el diálogo se abría con el foco
-    todavía en el botón que lo había lanzado. Para un diálogo modal el foco
-    de entrada no puede ser "casi siempre", así que se pide explícitamente.
-  */
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
@@ -76,18 +28,6 @@ export default function DeleteAccountModal({
     [],
   )
 
-  /*
-    Escape cierra (mientras no esté borrando: no queremos devolver al
-    usuario a una pantalla normal con la petición todavía viva) y Tab se
-    queda dentro del panel.
-
-    El trap importa especialmente aquí: `aria-modal` le dice al lector de
-    pantalla que lo de detrás no existe, y si el tabulador se escapa a la
-    página de fondo el usuario acaba pulsando controles que su lector no
-    está anunciando. Los focusables se consultan en cada Tab en vez de
-    cachearse porque el botón de borrar cambia de disabled a habilitado a
-    mitad de la interacción, al escribir el username.
-  */
   useEffect(() => {
     function onKeyDown(e) {
       if (e.key === 'Escape' && !busy) {
@@ -123,13 +63,6 @@ export default function DeleteAccountModal({
       aria-modal
       aria-labelledby="delete-account-title"
     >
-      {/*
-        El velo cierra al pulsar fuera, pero no es un <button> como en
-        ConfirmModal: un botón a pantalla completa es una parada de tabulador
-        que el lector anuncia antes del contenido del diálogo, y su función ya
-        la cubren Escape y Cancelar. Como superficie de clic para ratón es
-        correcto; para teclado y lector está deliberadamente fuera.
-      */}
       <div
         aria-hidden
         onClick={busy ? undefined : onCancel}

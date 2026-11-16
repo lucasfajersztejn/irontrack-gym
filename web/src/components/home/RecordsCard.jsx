@@ -1,3 +1,5 @@
+// Home card with personal records grouped by muscle, collapsible when long.
+
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../../contexts/UserContext.jsx'
@@ -5,39 +7,8 @@ import { useRecords } from '../../lib/useRecords.js'
 import { resolveExerciseName } from '../../lib/exerciseName.js'
 import { TrophyIcon } from '../icons/NavIcons.jsx'
 
-/*
-  "Récords" en Home — PRs all-time persistidos por ejercicio.
-
-  Diferencia vs RecentPrsCard: aquello es ventana de 30d ordenada por
-  fecha (motivación a corto plazo). Esto es el estado actual del usuario
-  — "en press banca lo máximo que has levantado es X kg" — agrupado por
-  músculo para navegar.
-
-  Decisiones:
-    - PR principal por tracking: weight_reps => best1RM (comparable
-      entre rangos de reps) con heaviestKg como secundario; reps =>
-      bestReps. Mostrar los tres por fila sería ruido para el 90% de
-      los ejercicios.
-    - Group por muscle. El usuario piensa "¿qué récord tengo en pecho?",
-      no "¿qué récord tengo en el ejercicio 7". El orden de ejercicios
-      dentro de cada grupo respeta `latestAt desc` del server (el más
-      reciente arriba).
-    - Fecha relativa simple (hoy/ayer/Nd), como RecentPrsCard.
-    - Lista larga: la card tiene un viewport interno de ~4 filas con
-      scroll propio. Cuando pasa del umbral `EXPAND_THRESHOLD`, un
-      botón quita el max-height y despliega todo. Es el patrón de
-      "preview + expand": la card no domina el Home por defecto, pero
-      el usuario puede verlo todo en una sola vista si quiere.
-*/
-
-// Altura del viewport "colapsado": encaja ~4 filas con headings.
-// 18rem = 288px. Medido contra una fila (bg-surface-2, 2 líneas) que
-// ocupa ~56px con gap-1.5; 4 filas + 1 heading ≈ 260px + aire.
 const COLLAPSED_MAX_H = 'max-h-72'
 
-// Encima de este total, el "colapsado" ya esconde demasiado y toca
-// ofrecer expandir. Por debajo, la lista cabe de sobra y el botón
-// sería ruido.
 const EXPAND_THRESHOLD = 6
 
 function formatKg(v) {
@@ -62,8 +33,6 @@ function groupByMuscle(records) {
     if (!map.has(key)) map.set(key, [])
     map.get(key).push(rec)
   }
-  // Orden de grupos: el que tenga el PR más reciente aparece primero,
-  // así el usuario ve lo que acaba de caer sin scrollear.
   return Array.from(map.entries()).sort(([, a], [, b]) => {
     const da = a[0]?.latestAt ? new Date(a[0].latestAt).getTime() : 0
     const db = b[0]?.latestAt ? new Date(b[0].latestAt).getTime() : 0
@@ -103,10 +72,6 @@ export default function RecordsCard() {
         <p className="text-sm text-text-muted">{t('home.recordsEmpty')}</p>
       ) : (
         <div
-          // overflow-y-auto + max-h da el viewport interno. pr-1 deja
-          // hueco para el scrollbar sin que tape texto. overscroll-contain
-          // evita que al llegar al tope el scroll se propague y arrastre
-          // el Home entero — en mobile eso se nota mucho.
           className={`flex flex-col gap-4 ${
             expanded ? '' : `${COLLAPSED_MAX_H} scrollbar-thin overflow-y-auto overscroll-contain pr-1`
           }`}
@@ -141,7 +106,6 @@ export default function RecordsCard() {
                           {resolveExerciseName(
                             {
                               _id: rec.exerciseId,
-                              // name bilingüe del catálogo; snapshot de respaldo.
                               name:
                                 rec.name ??
                                 (rec.exerciseName

@@ -6,22 +6,7 @@ import User from '../models/user.model.js'
 import { computeUserMetrics, badgeProgress, SESSION_METRIC_SELECT } from '../lib/badgeEngine.js'
 import { BADGE_CATEGORIES, BADGE_TIERS } from '../models/constants.js'
 
-/**
- * GET /api/badges — el muro: catálogo COMPLETO con el estado del usuario.
- *
- * Devuelve todas las insignias, no solo las ganadas: ver lo que falta (con su
- * progreso) es justamente lo que motiva, y el muro pinta las bloqueadas en gris
- * con la silueta visible (spec §6.4).
- *
- * Por cada insignia:
- *   - unlocked + unlockedAt: del documento UserBadge si existe.
- *   - progress { current, target, pct }: calculado al vuelo contra las métricas
- *     derivadas de las sesiones. Para una ya ganada forzamos pct a 100 (pudo
- *     ganarse con una racha que luego se rompió; sigue ganada).
- *
- * Orden estable: por categoría (orden de constants) y dentro por tier
- * (bronce→plata→oro). El frontend agrupa por categoría sin tener que ordenar.
- */
+/** GET /api/badges: full badge catalog with the user's state */
 export const getBadges = async (req, res, next) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user.id)

@@ -1,3 +1,5 @@
+// Settings route: preferences (rest timer, bar weight, language), sign-out and account deletion.
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -12,31 +14,6 @@ import SegmentedField from '../components/settings/SegmentedField.jsx'
 import StepperField from '../components/settings/StepperField.jsx'
 import DeleteAccountModal from '../components/settings/DeleteAccountModal.jsx'
 
-/*
-  Ajustes.
-
-  Dos decisiones de forma que marcan toda la pantalla:
-
-  - **Nada de sub-pantallas.** Cinco ajustes caben en una columna, así que
-    cada control se manipula donde se lee. Una lista de filas con chevron
-    que llevan a una pantalla con una sola opción es el patrón por defecto de
-    los ajustes de móvil, y aquí solo añadiría dos toques por cambio.
-
-  - **Agrupados por momento de uso, no por tipo de dato**: lo que cambia cómo
-    entrenas, lo que cambia la app, y la cuenta. Un ajuste se busca por para
-    qué sirve, no por si es un número o una lista.
-
-  Esta pantalla no tiene acción primaria (no hay "Guardar"), así que tampoco
-  lleva glow verde: DESIGN.md reserva el halo al elemento que lleva la acción
-  principal de la vista, y aquí no hay ninguno. El verde solo aparece en la
-  opción seleccionada de cada control y en el "Guardado".
-
-  IronTrack es solo métrica: kg y km, sin toggle de unidades (ver spec §1).
-  Por eso no hay fila "Unidades" aquí ni capa de conversión en la UI.
-*/
-
-// Presets del descanso. 0 = sin cronómetro: la barra no se monta durante la
-// sesión (ver SessionLiveView) y el usuario usa el reloj de su móvil.
 const REST_PRESETS = [0, 60, 90, 120, 180]
 
 const BAR_WEIGHT_STEP = 2.5
@@ -62,9 +39,6 @@ export default function Settings() {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
 
-  // Un estado por grupo: cuál es la clave que se está guardando o se acaba
-  // de guardar. Las claves de cada grupo se listan aquí para no tener que
-  // pasar el estado campo por campo.
   function sectionStatus(keys) {
     if (keys.includes(savingKey)) {
       return { tone: 'saving', label: t('settings.saving') }
@@ -75,21 +49,11 @@ export default function Settings() {
     return null
   }
 
-  /*
-    El mensaje que se muestra es el nuestro traducido, no el del servidor.
-    La API responde siempre en español y con texto de validación ("Payload
-    inválido"), que ni se traduce ni le dice al usuario qué hacer. Aquí los
-    únicos errores posibles son "no hay red" o "la sesión caducó", y para
-    los dos la acción es la misma: volver a intentarlo.
-  */
   function fieldError(key) {
     if (error?.key !== key) return null
     return t('settings.saveError')
   }
 
-  // Mismo fallback que usa la barra de descanso mientras carga el usuario,
-  // importado en vez de reescrito: tres copias del número 120 (modelo,
-  // store, pantalla) son tres sitios donde se puede desincronizar.
   const restSec = settings.restTimerSec ?? REST_DEFAULT_SEC
   const restOptions = (
     REST_PRESETS.includes(restSec) ? REST_PRESETS : [...REST_PRESETS, restSec].sort((a, b) => a - b)
@@ -97,8 +61,6 @@ export default function Settings() {
 
   async function handleSignOut() {
     await signOut()
-    // clearUser en vez de refetch: la cookie ya se borró, así que pedir
-    // /api/me solo da un 401 inútil para acabar en el mismo invitado.
     clearUser()
     navigate('/', { replace: true })
   }
@@ -108,9 +70,6 @@ export default function Settings() {
     setDeleteError(null)
     try {
       await deleteAccount()
-      // La cuenta ya no existe y la cookie está borrada: dejamos `user` en null
-      // a mano (lo que ProtectedRoute necesita para no repintar una pantalla de
-      // usuario sin usuario) en vez de un refetch que solo devolvería 401.
       clearUser()
       navigate('/', { replace: true })
     } catch (err) {
@@ -147,9 +106,6 @@ export default function Settings() {
         </div>
       </section>
 
-      {/* Medallas — destino, no ajuste. Settings es el hub del perfil (|/profile|
-          redirige aquí), así que el muro de insignias se entra desde una card
-          de navegación, no desde una fila de control. */}
       <button
         type="button"
         onClick={() => navigate('/medals')}
@@ -229,14 +185,6 @@ export default function Settings() {
           error={fieldError('weeklyGoal')}
         />
 
-        {/*
-          Segmentado de dos opciones en vez de un switch: esta pantalla no
-          tiene ningún interruptor todavía, y añadir un patrón de control
-          nuevo para un solo ajuste obliga a mantener dos lenguajes de
-          "activado". El segmentado ya está aquí y dice lo mismo.
-          `?? true` espeja el default del modelo: mientras /api/me no ha
-          respondido el control no debe pintar "No" y luego saltar a "Sí".
-        */}
         <SegmentedField
           name="suggestProgression"
           label={t('settings.progression.label')}
@@ -288,13 +236,6 @@ export default function Settings() {
           </button>
         </div>
 
-        {/*
-          Borrar cuenta comparte card con cerrar sesión: las dos son "salir",
-          y separar la segunda en una zona propia la convierte en el elemento
-          más llamativo de la pantalla. La jerarquía la marca el color del
-          texto del botón, no una caja aparte con borde rojo — DESIGN.md deja
-          el rojo como texto, nunca como borde ni fondo en reposo.
-        */}
         <div className="flex items-center justify-between gap-4 p-4 md:p-5">
           <div className="min-w-0">
             <p className="text-sm font-medium text-text">

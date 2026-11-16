@@ -1,3 +1,5 @@
+// Routine editor row for one exercise: sets, starting weight and tracking-specific fields.
+
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../../contexts/UserContext.jsx'
 import { useExerciseName } from '../../lib/exerciseName.js'
@@ -8,25 +10,6 @@ import {
   shouldShowPerSide,
   totalFromPerSide,
 } from '../../lib/weight.js'
-
-/*
-  Fila del editor. Dos niveles de campos:
-
-  - **Primarios** (fila grande): lo que vale la pena planificar en una
-    plantilla — series, y en los ejercicios de peso también el peso de
-    arranque. Las repeticiones no entran aquí: en la vida real las reps
-    varían serie a serie dentro de una sesión; comprometerse a un número
-    en la plantilla es ficción.
-  - **Secundarios** (debajo, más tenues): "Reps objetivo (opcional)" para
-    quien quiera marcar una meta — útil en bloques de fuerza con un número
-    cerrado, no obligatorio para quien va a RIR libre.
-
-  El input de peso respeta `user.settings.barInputMode`: si el ejercicio
-  usa barra y el modo es 'plates', mostramos "Discos por lado" con una
-  línea helper que delata el total y la composición de la barra. El
-  invariante de almacenamiento se preserva: lo que viaja al backend es
-  siempre total en kg.
-*/
 
 function NumberField({
   label,
@@ -70,14 +53,6 @@ function NumberField({
   )
 }
 
-/*
-  WeightField renderiza SOLO los inputs (peso total o perSide + barra). El
-  hint "Total: X kg (barra Y + 2 × Z)" se renderiza fuera, en PrimaryFields,
-  para que no infle la altura de la celda del grid exterior y rompa el
-  alineado con "Series". Conocer esa restricción desde aquí sería acoplarse
-  al layout del padre: mejor que WeightField cuente lo que hay y PrimaryFields
-  decida dónde colocar cada pieza.
-*/
 function WeightField({ entry, onChange, barMode, userBarKg }) {
   const { t } = useTranslation()
   const perSide = shouldShowPerSide(entry.exercise, barMode)
@@ -95,12 +70,6 @@ function WeightField({ entry, onChange, barMode, userBarKg }) {
     )
   }
 
-  /*
-    Cuando el usuario cambia el peso de la barra, el "total" guardado se
-    recompone a partir del valor por lado visible: el usuario ha dicho
-    "quiero 20 kg por lado"; cambiar de barra de 20 a 15 no debe mover
-    los discos, debe mover el total (nueva total = 20 × 2 + 15 = 55).
-  */
   const visible = perSideFromTotal(entry.targetWeightKg, barKg)
   const handlePlatesChange = (plates) => {
     const total = totalFromPerSide(plates, barKg)
@@ -118,8 +87,6 @@ function WeightField({ entry, onChange, barMode, userBarKg }) {
   const showBarInput = shouldShowBarWeightInput(entry.exercise)
 
   return (
-    // items-end alinea los dos inputs internos por su base si "Discos por
-    // lado" rompe en 2 líneas y "Barra" cabe en 1.
     <div
       className={`grid gap-2 ${showBarInput ? 'grid-cols-[1fr_auto] items-end' : 'grid-cols-1'}`}
     >
@@ -145,12 +112,6 @@ function WeightField({ entry, onChange, barMode, userBarKg }) {
   )
 }
 
-/*
-  Hint "Total: X kg (barra Y + 2 × Z)" para los ejercicios con barra en modo
-  plates. Se renderiza aparte del WeightField para no inflar la celda del
-  grid exterior (ver comentario arriba). Devuelve null cuando no aplica, así
-  el padre puede soltarlo tal cual sin condicionales.
-*/
 function WeightTotalHint({ entry, barMode, userBarKg }) {
   const { t } = useTranslation()
   if (!shouldShowPerSide(entry.exercise, barMode)) return null
@@ -179,18 +140,8 @@ function PrimaryFields({ entry, onChange, barMode, userBarKg }) {
     />
   )
 
-  // items-end alinea los inputs por su base aunque uno de los labels del
-  // par se envuelva a dos líneas (p. ej. "Discos por lado" vs "Series"). Lo
-  // aplicamos a todos los grids del switch para que un cambio de copy o
-  // una traducción más larga no vuelva a desnivelar la fila.
   switch (entry.exercise.tracking) {
     case 'weight_reps':
-      // Grid de 2 columnas × 2 filas:
-      //   fila 1 = inputs (Series | Peso), alineados por la base.
-      //   fila 2 = hint "Total: ..." bajo la columna del peso. El spacer
-      //            vacío en la primera celda de fila 2 preserva la rejilla.
-      // Así el hint ya no infla la celda del peso en la fila 1 y Series
-      // queda al mismo nivel que los otros inputs.
       return (
         <div className="grid grid-cols-2 items-end gap-x-2 gap-y-1">
           {sets}
@@ -246,8 +197,6 @@ function PrimaryFields({ entry, onChange, barMode, userBarKg }) {
 
 function SecondaryFields({ entry, onChange }) {
   const { t } = useTranslation()
-  // Reps objetivo opcional solo tiene sentido cuando el ejercicio registra
-  // reps (weight_reps o reps). Para time y distance_time no aplica.
   if (!['weight_reps', 'reps'].includes(entry.exercise.tracking)) return null
   return (
     <NumberField

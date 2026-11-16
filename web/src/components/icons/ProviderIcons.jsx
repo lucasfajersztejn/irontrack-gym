@@ -1,14 +1,4 @@
-/*
-  Iconos de marca de los dos proveedores OAuth activos (Google y GitHub).
-  Son brand marks oficiales (Simple Icons, CC0 sobre el SVG; el uso de la
-  marca en un botón "Continuar con X" cae dentro de lo que cada compañía
-  permite para integraciones de login). Están inline para no añadir una
-  dependencia de 4 iconos.
-
-  Convención: cada icono se renderiza dentro de la pastilla cuadrada del
-  OAuthButton, así que todos usan el mismo viewBox 24x24 y heredan el color
-  con `currentColor` para que se adapten al estado del botón.
-*/
+// OAuth provider icons.
 
 const base = { width: 16, height: 16, viewBox: '0 0 24 24', 'aria-hidden': true }
 

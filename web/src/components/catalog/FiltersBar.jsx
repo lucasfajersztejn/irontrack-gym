@@ -1,12 +1,7 @@
+// Catalog filter controls: equipment select and related filters.
+
 import { useTranslation } from 'react-i18next'
 import { DumbbellIcon } from '../icons/NavIcons.jsx'
-
-/*
-  Fila secundaria de filtros: dropdown de equipamiento + toggle "Favoritos"
-  (mancuerna amarilla cuando está activo) + toggle "Mis custom".
-  El native select va bien aquí: cumple con teclado, con el screen reader de
-  gimnasio (si existe) y evita montarnos un combobox a mano.
-*/
 
 const EQUIPMENT_VALUES = [
   'barbell',

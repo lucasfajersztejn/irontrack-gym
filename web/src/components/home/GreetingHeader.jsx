@@ -1,12 +1,8 @@
+// Home greeting header addressing the user.
+
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../../contexts/UserContext.jsx'
 
-/*
-  Encabezado de Home: fecha larga + saludo con el username. Usar
-  Intl.DateTimeFormat con el locale del usuario (y no una tabla hardcodeada
-  de meses) deja el formato en manos del navegador: "jueves, 29 de octubre"
-  en ES, "Thursday, Oct 29" en EN, y lo mismo si mañana se añade otro idioma.
-*/
 export default function GreetingHeader() {
   const { t, i18n } = useTranslation()
   const { user } = useUser()

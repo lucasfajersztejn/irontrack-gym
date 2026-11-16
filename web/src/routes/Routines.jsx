@@ -1,3 +1,5 @@
+// Routines list route: view, reorder (drag-and-drop) and manage workout templates.
+
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -17,28 +19,6 @@ import {
 } from '@dnd-kit/sortable'
 import SortableRoutineCard from '../components/routines/SortableRoutineCard.jsx'
 import { useRoutines } from '../lib/useRoutines.js'
-
-/*
-  "Mis rutinas". Grid 1 → 2 → 3 columnas con orden MANUAL (drag-sort):
-  la posición manda sobre cualquier otro criterio porque la rotación de
-  Home → NextWorkout se guía por este orden, no por `lastUsedAt`.
-
-  dnd-kit setup:
-    - PointerSensor con activation distance 6 px: así un tap normal en la
-      card (que lleva al editor) nunca dispara drag por error; hay que
-      moverse 6 px para activar.
-    - TouchSensor con delay 150 ms: en móvil distingue scroll vertical del
-      inicio de drag. Sin delay, cualquier roce horizontal engancharía la
-      card y el listado se sentiría "resbaladizo".
-    - KeyboardSensor para accesibilidad: tab al grip + espacio empieza
-      drag, flechas desplazan, espacio confirma.
-    - rectSortingStrategy porque el layout es grid 2D (no lista vertical);
-      verticalListSortingStrategy daría animaciones raras al cruzar filas.
-
-  Optimismo + rollback: `reorder` del hook actualiza local primero y revierte
-  si el PATCH falla. No bloqueamos la UI con un spinner — una barra de red
-  caída haría que el usuario sintiera la app "pegada" en una acción barata.
-*/
 
 function NewRoutineButton() {
   const { t } = useTranslation()
@@ -95,8 +75,6 @@ export default function Routines() {
     const newIndex = routines.findIndex((r) => r._id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
     const next = arrayMove(routines, oldIndex, newIndex)
-    // No await: el hook se encarga de revertir si falla. El DragEnd handler
-    // debe ser síncrono para que dnd-kit asiente la animación de cierre.
     reorder(next).catch(() => {})
   }
 

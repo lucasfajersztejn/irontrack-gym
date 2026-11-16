@@ -1,30 +1,8 @@
+// Bottom sheet form to create or edit a custom exercise.
+
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api.js'
-
-/*
-  Hoja secundaria para crear un ejercicio custom sin salir del contexto.
-  Vive como pieza compartida porque la invocan dos sitios con el mismo
-  contrato: el header del catálogo (crear → recarga el listado) y el picker
-  de la rutina (crear → auto-seleccionar y cerrar). Centralizar aquí evita
-  mantener dos formularios paralelos que acabarían divergiendo.
-
-  Decisiones de alcance (Fase 1):
-  - Un solo idioma en el nombre: el que esté activo en i18n. Pedir ES+EN para
-    "press loco de Juan" es fricción injustificada; el backend acepta uno de
-    los dos (localizedNameSchema).
-  - Músculos secundarios (opcional, hasta 5): chips togglables para que el
-    usuario pueda marcar varios sin desplegar un menú. Los secundarios no
-    pueden coincidir con el primario (lo deseleccionamos si se activó antes).
-    `instructions` sigue sin UI: cuando exista una vista de edición dedicada.
-  - Tracking como radio en lugar de select: son 4 opciones con significados
-    muy distintos y el radio los pone todos a la vista; un select los
-    esconde detrás de un click y obliga a leer el label activo para saber
-    qué está pasando.
-  - z-50 igual que el picker; el padre decide cuál monta primero. El overlay
-    propio con backdrop-blur cubre el picker si se abre desde allí, dando
-    la jerarquía visual correcta sin tener que gestionar un stack de z-index.
-*/
 
 const MUSCLES = [
   'abductors', 'abs', 'adductors', 'biceps', 'calves', 'cardio', 'delts',
@@ -60,9 +38,6 @@ export default function CustomExerciseSheet({ open, onClose, onCreated, initialN
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
-  // Al abrir, resetear y prellenar con el término buscado (si vino).
-  // Al cerrar también limpiamos para que la próxima apertura arranque virgen
-  // sin ver un parpadeo del estado anterior durante la animación de salida.
   useEffect(() => {
     if (open) {
       setForm({ ...EMPTY, name: initialName })
@@ -72,7 +47,6 @@ export default function CustomExerciseSheet({ open, onClose, onCreated, initialN
     }
   }, [open, initialName])
 
-  // Bloquear scroll del fondo mientras la hoja está abierta.
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
@@ -181,8 +155,6 @@ export default function CustomExerciseSheet({ open, onClose, onCreated, initialN
                 setForm((f) => ({
                   ...f,
                   muscle,
-                  // Si el nuevo primario estaba como secundario, lo sacamos:
-                  // un músculo no puede ser las dos cosas a la vez.
                   secondaryMuscles: f.secondaryMuscles.filter((m) => m !== muscle),
                 }))
               }
@@ -226,14 +198,6 @@ export default function CustomExerciseSheet({ open, onClose, onCreated, initialN
           })}
           hint={t('customExercise.fields.secondaryHint')}
         >
-          {/*
-            Chips togglables para los secundarios. Más digerible que un
-            multi-select nativo en móvil y da feedback inmediato de cuántos
-            llevas (contador en el label). Tope en 5 para alinear con la
-            validación del backend (createSchema.secondaryMuscles.max(5)):
-            cuando se alcanza, los chips no seleccionados quedan atenuados
-            y no responden, para explicar visualmente por qué.
-          */}
           <div className="flex flex-wrap gap-1.5">
             {MUSCLES.filter((m) => m !== form.muscle).map((m) => {
               const picked = form.secondaryMuscles.includes(m)
@@ -269,11 +233,6 @@ export default function CustomExerciseSheet({ open, onClose, onCreated, initialN
         </Field>
 
         <Field label={t('customExercise.fields.tracking')}>
-          {/*
-            Radio en lugar de select: cuatro opciones semánticamente muy
-            distintas (peso×reps / solo reps / tiempo / distancia+tiempo).
-            Tenerlas a la vista acelera la decisión y evita confusiones.
-          */}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {TRACKING_TYPES.map((tr) => (
               <TrackingOption
@@ -330,13 +289,6 @@ function Field({ label, required, hint, children }) {
   )
 }
 
-/*
-  Select nativo pero estilado con los tokens del sistema. Nativo porque:
-  (1) accesibilidad gratis en móvil (picker del sistema operativo), (2) no
-  justifica un combobox custom con 12 opciones ordenadas. El look dark se
-  consigue heredando los colores del token y el chevron se pinta con
-  background-image SVG para que no quede la flechita blanca por defecto.
-*/
 function Select({ value, onChange, options, placeholder, allowEmpty }) {
   return (
     <div className="relative">

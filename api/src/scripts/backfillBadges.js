@@ -1,15 +1,4 @@
-/**
- * Backfill de insignias sobre la historia existente.
- *
- * El motor se dispara al cerrar cada sesión, pero las sesiones que YA están
- * cerradas nunca pasaron por él. Este script recorre a cada usuario con
- * historial y evalúa sus insignias una vez. Es idempotente (índice único
- * {user, badge}), así que correrlo de más no duplica desbloqueos.
- *
- * Correr DESPUÉS de `npm run seed:badges`: sin catálogo no hay nada que ganar.
- *
- * Uso:  npm run backfill:badges
- */
+/** Backfill badges over existing session history */
 
 import dns from 'dns'
 
@@ -27,8 +16,6 @@ import { evaluateAndPersist } from '../lib/badgeEngine.js'
 async function run() {
   await connectDB()
 
-  // Usuarios con al menos una sesión cerrada: no tiene sentido evaluar a quien
-  // no tiene historial que puntuar.
   const userIds = await Session.distinct('user', { endedAt: { $ne: null } })
   console.log(`[backfill:badges] ${userIds.length} usuarios con historial.`)
 

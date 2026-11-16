@@ -3,23 +3,7 @@ import { api } from './api.js'
 import { computeStreak, countThisWeek, latest1RM } from './stats.js'
 import { pickNextRoutine } from './nextRoutine.js'
 
-/*
-  Home sacará todos sus números del endpoint existente GET /api/sessions
-  (lista paginada sin entries). Las agregaciones correrán en cliente hasta
-  que Fase 2 añada endpoints dedicados. Es aceptable: el payload está
-  acotado (limit=50, ventana 12 semanas) y evita bloquear la UI con cuatro
-  fetches en serie.
-
-  Cuatro llamadas en paralelo:
-  - sessions (ventana de 12 semanas) → heatmap, racha, semana, últimas 3.
-  - routines → contador + "siguiendo hoy" por lastUsedAt.
-  - active → modo "Continuar" del CTA.
-  - detail de la última sesión → 1RM estimado.
-
-  Un fallo en una no debe dejar en blanco el resto. Si la lista principal
-  falla, Home muestra el estado vacío (es más honesto que un spinner
-  eterno).
-*/
+// Aggregated data for Home.
 export function useHomeData() {
   const [state, setState] = useState({
     loading: true,
@@ -35,7 +19,7 @@ export function useHomeData() {
 
     async function load() {
       const since = new Date()
-      since.setDate(since.getDate() - 84) // 12 semanas
+      since.setDate(since.getDate() - 84)
       const sessionsQuery =
         `/api/sessions?limit=50&from=${encodeURIComponent(since.toISOString())}`
 
@@ -54,7 +38,6 @@ export function useHomeData() {
         : []
       const activeSession = activeRes.status === 'fulfilled' ? activeRes.value : null
 
-      // Detail del más reciente para el 1RM. Solo si hay al menos una.
       let latestDetail = null
       const mostRecent = sessions[0]
       if (mostRecent?._id || mostRecent?.id) {
@@ -91,10 +74,6 @@ export function useHomeData() {
   const sessions = state.sessions
   const today = new Date()
 
-  // "Lo que toca": siguiente en el orden manual del usuario después de
-  // la última sesión no-activa (si la última fue "pecho A", toca "espalda").
-  // El backend ya devuelve routines ordenadas por `order`, así que no
-  // reordenamos aquí: pickNextRoutine confía en esa invariante.
   const lastFinishedSession = sessions.find(
     (s) => !state.activeSession || s._id !== state.activeSession._id,
   )

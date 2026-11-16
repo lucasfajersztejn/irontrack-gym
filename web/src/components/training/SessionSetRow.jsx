@@ -1,3 +1,5 @@
+// Editable row for one set, with inputs that depend on the exercise tracking type.
+
 import { useTranslation } from 'react-i18next'
 import {
   perSideFromTotal,
@@ -5,29 +7,10 @@ import {
 } from '../../lib/weight.js'
 import RirInfoPopover from './RirInfoPopover.jsx'
 
-/*
-  Fila de una serie dentro de un ejercicio. El layout cambia según el
-  tracking (weight_reps, reps, time, distance_time) pero la retícula
-  comparte estructura:
-    [#] [input(s)] [✓] [×]
-  La ✓ es grande (36×36) para pulgar con sudor; "fat finger" no debería
-  marcar y desmarcar al rozar. El × es menos crítico (borrar una serie
-  por accidente duele poco porque se restaura con otra +Serie).
-
-  Modo plates (weight_reps + usesBar + barInputMode==='plates'):
-    - El input muestra el peso POR LADO (derivado de weightKg total).
-    - Bajo la fila se pinta un hint "60 kg · barra 20 + 2 × 20" en gris.
-    - Guardamos siempre weightKg total en estado (invariante spec §4).
-*/
-
 function toNumber(v, { min, max } = {}) {
   if (v === '' || v == null) return null
   const n = Number(v)
   if (Number.isNaN(n)) return null
-  // Los atributos HTML min/max solo marcan el input como :invalid, no impiden
-  // escribir fuera de rango. El backend sí valida (p.ej. RIR 0-5), así que
-  // clampamos aquí para que el PATCH nunca mande algo que sabemos que va a
-  // volver como 400.
   if (max != null && n > max) return max
   if (min != null && n < min) return min
   return n
@@ -59,13 +42,6 @@ function NumberCell({
   )
 }
 
-/*
-  Celda RIR + (i) de ayuda. El popover solo se monta en la primera serie del
-  entry (prop `showInfo`) para no apilar tres botones i idénticos cuando hay
-  3 series: un solo explicador por columna basta. En las series siguientes
-  reservamos el hueco del botón con un spacer invisible para que la columna
-  de inputs mantenga la misma anchura en todas las filas.
-*/
 function RirCell({ value, onChange, showInfo, ariaLabel }) {
   return (
     <div className="flex shrink-0 items-center gap-1">
@@ -167,13 +143,6 @@ export default function SessionSetRow({
     tracking === 'weight_reps' && usesBar && barInputMode === 'plates'
   const perSide = showPlates ? perSideFromTotal(set.weightKg, barKg) : null
 
-  /*
-    Placeholders de sugerencia. Llega YA en la unidad de este input (por
-    lado en modo discos, total si no): la conversión la hace el card, que
-    es quien sabe el peso de la barra. Aquí solo se pinta.
-
-    Si no hay sugerencia se cae al placeholder genérico de siempre.
-  */
   const weightPlaceholder =
     suggestion?.weightKg != null
       ? String(suggestion.weightKg)
@@ -188,7 +157,6 @@ export default function SessionSetRow({
 
   const onWeightChange = (val) => {
     if (showPlates) {
-      // El usuario escribe perSide; recomponemos total con la barra activa.
       onChange({ weightKg: val == null ? null : totalFromPerSide(val, barKg) })
     } else {
       onChange({ weightKg: val })
@@ -274,14 +242,6 @@ export default function SessionSetRow({
     }
   })()
 
-  /*
-    Hint SIEMPRE visible en ejercicios con barra cuando ya se ha anotado un
-    peso. En modo plates (el input pide "x lado") el hint remata con el
-    total — "20 kg × 2 + barra 20 = 60 kg". En modo total (el input pide
-    kg totales) el hint hace la conversión inversa a lado — "60 kg = 20 kg
-    × 2 + barra 20". Misma info, dirección distinta según lo que el usuario
-    está escribiendo.
-  */
   const showTotalHint =
     tracking === 'weight_reps' && usesBar && set.weightKg != null
   const totalPerSide = showTotalHint
@@ -310,11 +270,6 @@ export default function SessionSetRow({
         />
       </div>
       {showTotalHint && (
-        /*
-          Hint sangrado: alineado con el input de peso para que el ojo baje
-          en línea desde el valor por lado al total. tabular-nums evita que
-          la barra avance al cambiar de 2 a 3 dígitos.
-        */
         <span className="tabular ml-8 text-[10px] text-text-muted">
           {t('training.setFields.totalHint', {
             total: set.weightKg,

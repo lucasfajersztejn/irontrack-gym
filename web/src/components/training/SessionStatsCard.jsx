@@ -1,28 +1,7 @@
+// Live session summary card: elapsed time, volume and muscle breakdown.
+
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-/*
-  Panel de estadísticas en vivo al final de la sesión.
-
-  Decisiones:
-  - Fondo `surface-2` para separarlo visualmente de las cards de ejercicio
-    (que son `card-liquid` sobre `surface`). No es glow — DESIGN.md
-    Glow-Is-Earned reserva el halo verde al CTA de iniciar entreno; aquí
-    jugamos con la elevación tonal.
-  - Timer sobrio: pequeño, en la cabecera del panel. Deja de competir con la
-    atención del usuario mientras rellena series y queda como información
-    de contexto que puede mirar cuando quiera.
-  - Tres KPIs grandes (Series completas, Volumen, Grupos trabajados) + un
-    desglose por músculo abajo. El desglose solo cuenta series marcadas
-    como completadas: refleja el entreno real, no el plan.
-  - "Volumen" = suma de weightKg × reps en series completadas de tracking
-    weight_reps. Otros tracking (time, distance_time, reps a secas) no
-    tienen volumen comparable; se omiten de la cifra total y aparecen solo
-    como "series por grupo".
-
-  El componente recibe `entries` del hook useSessionLive y `startedAt` de
-  la sesión. Nada de llamadas a red: todo se deriva del estado local.
-*/
 
 function useElapsed(startedAtIso) {
   const [, tick] = useState(0)
@@ -39,13 +18,6 @@ function useElapsed(startedAtIso) {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
 }
 
-/*
-  Reglas de atribución:
-  - Músculo primario (entry.muscle): recibe series + volumen + peso máx.
-  - Músculos secundarios (entry.exercise.secondaryMuscles, cuando viene
-    populado): solo series. Volumen y máx se quedan en el primario para no
-    inflar el "máx peso de pecho" al contar un remo.
-*/
 function ensureBucket(map, muscle) {
   if (!map.has(muscle)) {
     map.set(muscle, { muscle, sets: 0, volume: 0, maxWeight: 0 })
@@ -117,10 +89,6 @@ export default function SessionStatsCard({ entries, startedAt }) {
         </div>
       </header>
 
-      {/*
-        Tres KPIs en línea. Divisores verticales tenues (border-border/40)
-        separan sin añadir ruido; en móvil pasan a horizontales.
-      */}
       <div className="mt-4 grid grid-cols-3 gap-3">
         <Kpi
           label={t('training.stats.setsDone')}

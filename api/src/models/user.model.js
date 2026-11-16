@@ -4,120 +4,40 @@ import {
   BAR_INPUT_MODES, RESERVED_USERNAMES,
 } from './constants.js';
 
-/**
- * Preferencias del usuario.
- *
- * Van en un subdocumento con _id: false porque no son una entidad propia: no
- * tiene sentido buscar unas preferencias sueltas ni referenciarlas desde otro
- * sitio. Son parte del usuario. Mongoose por defecto le pone un _id a cada
- * subdocumento, y aquí solo sería ruido.
- */
+/** User preferences (subdocument) */
 const settingsSchema = new mongoose.Schema({
   locale:  { type: String, enum: LOCALES,      default: 'es' },
 
-  // IronTrack es solo métrica (kg, metros, segundos). No hay `units` porque
-  // nunca hubo toggle kg/lb en la UI — ver spec §1 y la nota de Ajustes.
-
   barInputMode: { type: String, enum: BAR_INPUT_MODES, default: 'plates' },
 
-  // Peso de la barra olímpica que usa habitualmente. Algunos gimnasios tienen
-  // barras de 15 kg como estándar.
   defaultBarWeightKg: { type: Number, default: 20, min: 0, max: 50 },
 
-  /**
-   * Descanso por defecto entre series, en segundos.
-   *
-   * 0 significa "sin cronómetro": la barra de descanso no se monta y el
-   * usuario se apaña con el reloj de su móvil. Es un valor del mismo campo y
-   * no un booleano aparte porque un descanso de 0 segundos no tiene otro
-   * significado posible, mientras que dos campos (`enabled` + duración) sí
-   * pueden contradecirse y obligan a decidir cuál gana cada vez que se leen.
-   *
-   * El default coincide con `REST_DEFAULT_SEC` del store del frontend (120).
-   * Esa constante es el fallback mientras `/api/me` no ha respondido: si los
-   * dos números no son el mismo, la barra cambiaría de duración sola al
-   * terminar de cargar el usuario.
-   */
   restTimerSec: { type: Number, default: 120, min: 0, max: 600 },
 
-  /**
-   * Objetivo semanal de sesiones. Es una preferencia personal, no una regla
-   * del sistema; se usa como denominador en el stat tile "7/4" del Home y
-   * como barra de progreso en la vista /stats/week.
-   * Rango 1–14: una vez al día como mínimo "serio", dos al día como techo
-   * ambicioso. Fuera de eso probablemente es error del dedo.
-   */
   weeklyGoal: { type: Number, default: 4, min: 1, max: 14 },
 
-  /**
-   * Progresión sugerida en la pantalla de entrenar: el chip que propone
-   * peso y reps de la siguiente serie a partir del RIR de la última sesión
-   * (ver web/src/lib/suggestProgression.js).
-   *
-   * Default `true` porque es la razón de registrar el RIR: si el dato no
-   * vuelve como consejo, apuntarlo es trabajo sin recompensa. Pero es una
-   * opinión del sistema sobre cómo debes entrenar, y hay gente que sigue un
-   * programa cerrado (5/3/1, un plan de su entrenador) donde una sugerencia
-   * ajena es ruido. De ahí el interruptor: apagarlo no borra el RIR ni las
-   * estadísticas, solo deja de proponer.
-   */
   suggestProgression: { type: Boolean, default: true },
 }, { _id: false });
 
 const userSchema = new mongoose.Schema({
-  // -------------------------------------------------------------------------
-  // Identidad — campos que Better Auth escribe durante el flujo OAuth
-  // -------------------------------------------------------------------------
+  // Identity: fields Better Auth writes during OAuth
 
   email: {
     type: String,
     required: true,
     unique: true,
-    lowercase: true,  // normaliza antes de guardar: Lucas@X.com -> lucas@x.com
+    lowercase: true,
     trim: true,
   },
 
-  /**
-   * Lo aporta el proveedor de OAuth. Solo vinculamos cuentas entre proveedores
-   * cuando el email viene verificado; si no, cualquiera podría crear una cuenta
-   * en un proveedor con TU email y quedarse con tu cuenta de IronTrack.
-   *
-   * Better Auth lo setea desde `profile.email_verified` del proveedor.
-   */
   emailVerified: { type: Boolean, default: false },
 
-  /**
-   * Nombre público — lo trae Google como `given_name + family_name`. El usuario
-   * puede editarlo luego sin problema; a diferencia del username, puede repetirse.
-   *
-   * El campo se llama `name` (no `displayName`) para alinearse con el schema
-   * por defecto de Better Auth: así ambos escriben al mismo campo y evitamos
-   * un mapper innecesario.
-   */
   name:  { type: String, trim: true, maxlength: 50 },
 
-  /**
-   * Avatar del proveedor OAuth. Mismo motivo de alineación con Better Auth:
-   * su campo por defecto es `image`.
-   */
   image: { type: String, trim: true },
 
-  // -------------------------------------------------------------------------
-  // Identidad — campos propios de IronTrack
-  // -------------------------------------------------------------------------
+  // Identity: IronTrack fields
 
-  /**
-   * Username público: la URL del perfil es /u/<username>.
-   *
-   * Empieza en null porque OAuth no nos da uno: Google devuelve nombre y email,
-   * no un identificador corto. El usuario lo elige en el onboarding, justo
-   * después del primer login. Mientras el username siga en null, `GET /api/me`
-   * devuelve `needsOnboarding: true` y el frontend redirige al wizard.
-   *
-   * NO ponemos unique: true aquí. Un índice unique normal trata null como un
-   * valor más, así que el segundo usuario sin username fallaría al guardar.
-   * Se resuelve abajo con un índice parcial.
-   */
   username: {
     type: String,
     default: null,
@@ -125,8 +45,6 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     minlength: 3,
     maxlength: 20,
-    // Solo letras, números, guion y guion bajo: evita usernames con espacios,
-    // emojis o barras que romperían la URL del perfil.
     match: /^[a-z0-9_-]+$/,
     validate: {
       validator: (v) => v === null || !RESERVED_USERNAMES.includes(v),
@@ -134,48 +52,18 @@ const userSchema = new mongoose.Schema({
     },
   },
 
-  // -------------------------------------------------------------------------
-  // Configuración
-  // -------------------------------------------------------------------------
+  // Settings
 
   settings: { type: settingsSchema, default: () => ({}) },
 
-  /**
-   * Por defecto PRIVADO. El usuario opta por exponerse, no al revés.
-   * (Además de ser lo correcto, es lo que pide el RGPD.)
-   */
   privacy: { type: String, enum: PRIVACY_LEVELS, default: 'private' },
 
-  /**
-   * Ejercicios marcados como favoritos por este usuario. Un simple array de
-   * ObjectIds al catálogo (global o custom del propio usuario), sin colección
-   * aparte: la cardinalidad real es pequeña (<100 por usuario) y nos ahorramos
-   * un join en cada lectura del catálogo.
-   *
-   * `addToSet` en el controller garantiza que no haya duplicados; el frontend
-   * puede llamar al endpoint repetido sin tener que leer el estado antes.
-   */
   favoriteExercises: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Exercise',
     default: [],
   }],
 
-  /**
-   * Renombres de ejercicios por usuario (chunk 3b).
-   *
-   * Clave = exerciseId (como string, Mongoose Map no acepta ObjectId como
-   * tipo de clave); valor = nombre que escribe el usuario. El renombre vive
-   * SOLO en la memoria del usuario: otros usuarios siguen viendo el nombre
-   * canónico del catálogo. Lo tratamos como una preferencia de presentación,
-   * nunca se guarda en Session.entries.exerciseName (que es snapshot
-   * histórico independiente del usuario que mire).
-   *
-   * Map en lugar de colección aparte: la cardinalidad real es pequeña (<20
-   * renombres por usuario) y el objeto llega entero con /api/me, así que el
-   * display cuesta un lookup O(1) en cliente sin fetch extra. Si en algún
-   * momento el patrón crece se migra a su propia colección.
-   */
   exerciseAliases: {
     type: Map,
     of: { type: String, trim: true, minlength: 1, maxlength: 40 },
@@ -183,55 +71,27 @@ const userSchema = new mongoose.Schema({
   },
 
 }, {
-  // Añade createdAt y updatedAt automáticamente y los mantiene al día.
   timestamps: true,
 
-  /**
-   * Better Auth puede añadir campos a esta colección que Mongoose no conoce
-   * (p.ej. metadatos de sesión, token refresh de cuenta vinculada). strict:false
-   * evita que Mongoose los descarte al leer un documento, pero sigue aplicando
-   * nuestras validaciones cuando escribimos a través del modelo. Lo mejor de
-   * los dos mundos.
-   */
   strict: false,
 });
 
-// ---------------------------------------------------------------------------
-// Índices
-// ---------------------------------------------------------------------------
+// Indexes
 
-/**
- * Índice parcial: aplica la unicidad SOLO a los documentos cuyo username es un
- * string. Los que lo tienen en null quedan fuera del índice, así que pueden
- * coexistir muchos usuarios a medio registrar sin chocar entre sí.
- */
+/** Unique username (partial: only string usernames) */
 userSchema.index(
   { username: 1 },
   { unique: true, partialFilterExpression: { username: { $type: 'string' } } },
 );
 
-/**
- * Para el buscador de usuarios (fase 3). Solo indexa los públicos, que son los
- * únicos que pueden aparecer en resultados: el índice es más pequeño y además
- * hace imposible por construcción que se cuele un perfil privado.
- */
+/** Public-user search */
 userSchema.index(
   { username: 1, name: 1 },
   { partialFilterExpression: { privacy: 'public' } },
 );
 
-// ---------------------------------------------------------------------------
-// Serializador público
-// ---------------------------------------------------------------------------
+// Public serializer
 
-/**
- * Devuelve SOLO lo que puede ver un tercero.
- *
- * La regla importante: filtrar en el servidor, nunca en el frontend. Si mandas
- * el documento entero y lo escondes en React, cualquiera lo ve abriendo la
- * pestaña de red del navegador. Aquí el email y las settings no salen nunca
- * del backend.
- */
 userSchema.methods.toPublicJSON = function () {
   return {
     username:  this.username,
@@ -241,9 +101,5 @@ userSchema.methods.toPublicJSON = function () {
   };
 };
 
-/**
- * Nombre de colección fijo. Mongoose por defecto pluraliza "User" a "users",
- * y Better Auth escribe también a `users` (ver config/auth.js). Lo dejamos
- * explícito para que no se descoordine si alguien renombra el modelo.
- */
+/** Fixed collection name "users", shared with Better Auth */
 export default mongoose.model('User', userSchema, 'users');

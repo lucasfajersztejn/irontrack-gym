@@ -1,3 +1,5 @@
+// Home route: dashboard of weekly goal, stats, heatmap, records and workout cards.
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import GreetingHeader from '../components/home/GreetingHeader.jsx'
@@ -20,27 +22,6 @@ import { useHomeData } from '../lib/useHomeData.js'
 import { resolveExerciseName } from '../lib/exerciseName.js'
 import { useAvailableHeatmapRanges, useHeatmap } from '../lib/useHeatmap.js'
 
-/*
-  Home 3.1 — dashboard agrupado por bloques semánticos.
-
-  La versión 3.0 mezclaba "racha", "esta semana" y "1RM reciente" en una
-  misma fila de tiles aunque cada uno responde a una pregunta distinta:
-    - racha / esta semana → cuánto HE ENTRENADO (actividad).
-    - 1RM reciente → QUÉ TAN FUERTE estoy (rendimiento).
-
-  Al pegarlos todos juntos el usuario leía "números" en vez de leer la
-  historia. Esta versión agrupa:
-    1. Greeting + NextWorkoutCard — qué toca hoy.
-    2. Bloque Rendimiento — 1RM reciente + PRs recientes.
-    3. Bloque Actividad — Racha + Esta semana + WeekDashboard embebido.
-    4. SelectedWorkoutCard — elegir un entreno y ver curvas por ejercicio.
-    5. Heatmap — foto grande del año.
-
-  Las dos tiles del bloque Actividad usan StatTile size="lg" para no
-  verse enanas junto al WeekDashboard que crece abajo (antes h-32 se
-  quedaba corto en mobile).
-*/
-
 const DEFAULT_WEEKLY_GOAL = 4
 
 function kgFormat(kg, locale) {
@@ -55,12 +36,6 @@ function Skeleton({ className = '' }) {
   return <div className={`animate-pulse rounded-card bg-surface-2 ${className}`} />
 }
 
-/*
-  Cabecera de sección con subrayado corto en accent. Antes era un <h2>
-  pelado (muy tímido) y las secciones se mezclaban visualmente. El
-  divisor horizontal a ancho completo sobrecargaba; una barra fina
-  acotada a ~40 px da peso al label sin pelear con las cards de abajo.
-*/
 function SectionHeading({ children }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -86,10 +61,6 @@ export default function Home() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 md:gap-10">
-      {/* Fila 1 — saludo + Next Workout. grid-cols-1 EXPLÍCITO en mobile:
-          sin él, `grid` deja que las columnas crezcan al ancho intrínseco
-          del contenido y una card con texto largo se sale del viewport
-          (overflow-x-hidden la clipa, pero sigue cortada visualmente). */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:items-start md:gap-6">
         <div className="md:col-span-1">
           <GreetingHeader />
@@ -107,10 +78,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Bloque 2 — Rendimiento: 1RM reciente + PRs recientes.
-          En desktop la tile de 1RM ocupa 1 col y PRs 2 cols; en mobile
-          stacked. Comparten altura visual gracias a items-stretch
-          implícito del grid. */}
       <section className="flex flex-col gap-3">
         <SectionHeading>{t('home.perfBlock')}</SectionHeading>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
@@ -147,24 +114,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Bloque Récords — all-time PRs por ejercicio, agrupados por
-          músculo. Vive debajo del bloque Rendimiento (que mira a los
-          últimos 30d) porque responde a una pregunta distinta: "cuál
-          es tu mejor marca histórica", no "qué cayó este mes".
-          Card suelto: se auto-titula (como Estancados y Detalle), sin
-          SectionHeading — el `home.records` duplicaba el header del card.
-          RecordsCard trae su propio loading, así que no lo envolvemos. */}
       <RecordsCard />
 
-      {/* Bloque Estancados — ejercicios sin PR hace tiempo + plan de deload.
-          Se auto-oculta cuando no hay ninguno, así que no reserva hueco en
-          el Home de un usuario que progresa en todo. Vive tras Récords
-          porque responde a "dónde atascarte", no a "cuál es tu techo". */}
       <StalledCard />
 
-      {/* Bloque 3 — Actividad: tiles grandes + dashboard semanal embebido.
-          Las tiles usan size="lg" para equiparar peso visual al bloque
-          de sesiones que viene justo debajo. */}
       <section className="flex flex-col gap-3">
         <SectionHeading>{t('home.activityBlock')}</SectionHeading>
         <div className="grid grid-cols-2 gap-3 md:gap-4">
@@ -206,11 +159,8 @@ export default function Home() {
         <WeekDashboard embedded />
       </section>
 
-      {/* Bloque 4 — Detalle de entreno. Select de sesión + rango de
-          curvas; cada ejercicio con su gráfico expandido. */}
       <SelectedWorkoutCard sessions={data.sessions} loading={data.loading} />
 
-      {/* Bloque 5 — heatmap. Año completo necesita ancho. */}
       <ActivityHeatmap
         cells={heatmap.cells}
         weeks={heatmap.weeks}
@@ -220,9 +170,6 @@ export default function Home() {
         onRangeChange={setHeatmapRange}
       />
 
-      {/* Bloque 6 — teaser del muro de medallas. Va al final, tras el heatmap,
-          como puerta de navegación. Siempre visible (incluso con 0 medallas):
-          es un atajo, no un dato. */}
       <MedalsTeaserCard />
     </div>
   )

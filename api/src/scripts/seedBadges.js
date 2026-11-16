@@ -1,16 +1,4 @@
-/**
- * Siembra el catálogo inicial de insignias (Fase 3, PR1).
- *
- * Upsert por `slug`: idempotente, correrlo dos veces no duplica y actualiza
- * textos/reglas si cambian. No toca `userBadges` — los desbloqueos del usuario
- * son otra colección.
- *
- * Cobertura de este primer lote: tres categorías con regla que el motor ya
- * sabe evaluar (constancia, hitos, volumen). `variedad` y `rareza` entran
- * cuando el motor aprenda sus métricas (grupos/mes y hora local).
- *
- * Uso:  npm run seed:badges
- */
+/** Seed the initial badge catalog (upsert by slug) */
 
 import dns from 'dns'
 
@@ -24,13 +12,8 @@ import mongoose from 'mongoose'
 import connectDB from '../config/db.js'
 import Badge from '../models/badge.model.js'
 
-/*
-  iconUrl queda null a propósito: el muro renderiza un hexágono genérico por
-  categoría mientras no haya arte definitivo. Las cifras siguen los ejemplos
-  de la spec (§6.4): rachas 7/30/100, volumen 10.000/100.000 kg.
-*/
 const BADGES = [
-  // --- Constancia (racha de días consecutivos) ---
+  // Consistency: consecutive-day streaks
   {
     slug: 'streak-7',
     name: { es: 'Semana en racha', en: 'Week streak' },
@@ -44,9 +27,6 @@ const BADGES = [
   },
   {
     slug: 'streak-30',
-    // El nombre "Mes de hierro" pasó a 'iron-month' (entrenar todas las semanas
-    // de un mes), que es su lectura literal. La racha de 30 días es "Racha de
-    // fuego", como figuraba en el listado original de insignias.
     name: { es: 'Racha de fuego', en: 'Fire streak' },
     description: {
       es: 'Treinta días seguidos entrenando.',
@@ -58,9 +38,6 @@ const BADGES = [
   },
   {
     slug: 'streak-100',
-    // Antes "Centurión": ese nombre pasó a la insignia de 100 series (sets-100),
-    // que es la lectura literal de centurión. La racha de 100 días ya se
-    // describía como "Imparable", así que el nombre encaja sin inventar nada.
     name: { es: 'Imparable', en: 'Unstoppable' },
     description: {
       es: 'Cien días consecutivos. Imparable.',
@@ -71,7 +48,7 @@ const BADGES = [
     rule: { type: 'streak', operator: 'gte', value: 100 },
   },
 
-  // --- Hitos (número de sesiones cerradas) ---
+  // Milestones: closed session count
   {
     slug: 'sessions-10',
     name: { es: 'Primeros diez', en: 'First ten' },
@@ -106,7 +83,7 @@ const BADGES = [
     rule: { type: 'sessionCount', operator: 'gte', value: 100 },
   },
 
-  // --- Volumen (kg acumulados = peso × reps) ---
+  // Volume: accumulated kg
   {
     slug: 'volume-10000',
     name: { es: 'Diez toneladas', en: 'Ten tonnes' },
@@ -141,10 +118,7 @@ const BADGES = [
     rule: { type: 'totalVolumeKg', operator: 'gte', value: 500000 },
   },
 
-  // === Wave 1: métricas nuevas de Session (totalReps, totalSets,
-  // maxSessionVolumeKg, maxSetsInSession, maxWeightSingleKg) ===
-
-  // --- Hito de arranque ---
+  // Starter milestone
   {
     slug: 'first-session',
     name: { es: 'Primer paso', en: 'First step' },
@@ -157,7 +131,7 @@ const BADGES = [
     rule: { type: 'sessionCount', operator: 'gte', value: 1 },
   },
 
-  // --- Volumen: primer peldaño y máximos en una sola sesión ---
+  // Volume: first step and single-session peaks
   {
     slug: 'volume-1000',
     name: { es: 'Primera tonelada', en: 'First tonne' },
@@ -192,7 +166,7 @@ const BADGES = [
     rule: { type: 'maxSessionVolumeKg', operator: 'gte', value: 1500 },
   },
 
-  // --- Series acumuladas ---
+  // Accumulated sets
   {
     slug: 'sets-100',
     name: { es: 'Centurión', en: 'Centurion' },
@@ -216,7 +190,7 @@ const BADGES = [
     rule: { type: 'totalSets', operator: 'gte', value: 1000 },
   },
 
-  // --- Reps acumuladas ---
+  // Accumulated reps
   {
     slug: 'reps-10000',
     name: { es: 'Maratón de reps', en: 'Rep marathon' },
@@ -229,7 +203,7 @@ const BADGES = [
     rule: { type: 'totalReps', operator: 'gte', value: 10000 },
   },
 
-  // --- Máximos en una sola sesión / serie ---
+  // Single-session and single-set peaks
   {
     slug: 'session-sets-30',
     name: { es: 'Gran sesión', en: 'Big session' },
@@ -253,9 +227,9 @@ const BADGES = [
     rule: { type: 'maxWeightSingleKg', operator: 'gte', value: 100 },
   },
 
-  // === Wave 2: calendario (requiere timeZone por sesión + weeklyGoal) ===
+  // Wave 2: calendar (needs per-session timeZone and weeklyGoal)
 
-  // --- Ritmo semanal: semanas CONSECUTIVAS cumpliendo la meta (weeklyGoal) ---
+  // Weekly rhythm: consecutive weeks hitting weeklyGoal
   {
     slug: 'goal-week-1',
     name: { es: 'Semana completa', en: 'Full week' },
@@ -290,7 +264,7 @@ const BADGES = [
     rule: { type: 'maxGoalWeekStreak', operator: 'gte', value: 12 },
   },
 
-  // --- Meses naturales con al menos una sesión ---
+  // Calendar months with at least one session
   {
     slug: 'months-active-6',
     name: { es: 'Medio año activo', en: 'Half a year active' },
@@ -314,12 +288,9 @@ const BADGES = [
     rule: { type: 'distinctActiveMonths', operator: 'gte', value: 12 },
   },
 
-  // --- Fin de semana (día local, por eso necesita timeZone) ---
+  // Weekend (local day, needs timeZone)
   {
     slug: 'weekend-10',
-    // "Fin de semana guerrero" pasó a 'weekend-warrior' (sábado Y domingo la
-    // misma semana), su lectura literal del listado original. Esta medalla,
-    // diez sesiones de fin de semana, es "Fiel al finde".
     name: { es: 'Fiel al finde', en: 'Weekend regular' },
     description: {
       es: 'Diez sesiones en sábado o domingo.',
@@ -330,7 +301,7 @@ const BADGES = [
     rule: { type: 'weekendSessions', operator: 'gte', value: 10 },
   },
 
-  // --- Antigüedad de la cuenta (concepto y nombre nuevos; no toca 'Veterano') ---
+  // Account age
   {
     slug: 'account-age-365',
     name: { es: 'Aniversario', en: 'Anniversary' },
@@ -343,9 +314,9 @@ const BADGES = [
     rule: { type: 'accountAgeDays', operator: 'gte', value: 365 },
   },
 
-  // === Wave 3: hora local (madrugador/búho) + difusos del heatmap ===
+  // Wave 3: local hour (early bird / night owl) and heatmap badges
 
-  // --- Franja horaria (hora local de inicio) ---
+  // Time of day (local start hour)
   {
     slug: 'early-bird',
     name: { es: 'Madrugador', en: 'Early bird' },
@@ -369,7 +340,7 @@ const BADGES = [
     rule: { type: 'nightOwlSessions', operator: 'gte', value: 5 },
   },
 
-  // --- Heatmap: días distintos y semana completa ---
+  // Heatmap: distinct days and full week
   {
     slug: 'active-days-100',
     name: { es: 'Contribución verde', en: 'Green contribution' },
@@ -393,7 +364,7 @@ const BADGES = [
     rule: { type: 'maxDaysInWeek', operator: 'gte', value: 7 },
   },
 
-  // --- Vuelta tras un parón ---
+  // Return after a break
   {
     slug: 'comeback',
     name: { es: 'Vuelta al ruedo', en: 'Back in the ring' },
@@ -406,7 +377,7 @@ const BADGES = [
     rule: { type: 'longestGapDays', operator: 'gte', value: 30 },
   },
 
-  // --- Retención: primer mes de cuenta ---
+  // Retention: first month
   {
     slug: 'first-month',
     name: { es: 'Primer mes cumplido', en: 'First month done' },
@@ -419,9 +390,6 @@ const BADGES = [
     rule: { type: 'accountAgeDays', operator: 'gte', value: 30 },
   },
 
-  // === Wave 5: variedad (grupos musculares y ejercicios) ===
-  // Partes del cuerpo derivadas del músculo con MUSCLE_TO_BODY_PART (7 partes,
-  // cardio incluido). Solo cuentan series completadas.
   {
     slug: 'body-parts-5',
     name: { es: 'Explorador', en: 'Explorer' },
@@ -444,8 +412,6 @@ const BADGES = [
     tier: 'plata',
     rule: { type: 'distinctBodyParts', operator: 'gte', value: 7 },
   },
-  // Seis partes distintas en una misma semana ISO (no confundir con 'full-week',
-  // que mide días, no grupos).
   {
     slug: 'body-parts-week-6',
     name: { es: 'Full body day', en: 'Full body day' },
@@ -479,8 +445,6 @@ const BADGES = [
     tier: 'oro',
     rule: { type: 'distinctExercises', operator: 'gte', value: 100 },
   },
-  // Las siete partes dentro de una misma ventana de 30 días: no hace falta
-  // que sea la semana, sirve un mes cualquiera.
   {
     slug: 'all-parts-30d',
     name: { es: 'Sin favoritismos', en: 'No favorites' },
@@ -504,14 +468,6 @@ const BADGES = [
     rule: { type: 'cardioSessions', operator: 'gte', value: 1 },
   },
 
-  // === Wave 4: umbrales nuevos sobre métricas que el motor YA calcula ===
-  // Ningún tipo de regla nuevo: cada una reusa una métrica existente, así que
-  // no toca badgeEngine. Nombres elegidos para no chocar con insignias ya
-  // sembradas que usan otra métrica con el mismo nombre coloquial (p.ej. la
-  // "Año de hierro" de meses, el "Búho nocturno" de 5, la "Vuelta al ruedo" de 30).
-
-  // Tres días DISTINTOS en una misma semana ISO (maxDaysInWeek). No confundir
-  // con 'goal-week-1' ("Semana completa"), que mide cumplir la meta semanal.
   {
     slug: 'days-in-week-3',
     name: { es: 'Triple semanal', en: 'Triple week' },
@@ -524,7 +480,6 @@ const BADGES = [
     rule: { type: 'maxDaysInWeek', operator: 'gte', value: 3 },
   },
 
-  // Racha de 10 días consecutivos: peldaño entre 'streak-7' y 'streak-30'.
   {
     slug: 'streak-10',
     name: { es: 'Doble dígito', en: 'Double digits' },
@@ -537,9 +492,6 @@ const BADGES = [
     rule: { type: 'streak', operator: 'gte', value: 10 },
   },
 
-  // 365 días DISTINTOS con sesión (distinctActiveDays), el escalón oro sobre
-  // 'active-days-100'. Es la "año de hierro" por días reales que pediste; la
-  // sembrada 'months-active-12' cuenta meses distintos, no días.
   {
     slug: 'active-days-365',
     name: { es: 'Año en verde', en: 'A year in green' },
@@ -552,7 +504,6 @@ const BADGES = [
     rule: { type: 'distinctActiveDays', operator: 'gte', value: 365 },
   },
 
-  // 10 sesiones a partir de las 22h: escalón oro sobre 'night-owl' (5, plata).
   {
     slug: 'night-owl-10',
     name: { es: 'Criatura nocturna', en: 'Creature of the night' },
@@ -565,7 +516,6 @@ const BADGES = [
     rule: { type: 'nightOwlSessions', operator: 'gte', value: 10 },
   },
 
-  // Volver tras un parón de 14+ días: escalón más fácil que 'comeback' (30).
   {
     slug: 'comeback-14',
     name: { es: 'Segundo aire', en: 'Second wind' },
@@ -578,7 +528,6 @@ const BADGES = [
     rule: { type: 'longestGapDays', operator: 'gte', value: 14 },
   },
 
-  // 20+ series en una sola sesión: escalón bronce bajo 'session-sets-30' (30).
   {
     slug: 'session-sets-20',
     name: { es: 'Sesión bestia', en: 'Beast session' },
@@ -591,8 +540,6 @@ const BADGES = [
     rule: { type: 'maxSetsInSession', operator: 'gte', value: 20 },
   },
 
-  // === Wave 6: calendario (forma de la semana y del mes, solo desde Session) ===
-  // Cuatro semanas distintas con sesión dentro de un mismo mes natural.
   {
     slug: 'iron-month',
     name: { es: 'Mes de hierro', en: 'Iron month' },
@@ -605,7 +552,6 @@ const BADGES = [
     rule: { type: 'maxDistinctWeeksInMonth', operator: 'gte', value: 4 },
   },
 
-  // Sábado y domingo entrenados en la misma semana.
   {
     slug: 'weekend-warrior',
     name: { es: 'Fin de semana guerrero', en: 'Weekend warrior' },
@@ -618,7 +564,6 @@ const BADGES = [
     rule: { type: 'weekendPairs', operator: 'gte', value: 1 },
   },
 
-  // Una semana con más kilos movidos que la anterior.
   {
     slug: 'weekly-volume-up',
     name: { es: 'Volumen semanal', en: 'Weekly volume up' },
@@ -631,8 +576,6 @@ const BADGES = [
     rule: { type: 'beatPrevWeekVolume', operator: 'gte', value: 1 },
   },
 
-  // === Wave 7: récords (mejoras de 1RM estimado o reps por ejercicio, solo desde Session) ===
-  // Primer récord: registrar un ejercicio por primera vez ya cuenta como récord.
   {
     slug: 'pr-1',
     name: { es: 'Récord personal', en: 'Personal record' },
@@ -645,7 +588,6 @@ const BADGES = [
     rule: { type: 'prCount', operator: 'gte', value: 1 },
   },
 
-  // Diez récords batidos (máximo uno por ejercicio y sesión).
   {
     slug: 'pr-10',
     name: { es: 'Rompe-récords', en: 'Record breaker' },
@@ -658,7 +600,6 @@ const BADGES = [
     rule: { type: 'prCount', operator: 'gte', value: 10 },
   },
 
-  // Cincuenta récords batidos.
   {
     slug: 'pr-50',
     name: { es: 'Máquina de récords', en: 'Record machine' },

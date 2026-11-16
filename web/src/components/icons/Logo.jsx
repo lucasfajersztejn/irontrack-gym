@@ -1,9 +1,4 @@
-/*
-  Logo IronTrack: cuatro barras ascendentes en verde (acento), con la última
-  más alta y resaltada, seguidas del wordmark. Las barras evocan progreso
-  (gráfico) y a la vez discos apilados. Verde solo en las barras: el wordmark
-  usa el texto normal para no cargar la cabecera.
-*/
+// App logo.
 export default function Logo({ className = '', showWordmark = true }) {
   const accent = 'var(--color-accent)'
 

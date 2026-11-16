@@ -1,60 +1,22 @@
 import mongoose from 'mongoose';
 import { MUSCLES, TRACKING_TYPES } from './constants.js';
 
-/**
- * Una SERIE concreta dentro de un ejercicio de la sesión.
- *
- * El esquema es plano: todos los campos que pueden existir en cualquier
- * tracking están declarados como opcionales, y la validación de "cuáles son
- * obligatorios ESTA vez" vive más abajo, en el pre('validate') de la sesión,
- * donde ya sabemos qué tracking tiene el entry padre.
- *
- * ¿Por qué no un discriminator por tracking? Son 4 variantes; un discriminator
- * añadiría una capa de polimorfismo que no se amortiza y complica el populate
- * y la validación. Un solo schema + un switch de 10 líneas se lee en entrevista.
- */
+/** One set inside a session entry */
 const setSchema = new mongoose.Schema({
   order: { type: Number, required: true, min: 0 },
 
-  // Según tracking (validados abajo):
-  weightKg:      { type: Number, min: 0 }, // weight_reps
-  reps:          { type: Number, min: 0 }, // weight_reps, reps
-  addedWeightKg: { type: Number, min: 0 }, // reps (cinturón de dominadas)
-  durationSec:   { type: Number, min: 0 }, // time, distance_time
-  distanceM:     { type: Number, min: 0 }, // distance_time
+  weightKg:      { type: Number, min: 0 },
+  reps:          { type: Number, min: 0 },
+  addedWeightKg: { type: Number, min: 0 },
+  durationSec:   { type: Number, min: 0 },
+  distanceM:     { type: Number, min: 0 },
 
-  // Comunes:
-
-  /**
-   * Reps In Reserve: cuántas repeticiones MÁS podría haber hecho el usuario
-   * al final de la serie. 0 = al fallo, 5 = podría haber hecho 5+ más.
-   *
-   * Se usa como señal de intensidad de la sesión (heatmap de Home). No se
-   * pide en cardio (tracking `time` / `distance_time`): ahí la intensidad
-   * se deriva de la duración. Opcional porque forzar a valorar cada serie
-   * es fricción; sin RIR el set sigue contando como entreno hecho pero
-   * no aporta intensidad.
-   *
-   * Escala contable (no percibida) y acotada: más allá de 5 no aporta
-   * información útil y rompería la media ponderada.
-   */
   rir:       { type: Number, min: 0, max: 5, validate: Number.isInteger },
-  completed: { type: Boolean, default: false }, // marcada con el check
-  restSec:   { type: Number, min: 0 },          // descanso que SE tomó
-
-  // Nota de diseño: no hay flag "isWarmup". El calentamiento se hace fuera de
-  // la sesión; aquí se anota solo lo que cuenta.
+  completed: { type: Boolean, default: false },
+  restSec:   { type: Number, min: 0 },
 
 }, { _id: false });
 
-/**
- * Un EJERCICIO dentro de la sesión, con sus series.
- *
- * exerciseName y muscle van copiados aquí (denormalización) para que el
- * historial sobreviva a cambios en el catálogo: si el ejercicio se renombra o
- * se borra, lo que pasó un martes concreto se sigue leyendo. Además las
- * agregaciones de stats no necesitan un $lookup por cada entry.
- */
 const entrySchema = new mongoose.Schema({
   exercise: {
     type: mongoose.Schema.Types.ObjectId,
@@ -69,23 +31,8 @@ const entrySchema = new mongoose.Schema({
   order: { type: Number, required: true, min: 0 },
   notes: { type: String, trim: true, maxlength: 500 },
 
-  /**
-   * groupId del superset (ver routine.model.js). Se copia al crear la sesión
-   * desde una rutina y el usuario puede modificarlo durante el entreno al
-   * reorganizar bloques. Es información puramente visual + de comportamiento
-   * del rest timer: dos entries en el mismo bloque no deberían arrancar
-   * descanso automático entre ellos.
-   */
   groupId: { type: String, default: null, trim: true, maxlength: 64 },
 
-  /**
-   * Override del peso de la barra para ESTA sesión y ESTE ejercicio. Solo
-   * aplica al equipment `barbell` (ver lib/weight.js: Z y Smith respetan
-   * el hardware, no se tocan). Se copia desde la rutina al crear la sesión
-   * y el usuario puede ajustarlo durante el entreno si el gym del día
-   * tiene una barra distinta. null = usa la jerarquía normal
-   * (default del catálogo → preferencia de usuario → 20 kg).
-   */
   barWeightKg: { type: Number, min: 0, max: 50, default: null },
 
   sets: { type: [setSchema], default: [] },
@@ -99,51 +46,19 @@ const sessionSchema = new mongoose.Schema({
     index: true,
   },
 
-  /**
-   * De qué rutina salió. null = "sesión libre" (empezada sin cargar rutina).
-   * Nota: la sesión es una COPIA independiente de la plantilla. Si mañana se
-   * edita la rutina, lo que pasó aquí no se mueve.
-   */
   routine: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Routine',
     default: null,
   },
 
-  // Nombre congelado por los mismos motivos que exerciseName.
   routineName: { type: String, trim: true, maxlength: 60, default: null },
 
-  /**
-   * Timestamps, no contadores. Un setInterval en el navegador se pierde al
-   * bloquear el móvil o cerrar la pestaña: la duración DEBE poder recalcularse
-   * desde dos puntos fijos. (Ver virtual `durationSec` más abajo.)
-   */
   startedAt: { type: Date, required: true },
   endedAt:   { type: Date, default: null },
 
-  /**
-   * Zona horaria IANA del dispositivo al EMPEZAR la sesión (p.ej.
-   * "America/Argentina/Buenos_Aires"). `startedAt` es el instante absoluto;
-   * esta zona lo ancla al día/semana/día-de-semana LOCAL en que se entrenó, y
-   * ese anclaje no cambia aunque luego se mire desde otro huso. De ella salen
-   * las medallas de calendario (semana, fin de semana, meses activos).
-   *
-   * null = sesión antigua o cliente que no la envió: el motor cae a UTC.
-   */
   timeZone: { type: String, default: null, trim: true, maxlength: 64 },
 
-  /**
-   * true = la sesión se cerró sola porque el usuario se olvidó de darle a
-   * "terminar". Un job detrás cierra las sesiones abiertas > MAX_SESSION_HOURS,
-   * fija endedAt y marca este flag para que el usuario sepa que esa duración
-   * es orientativa.
-   *
-   * Si más tarde el usuario edita `endedAt` a mano ("en realidad acabé a las
-   * 13:48"), este flag debe volver a false. ESO SE HACE EN EL SERVICIO que
-   * atiende el PATCH de la sesión, no aquí: el modelo no sabe quién le está
-   * hablando (job automático vs. usuario), así que la decisión de resetear
-   * vive donde sí se sabe.
-   */
   durationEstimated: { type: Boolean, default: false },
 
   entries: { type: [entrySchema], default: [] },
@@ -152,14 +67,8 @@ const sessionSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-// ---------------------------------------------------------------------------
-// Validación cruzada: endedAt coherente + series completas por tracking
-// ---------------------------------------------------------------------------
+// Cross validation: coherent endedAt and complete sets per tracking
 
-/**
- * Qué campos requiere cada tracking. Está en el modelo (y no en constants.js)
- * porque es LA regla de este esquema; otros archivos no la consumen.
- */
 const REQUIRED_SET_FIELDS = {
   weight_reps:   ['weightKg', 'reps'],
   reps:          ['reps'],
@@ -188,15 +97,8 @@ sessionSchema.pre('validate', function (next) {
   next();
 });
 
-// ---------------------------------------------------------------------------
-// Virtual: duración calculada
-// ---------------------------------------------------------------------------
+// Virtual: computed duration
 
-/**
- * Se calcula al vuelo. Si guardáramos una columna `durationSec`, editar
- * endedAt sin recalcularla la dejaría mintiendo. Un dato derivado no se
- * persiste.
- */
 sessionSchema.virtual('durationSec').get(function () {
   if (!this.endedAt) return null;
   return Math.round((this.endedAt - this.startedAt) / 1000);
@@ -205,15 +107,9 @@ sessionSchema.virtual('durationSec').get(function () {
 sessionSchema.set('toJSON',   { virtuals: true });
 sessionSchema.set('toObject', { virtuals: true });
 
-// ---------------------------------------------------------------------------
-// Índices
-// ---------------------------------------------------------------------------
+// Indexes
 
-/**
- * Consulta real: historial de MIS sesiones ordenadas por fecha descendente.
- * Mismo índice sirve para el heatmap (filtra rango de fechas) y para la
- * paginación de "mis entrenamientos".
- */
+/** My sessions by date, newest first */
 sessionSchema.index({ user: 1, startedAt: -1 });
 
 export default mongoose.model('Session', sessionSchema);

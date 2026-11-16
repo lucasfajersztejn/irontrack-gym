@@ -8,14 +8,7 @@ import {
   BAR_INPUT_MODES,
 } from '../models/constants.js'
 
-/**
- * GET /api/me
- *
- * Devuelve el perfil del usuario autenticado + la señal `needsOnboarding`
- * para que el router del frontend sepa si tiene que llevarlo al wizard de
- * username. Decisión defendida en entrevista:
- *   "el servidor expone estado; el cliente expresa flujo".
- */
+/** GET /api/me: authenticated profile plus needsOnboarding */
 export async function getMe(req, res, next) {
   try {
     const user = await User.findById(req.user.id).lean()
@@ -33,12 +26,8 @@ export async function getMe(req, res, next) {
       privacy: user.privacy ?? 'private',
       settings: user.settings ?? null,
       favoriteExercises: user.favoriteExercises ?? [],
-      // `.lean()` ya devuelve el Map como objeto plano {exerciseId: name};
-      // el `?? {}` cubre documentos antiguos que no tienen el campo.
       exerciseAliases: user.exerciseAliases ?? {},
 
-      // La única señal "derivada" del endpoint: el frontend NO calcula esto
-      // (no sabe si vamos a añadir más condiciones de onboarding mañana).
       needsOnboarding: !user.username,
     })
   } catch (err) {
@@ -46,18 +35,6 @@ export async function getMe(req, res, next) {
   }
 }
 
-/**
- * POST /api/me/username
- *
- * Fija el username la PRIMERA vez. Idempotente para el caso del wizard
- * (el usuario puede cerrar y volver a abrir); el segundo intento con el
- * username ya puesto responde 409. Para cambios futuros habrá un endpoint
- * aparte con reglas distintas (cooldown, histórico, etc.).
- *
- * Validación con Zod — la invariante del modelo también valida, pero prefiero
- * rechazar en el borde con un mensaje claro antes de llegar a Mongoose, que
- * devuelve errores un poco crípticos.
- */
 const usernameSchema = z.object({
   username: z.string()
     .trim()
@@ -67,18 +44,6 @@ const usernameSchema = z.object({
     .regex(/^[a-z0-9_-]+$/, 'Solo letras minúsculas, números, guion y guion bajo'),
 })
 
-/**
- * PATCH /api/me/settings
- *
- * Actualiza un subset de preferencias del usuario. Todo opcional, pero al
- * menos un campo. Validamos aquí (Zod) y confiamos en el schema de Mongoose
- * para la cerrada en rango (el modelo ya tiene min/max). Si en el futuro
- * añadimos settings más complejos (notificaciones, privacy avanzada), este
- * endpoint se convierte en el único canal y evitamos n endpoints paralelos.
- *
- * Los campos no listados aquí quedan intactos: `$set` solo toca los que
- * recibimos.
- */
 const settingsSchema = z.object({
   locale: z.enum(LOCALES).optional(),
   barInputMode: z.enum(BAR_INPUT_MODES).optional(),
@@ -99,9 +64,6 @@ export async function updateSettings(req, res, next) {
     })
   }
   try {
-    // $set con notación dot: evita pisar los otros campos de `settings` por
-    // mandarlo entero. Si pasamos { settings: { weeklyGoal: 5 } }, Mongo
-    // reemplaza TODO el subdoc y perderíamos locale, barInputMode, etc.
     const update = {}
     for (const [k, v] of Object.entries(parsed.data)) {
       update[`settings.${k}`] = v
@@ -120,15 +82,7 @@ export async function updateSettings(req, res, next) {
   }
 }
 
-/**
- * PUT /api/me/favorites/:exerciseId
- * DELETE /api/me/favorites/:exerciseId
- *
- * Toggle de favoritos atómico: $addToSet / $pull sobre `favoriteExercises`.
- * Antes de añadir validamos que el ejercicio es VISIBLE para el usuario (del
- * catálogo global o propio custom); si no, 404 — así no se puede favoritear
- * un custom ajeno guessing el ObjectId.
- */
+/** PUT/DELETE /api/me/favorites/:exerciseId: toggle a favorite */
 export async function addFavorite(req, res, next) {
   if (!mongoose.isValidObjectId(req.params.exerciseId)) {
     return res.status(404).json({ message: 'Ejercicio no encontrado' })
@@ -168,20 +122,6 @@ export async function removeFavorite(req, res, next) {
   }
 }
 
-/**
- * PUT /api/me/aliases/:exerciseId     — set/replace
- * DELETE /api/me/aliases/:exerciseId  — clear
- *
- * Renombre de un ejercicio para ESTE usuario. Mismo guard que favoritos: el
- * ejercicio tiene que ser visible por el user (catálogo global o custom suyo)
- * para evitar que pueda sondear ObjectIds de customs ajenos.
- *
- * Devolvemos SOLO `exerciseAliases` para que el cliente mezcle con
- * UserContext.updateUser sin un refetch de /api/me (ver optimistic-user-updates).
- *
- * Zod valida sobre el body ya; el schema Mongoose cubre el min/max por si
- * alguien escribiera directo con otro cliente.
- */
 const aliasBodySchema = z.object({
   name: z.string().trim().min(1).max(40),
 })
@@ -205,8 +145,6 @@ export async function setAlias(req, res, next) {
     if (!exercise) {
       return res.status(404).json({ message: 'Ejercicio no encontrado' })
     }
-    // Notación dot para no pisar las otras entradas del Map. Mongoose
-    // traduce `exerciseAliases.<id>` a la clave del Map correcta.
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { $set: { [`exerciseAliases.${exercise._id}`]: parsed.data.name } },
@@ -267,8 +205,6 @@ export async function setUsername(req, res, next) {
 
     return res.json({ username: user.username })
   } catch (err) {
-    // E11000: dos usuarios distintos lo pidieron a la vez; el índice parcial
-    // único es la última barrera. Mongoose propaga el error con code 11000.
     if (err?.code === 11000) {
       return res.status(409).json({
         message: 'Ese nombre de usuario ya está en uso',

@@ -1,17 +1,11 @@
+// Compact list row for one exercise, with thumbnail and chips.
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRightIcon } from '../icons/NavIcons.jsx'
 import FavoriteButton from './FavoriteButton.jsx'
 import { useExerciseName } from '../../lib/exerciseName.js'
 
-/*
-  Fila compacta del catálogo (mobile). Thumbnail cuadrado pequeño a la
-  izquierda, nombre + chips a la derecha, chevron de affordance. Densidad
-  mayor que la card de desktop porque en mobile el usuario está decidiendo
-  "¿cuál era este?" entre serie y serie — necesita escanear.
-*/
-
-// Fallback a placeholder tanto cuando no hay src como cuando la red falla.
 function Thumb({ src }) {
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -68,11 +62,6 @@ function Chip({ children, tone = 'default' }) {
   )
 }
 
-/*
-  Como ExerciseCard, acepta onClick para convertirse en button; sin él
-  mantiene semántica article para usos decorativos (p. ej. dentro del picker
-  donde el click lo gestiona el parent).
-*/
 export default function ExerciseRow({
   exercise,
   onClick,
@@ -108,9 +97,6 @@ export default function ExerciseRow({
   )
 
   if (onClick) {
-    // Mismo motivo que en ExerciseCard: no podemos ser <button> porque la row
-    // contiene FavoriteButton (otro <button>). role="button" + onKeyDown
-    // mantiene la accesibilidad.
     const handleKey = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()

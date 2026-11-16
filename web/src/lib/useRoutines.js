@@ -1,17 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.js'
 
-/*
-  Lista resumida de rutinas del usuario. El backend devuelve summary (sin
-  el array de exercises) con exerciseCount, lastUsedAt y timesUsed, que es
-  exactamente lo que la card pinta: no hace falta pedir detalle para la
-  lista.
-
-  `remove` optimistiza localmente antes de confirmar el DELETE: borrar una
-  rutina es una acción con confirmación previa, pero el latencia de red
-  en la segunda confirmación visual (ver cómo desaparece) debe ser cero.
-  Si el backend falla, revertimos y mostramos el error.
-*/
+// Hook for the routines list.
 export function useRoutines() {
   const [state, setState] = useState({
     loading: true,
@@ -44,15 +34,6 @@ export function useRoutines() {
     }
   }, [state.routines])
 
-  /*
-    Reordena la lista de rutinas. Optimista: pintamos el nuevo orden en el
-    acto para que arrastrar se sienta inmediato, y disparamos PATCH /reorder.
-    Si el backend rechaza, revertimos al snapshot anterior.
-
-    No hacemos refetch al final: el backend confirma con 204 sin body, y
-    ya tenemos los documentos en memoria con el order nuevo asignado
-    posicionalmente — pedir otra vez la lista solo repintaría lo mismo.
-  */
   const reorder = useCallback(async (nextRoutines) => {
     const previous = state.routines
     setState((s) => ({ ...s, routines: nextRoutines }))

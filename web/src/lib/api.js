@@ -1,9 +1,4 @@
-/*
-  Fetch wrapper. `credentials: 'include'` es obligatorio para que viaje la
-  cookie `better-auth.session_token`. El backend exige `Origin` en escrituras
-  por CSRF (spec §3.6): fetch del navegador la añade sola, así que no la
-  seteamos a mano.
-*/
+// Fetch wrapper that sends the session cookie.
 
 const BASE = import.meta.env.VITE_API_URL ?? ''
 

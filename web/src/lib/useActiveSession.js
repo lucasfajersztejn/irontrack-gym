@@ -1,16 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.js'
 
-/*
-  Devuelve la sesión activa del usuario (o null si no hay) + helpers para
-  mutarla sin refetch. El backend contesta 200 con null cuando no hay sesión
-  abierta (ver sessionController.getActiveSession): "nada abierto" es una
-  respuesta válida, no un error.
-
-  setSession permite al caller empujar al estado local el documento recibido
-  tras un POST /api/sessions o un POST /:id/finish, para evitar un segundo
-  round-trip que repintaría la UI con los mismos datos.
-*/
+// Hook for the active session.
 export function useActiveSession() {
   const [state, setState] = useState({ loading: true, error: null, session: null })
 

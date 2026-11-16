@@ -1,3 +1,5 @@
+// Home card showing per-exercise progress for a chosen past workout over a selectable range.
+
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUser } from '../../contexts/UserContext.jsx'
@@ -9,29 +11,6 @@ import { shareSession } from '../../lib/shareSession.js'
 import ExerciseCurve from '../stats/ExerciseCurve.jsx'
 import MuscleChips from '../MuscleChips.jsx'
 import { ChevronRightIcon } from '../icons/NavIcons.jsx'
-
-/*
-  "Detalle de entreno" — tercera card de rendimiento del Home.
-
-  Elige una sesión del histórico reciente y expande TODOS sus ejercicios
-  con la curva evolutiva (12w / año / todo) de cada uno. El objetivo es
-  distinto a la fila colapsable de WeekDashboard, que sirve para revisar
-  "esta semana" sesión a sesión; aquí la lectura es "tómate un entreno
-  y mira cómo va cada ejercicio en el horizonte que elijas".
-
-  Detección de PR del día:
-    Sobre los puntos históricos del ejercicio buscamos el que coincide con
-    la sesión elegida (`sessionId`). Si su `best1RM` o `heaviestKg` superan
-    todos los anteriores en fecha, pintamos badge. Priorizamos 1RM porque
-    es la métrica que la app ya destaca en el resto del dashboard; si no
-    hubo 1RM nuevo pero sí peso máx, mostramos peso máx como fallback.
-
-  Fetches:
-    - Session detail al cambiar de sesión (`useSessionDetail`).
-    - Progress por ejercicio en paralelo (`useExerciseProgress`). N fetches
-      pero N es el número de ejercicios con `weight_reps` + id en catálogo
-      de UNA sesión (≤10 habitual). No merece la pena pooling.
-*/
 
 const RANGES = ['12w', 'year', 'all']
 const MAX_RECENT = 20
@@ -64,20 +43,12 @@ function formatSessionLabel(s, locale) {
   return s.routineName ? `${dd} · ${s.routineName}` : dd
 }
 
-/*
-  Fila por ejercicio dentro de la card.
-  - Con `weight_reps` + id → series pills + ExerciseCurve con la fecha del
-    día resaltada y badge PR si corresponde.
-  - Sin curva posible → series pills y nota corta.
-*/
 function ExerciseBlock({ ex, range, sessionDate, sessionId, aliases, lang }) {
   const { t } = useTranslation()
   const expandable = ex.tracking === 'weight_reps' && !!ex.exerciseId
   const { points } = useExerciseProgress(ex.exerciseId, expandable)
   const name = resolveExerciseName(ex, aliases, lang)
 
-  // PR del día: punto del histórico cuyo sessionId coincide con la sesión
-  // actual + sus máximos superan todo lo anterior en fecha.
   const prKind = useMemo(() => {
     if (!expandable || !points || points.length === 0) return null
     const current = points.find((p) => p.sessionId === sessionId)
@@ -141,31 +112,18 @@ export default function SelectedWorkoutCard({ sessions = [], loading }) {
 
   const recent = useMemo(() => {
     return sessions
-      .filter((s) => s.endedAt || s.durationEstimated) // excluye activa sin cerrar
+      .filter((s) => s.endedAt || s.durationEstimated)
       .slice(0, MAX_RECENT)
   }, [sessions])
 
   const [selectedId, setSelectedId] = useState(null)
   const [range, setRange] = useState('12w')
-  // Colapsado por defecto: esta card expande una ExerciseCurve por cada
-  // ejercicio de la sesión, lo que la vuelve el bloque más alto del Home.
-  // Cerrada de arranque, Home abre escaneable; al abrirla se montan las
-  // filas y recién ahí disparan sus fetches de progreso.
   const [open, setOpen] = useState(false)
-  // Estado del botón compartir. Vive aquí y no en un hook: solo lo usa este
-  // botón, y reiniciarlo al cambiar de sesión es lo que queremos.
-  const [shareState, setShareState] = useState('idle') // idle | busy | error
+  const [shareState, setShareState] = useState('idle')
 
-  // Mantén la selección sincronizada con la sesión más reciente mientras
-  // no la haya cambiado el usuario (o cuando la elegida deja de existir
-  // por un borrado). Primer paint sin recent → null; al cargar, apunta
-  // a la más nueva.
   useEffect(() => {
     if (recent.length === 0) return
     const stillValid = recent.some((s) => s._id === selectedId)
-    // Sincroniza la selección con la sesión más nueva cuando la elegida deja
-    // de existir (borrado) o en el primer load. Es el uso legítimo de setState
-    // en efecto: reaccionar a un cambio de datos externos, no un bucle.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!stillValid) setSelectedId(recent[0]._id)
   }, [recent, selectedId])
@@ -173,9 +131,6 @@ export default function SelectedWorkoutCard({ sessions = [], loading }) {
   const { detail, loading: loadingDetail } = useSessionDetail(selectedId)
   const breakdown = useMemo(() => breakdownForSession(detail), [detail])
 
-  // Resumen de la lista (routineName) para el título de la tarjeta; el detalle
-  // trae las series. Si la sesión elegida ya no está, quien pinta cae a
-  // detail.routineName.
   const selectedSummary = useMemo(
     () => recent.find((s) => s._id === selectedId) ?? null,
     [recent, selectedId],

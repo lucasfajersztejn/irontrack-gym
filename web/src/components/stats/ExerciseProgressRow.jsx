@@ -1,3 +1,5 @@
+// Weekly stats row for one exercise, expandable to its progress curve.
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveExerciseName } from '../../lib/exerciseName.js'
@@ -5,22 +7,6 @@ import { useExerciseProgress } from '../../lib/useExerciseProgress.js'
 import { ChevronRightIcon } from '../icons/NavIcons.jsx'
 import ExerciseCurve from './ExerciseCurve.jsx'
 
-/*
-  Fila de ejercicio dentro de una sesión expandida en /stats/week.
-
-  Para los ejercicios de `weight_reps` con id en catálogo, la fila es
-  expandible: al abrirla pedimos GET /api/exercises/:id/progress y
-  mostramos dos curvas (peso máx y 1RM estimado) con los puntos de todas
-  las sesiones del usuario — la ventana de la semana solo decide desde
-  qué fila se entra, no limita el rango de la curva.
-
-  Para el resto de trackings (reps, time, distance_time) o si no hay
-  exerciseId por una sesión muy antigua sin populate, mantenemos la
-  estética actual: nombre + nº de series + pills de detalle, sin
-  chevron ni expansión. La misma decisión que en SessionExerciseCard
-  (línea viva solo para weight_reps) — quien no tiene 1RM no gana nada
-  con un gráfico vacío.
-*/
 export default function ExerciseProgressRow({
   ex,
   aliases,
@@ -92,11 +78,6 @@ export default function ExerciseProgressRow({
             </p>
           )}
           {!loading && !error && points && (
-            // La curva pasa a ser componente standalone: aquí la fila
-            // histórica siempre muestra todos los puntos (range="all"),
-            // porque abrir una fila dentro de una semana es un "¿cómo
-            // vengo?" de alcance completo. El filtrado por rango es
-            // trabajo de SelectedWorkoutCard en Home.
             <ExerciseCurve points={points} range="all" />
           )}
         </div>

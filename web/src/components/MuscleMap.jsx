@@ -1,30 +1,9 @@
+// Front/back muscle map with highlighted layers, legend and view toggle.
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BODY_VIEWBOX } from '../lib/muscleShapes.js'
 import BodyFace from './stats/BodyFace.jsx'
-
-/*
-  Mapa corporal de la semana. Colorea los músculos sobre una figura vectorial
-  que gira en 3D entre frente y espalda.
-
-  La figura es un SVG (no un render ráster), así que cada músculo es una región
-  con relleno plano que se enciende por selector. El dibujo vive en
-  `lib/muscleShapes.js`, generado desde el arte vectorial por
-  tools/muscle-shapes/vectorize.mjs. `BodyFace` pinta cada cara.
-
-  API — `layers`
-  --------------
-  Cada entrada del array es una capa independiente: una lista de muscle ids,
-  un color (CSS var — p. ej. `var(--color-muscle)`) y una opacidad. Permite
-  pintar el mapa con el acento rojo del volumen, con ámbar para
-  recuperación, con azul para los músculos descuidados — o cualquier
-  combinación. El orden del array manda el z-order: lo que va antes queda
-  debajo. El consumidor decide; aquí solo pintamos.
-
-  El giro es una transición CSS y no `motion`: la regla global de
-  `prefers-reduced-motion` en index.css ya lleva toda transition-duration a 0,
-  así que el cambio de cara se vuelve instantáneo sin código extra.
-*/
 
 export default function MuscleMap({ title, subtitle, layers = [], legendItems = [] }) {
   const { t } = useTranslation()
@@ -51,10 +30,6 @@ export default function MuscleMap({ title, subtitle, layers = [], legendItems = 
         </button>
       </div>
 
-      {/*
-        perspective en el padre + preserve-3d en el que gira. Las dos caras van
-        absolute para ocupar la misma caja; la altura la fija el aspect-ratio.
-      */}
       <div className="mx-auto w-full max-w-[320px]" style={{ perspective: '1400px' }}>
         <div
           className="relative transition-transform duration-700 ease-in-out"

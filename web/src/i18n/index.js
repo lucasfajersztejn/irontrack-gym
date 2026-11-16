@@ -4,11 +4,6 @@ import { initReactI18next } from 'react-i18next'
 import es from './es.json'
 import en from './en.json'
 
-/*
-  Setup mínimo. El detector mira navegador y localStorage. Los namespaces
-  reales se añadirán cuando codeemos pantallas; de momento un solo bundle
-  por idioma mantiene el setup legible.
-*/
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)

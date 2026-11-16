@@ -5,20 +5,7 @@ import Routine from '../models/routine.model.js'
 import { MUSCLES, TRACKING_TYPES, MAX_SESSION_HOURS } from '../models/constants.js'
 import { evaluateAndPersist } from '../lib/badgeEngine.js'
 
-/**
- * Schemas Zod
- * ---------------------------------------------------------------------------
- *
- * El pre('validate') del modelo ya hace la validación cruzada (endedAt >=
- * startedAt, campos requeridos por tracking). Zod solo valida FORMA: tipos,
- * rangos razonables, enums. Dos capas con responsabilidades distintas:
- *
- *   Zod   -> "¿esto parece un payload de sesión?"
- *   Model -> "¿este payload cumple las reglas de negocio?"
- *
- * Duplicar validación lógica en Zod sería sincronizar reglas en dos sitios
- * cada vez que cambie el modelo. Mejor delegar la parte dura al schema.
- */
+/** Zod schemas */
 const objectIdSchema = z.string().regex(/^[a-f0-9]{24}$/i, 'ObjectId inválido')
 
 const setSchema = z.object({
@@ -39,31 +26,19 @@ const entrySchema = z.object({
   muscle: z.enum(MUSCLES),
   tracking: z.enum(TRACKING_TYPES),
   order: z.number().int().min(0),
-  // Superset: ver routine.model.js — cliente lo genera, servidor solo valida
-  // forma. nullable para "ejercicio solo".
   groupId: z.string().trim().max(64).nullable().optional(),
-  // Override del peso de barra solo para esta sesión (ver model).
   barWeightKg: z.number().min(0).max(50).nullable().optional(),
   notes: z.string().trim().max(500).optional(),
   sets: z.array(setSchema).default([]),
 })
 
 const createSchema = z.object({
-  // null explícito = sesión libre. Omitir también = sesión libre.
   routine: objectIdSchema.nullable().optional(),
   startedAt: z.coerce.date().optional(),
-  // Zona IANA del dispositivo al empezar. Zod solo valida forma (string corto);
-  // que sea una zona REAL se comprueba abajo con Intl, porque la lista válida
-  // la conoce el runtime, no el esquema.
   timeZone: z.string().trim().max(64).optional(),
   notes: z.string().trim().max(1000).optional(),
 })
 
-/**
- * ¿Es `tz` una zona IANA que el runtime reconoce? Construir un
- * Intl.DateTimeFormat con una zona inválida lanza RangeError; lo usamos como
- * validador en vez de mantener una lista a mano.
- */
 function isValidTimeZone(tz) {
   if (!tz) return false
   try {
@@ -78,7 +53,6 @@ const updateSchema = z.object({
   entries: z.array(entrySchema).optional(),
   notes: z.string().trim().max(1000).optional(),
   startedAt: z.coerce.date().optional(),
-  // endedAt admite null por si el usuario quiere "reabrir" una sesión cerrada.
   endedAt: z.coerce.date().nullable().optional(),
 }).refine((v) => Object.keys(v).length > 0, {
   message: 'El PATCH necesita al menos un campo',
@@ -86,20 +60,12 @@ const updateSchema = z.object({
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  // Techo duro: evita que un cliente pida 10 000 sesiones de una. Spec §3.6.
   limit: z.coerce.number().int().min(1).max(50).default(20),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   routine: objectIdSchema.optional(),
 })
 
-/*
-  Rango máx de ~14 meses: el heatmap de Home cubre un año natural y algún mes
-  de margen para animaciones de cambio de año. Más allá sería una petición
-  de otro tipo (data export, estadística histórica) y debería ir por su
-  propio endpoint — no queremos justificar un $unwind sobre dos años de
-  datos desde un refresh accidental.
-*/
 const heatmapQuerySchema = z.object({
   from: z.coerce.date(),
   to: z.coerce.date(),
@@ -108,19 +74,8 @@ const heatmapQuerySchema = z.object({
   { message: 'Rango máximo de 430 días' },
 ).refine((v) => v.to >= v.from, { message: 'to debe ser >= from' })
 
-// ---------------------------------------------------------------------------
-// GET /api/sessions  -> historial paginado SIN el array entries
-// ---------------------------------------------------------------------------
+// GET /api/sessions: paginated history without entries
 
-/**
- * Mismo patrón que listRoutines: aggregation en Mongo, nunca traigo el array
- * pesado por la red. `entryCount` y `setCount` los calcula el servidor con
- * $size — útiles para pintar la tarjeta de cada sesión sin pedir el detalle.
- *
- * El filtro por rango de fechas usa `startedAt` porque es el campo indexado
- * (user, startedAt desc). `endedAt` podría ser null (sesión activa) y filtrar
- * por él se saltaría el índice.
- */
 export async function listSessions(req, res, next) {
   const parsed = listQuerySchema.safeParse(req.query)
   if (!parsed.success) {
@@ -165,8 +120,6 @@ export async function listSessions(req, res, next) {
               },
             },
           },
-          // Duración calculada en el servidor; el virtual del modelo no entra
-          // en una aggregation (no hay documento Mongoose aquí).
           durationSec: {
             $cond: [
               { $ifNull: ['$endedAt', false] },
@@ -187,29 +140,8 @@ export async function listSessions(req, res, next) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/sessions/heatmap  -> intensidad por sesión en un rango
-// ---------------------------------------------------------------------------
+// GET /api/sessions/heatmap: per-session intensity in a range
 
-/*
-  Devuelve una fila por SESIÓN (no por día) con su `intensity ∈ [0, 1]` o null.
-  El cliente agrupa por día local — hacerlo aquí con `$dateToString` requeriría
-  conocer el TZ del usuario, y almacenar el TZ en el perfil solo para esto es
-  romper el principio "UTC en servidor, local en cliente".
-
-  Fórmula de intensidad por sesión:
-    - Fuerza (tracking `weight_reps`, `reps`): media ponderada de los
-      efforts por serie, donde effort_set = (5 - rir) / 5 y el peso es
-      `weightKg * reps` (o `reps` si no hay peso). Sets sin RIR se saltan
-      por completo — nunca un cero silencioso.
-    - Cardio (tracking `time`, `distance_time`): se calcula a partir de la
-      duración TOTAL del entry con cuatro buckets fijos
-      (<20 min → 0.25, <40 → 0.50, <60 → 0.75, ≥60 → 1.00).
-    - Si la sesión mezcla fuerza y cardio, se devuelve el `max` de ambos.
-      La media ponderada mezclaría unidades (reps-volume vs segundos) sin
-      un ancla común; el max responde a "¿cuánto se exigió el usuario?"
-      que es exactamente lo que el heatmap pinta.
-*/
 export async function getHeatmap(req, res, next) {
   const parsed = heatmapQuerySchema.safeParse(req.query)
   if (!parsed.success) {
@@ -223,14 +155,6 @@ export async function getHeatmap(req, res, next) {
     const userId = new mongoose.Types.ObjectId(req.user.id)
     const result = await Session.aggregate([
       { $match: { user: userId, startedAt: { $gte: from, $lte: to } } },
-      /*
-        Doble $unwind: con ~5-15 entries x 3-5 sets por sesión, el fan-out es
-        pequeño. Un año de entrenamientos intensos son ~400 sesiones =
-        ~20k filas, cantidad que Mongo digiere sin mover el índice de sitio.
-        `preserveNullAndEmptyArrays` para que una sesión sin entries (o un
-        entry sin sets, que es el estado nada más empezar) siga contribuyendo
-        con `count` aunque no pueda aportar intensidad.
-      */
       { $unwind: { path: '$entries', preserveNullAndEmptyArrays: true } },
       { $unwind: { path: '$entries.sets', preserveNullAndEmptyArrays: true } },
       {
@@ -245,10 +169,6 @@ export async function getHeatmap(req, res, next) {
       },
       {
         $addFields: {
-          /*
-            Peso de la serie para la media ponderada. Solo cuenta si hay
-            RIR; sin RIR el peso queda en 0 y la serie no mueve nada.
-          */
           _setWeight: {
             $cond: [
               { $and: ['$_isStrength', { $ne: ['$entries.sets.rir', null] }] },
@@ -355,11 +275,6 @@ export async function getHeatmap(req, res, next) {
   }
 }
 
-/*
-  Targets de una rutina indexados por ejercicio. Devuelve null sin rutina
-  (sesión libre), que es lo que `withPlannedSets` interpreta como "no hay
-  plantilla que adjuntar".
-*/
 function plansFromRoutine(routine) {
   if (!routine) return null
   return new Map(
@@ -376,30 +291,12 @@ function plansFromRoutine(routine) {
   )
 }
 
-/*
-  Sidecar `plannedSets` por entry: el cliente lo usa como respaldo del
-  prefill y como objetivo de reps de la progresión sugerida cuando el
-  ejercicio es nuevo o cuando la sesión anterior no deja claro el target.
-
-  No se persiste — un `toObject()` + merge sobre la copia JSON evita
-  contaminar el modelo con un campo derivado de la rutina, que es su única
-  fuente de verdad.
-
-  Se adjunta tanto al crear la sesión como al recuperarla con /active. Solo
-  en el create era un bug silencioso: al recargar la página o volver a la
-  pantalla, la vista live perdía la plantilla y el objetivo de reps pasaba a
-  deducirse de lo que el usuario hubiera hecho la última vez.
-*/
 function withPlannedSets(session, routinePlans) {
   const payload = session.toObject({ virtuals: true })
   if (!routinePlans) return payload
   payload.entries = payload.entries.map((e) => {
     const plan = routinePlans.get((e.exercise?._id ?? e.exercise).toString())
     if (!plan || !plan.targetSets) return e
-    // Expandimos targetSets copias con los mismos valores: la plantilla no
-    // diferencia serie a serie (todavía), así que todas arrancan iguales. El
-    // cliente las usa como SUGERENCIA; no viajan de vuelta en el PATCH a
-    // menos que el usuario las acepte o edite.
     const plannedSets = Array.from({ length: plan.targetSets }, (_, i) => ({
       order: i,
       weightKg: plan.targetWeightKg,
@@ -412,39 +309,16 @@ function withPlannedSets(session, routinePlans) {
   return payload
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/sessions/active  -> la sesión abierta del usuario, o null
-// ---------------------------------------------------------------------------
+// GET /api/sessions/active: the user's open session, or null
 
-/**
- * Endpoint separado del listado por una razón concreta: el frontend lo llama
- * en CADA arranque de la PWA para saber "¿tengo algo abierto a lo que volver?".
- * Si lo mezcláramos con el listado, cada boot tiraría una paginación completa
- * para extraer una sola fila. Separado, es un findOne barato.
- *
- * También evita que un segundo dispositivo cree una sesión paralela: antes de
- * POST, el cliente pregunta aquí.
- */
 export async function getActiveSession(req, res, next) {
   try {
-    // populate solo en /active: la vista "live" necesita gifUrl, instructions,
-    // usesBar y defaultBarWeightKg del catálogo para pintar el GIF del help,
-    // el hint de peso total con barra, y los chips. La denormalización del
-    // modelo (exerciseName, muscle, tracking) basta para historial, pero el
-    // training en vivo lee más. No tocamos listSessions/getSession porque
-    // esas rutas se consumen desde cards densas donde el payload extra sería
-    // ruido.
     const session = await Session.findOne({
       user: req.user.id,
       endedAt: null,
     }).populate('entries.exercise')
-    // 200 con null (no 404): "no hay activa" es una respuesta normal, no un
-    // error. El frontend tiene que distinguir "ruta rota" de "nada abierto".
     if (!session) return res.json(null)
 
-    // Releemos la rutina para reconstruir el sidecar `plannedSets`. Es una
-    // lectura extra solo cuando la sesión salió de una rutina; sin ella el
-    // cliente pierde los targets al reanudar (ver withPlannedSets).
     const routine = session.routine
       ? await Routine.findOne({
           _id: session.routine,
@@ -457,21 +331,13 @@ export async function getActiveSession(req, res, next) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/sessions/:id  -> detalle
-// ---------------------------------------------------------------------------
+// GET /api/sessions/:id: detail
 
 export async function getSession(req, res, next) {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ message: 'Sesión no encontrada' })
   }
   try {
-    // populate igual que en /active: /stats/week y useHomeData leen entries
-    // para desglosar por grupo muscular (incluidos los secundarios) y
-    // calcular 1RM; sin populate perderíamos `secondaryMuscles` que solo
-    // vive en el catálogo. La denormalización del modelo (exerciseName,
-    // muscle, tracking) sigue siendo el ancla para historial — populate
-    // añade capacidad analítica sin romperla.
     const session = await Session.findOne({
       _id: req.params.id,
       user: req.user.id,
@@ -479,31 +345,14 @@ export async function getSession(req, res, next) {
     if (!session) {
       return res.status(404).json({ message: 'Sesión no encontrada' })
     }
-    // toJSON con virtuals ya está activado en el modelo -> durationSec llega.
     res.json(session)
   } catch (err) {
     next(err)
   }
 }
 
-// ---------------------------------------------------------------------------
-// POST /api/sessions  -> arranca una sesión
-// ---------------------------------------------------------------------------
+// POST /api/sessions: start a session
 
-/**
- * Dos modos:
- *
- *   1. `routine` presente: carga la rutina del usuario y copia sus ejercicios
- *      denormalizando `exerciseName`, `muscle`, `tracking`. Los `sets`
- *      arrancan vacíos: el usuario los va añadiendo mientras entrena.
- *
- *   2. `routine` null o ausente: sesión libre, sin plantilla.
- *
- * En ambos casos: antes de crear, verifica que no haya ya una sesión activa.
- * Dos activas simultáneas no tienen sentido en el dominio (una persona,
- * un gimnasio, un entrenamiento), y /active devolvería la primera y
- * "esconder" la segunda.
- */
 export async function createSession(req, res, next) {
   const parsed = createSchema.safeParse(req.body)
   if (!parsed.success) {
@@ -513,13 +362,6 @@ export async function createSession(req, res, next) {
     })
   }
   try {
-    // Guardia de "una activa a la vez". Hay una ventana de carrera teórica
-    // entre este findOne y el create siguiente, pero: (a) el frontend ya
-    // llama a /active en cada boot, (b) un usuario humano no envía dos POST
-    // en 20 ms. Si pasa, el usuario acaba con dos sesiones; el daño es
-    // acotado y recuperable con un DELETE. Para blindarlo del todo haría
-    // falta un índice único parcial sobre {user, endedAt:null}, que Mongo
-    // admite y podría añadirse si en algún momento vemos duplicados reales.
     const active = await Session.findOne({
       user: req.user.id,
       endedAt: null,
@@ -534,9 +376,6 @@ export async function createSession(req, res, next) {
     const doc = {
       user: req.user.id,
       startedAt: parsed.data.startedAt || new Date(),
-      // Zona válida -> se guarda; inválida o ausente -> null (el motor cae a
-      // UTC). Nunca rechazamos el create por una zona rara: perder el entreno
-      // sería peor que perder la precisión de una medalla de calendario.
       timeZone: isValidTimeZone(parsed.data.timeZone) ? parsed.data.timeZone : null,
       notes: parsed.data.notes,
       entries: [],
@@ -544,13 +383,9 @@ export async function createSession(req, res, next) {
       routineName: null,
     }
 
-    // Guardamos los targets de la rutina para construir el sidecar plannedSets
-    // al final — así no re-leemos la rutina después del create().
     let routinePlans = plansFromRoutine(null)
 
     if (parsed.data.routine) {
-      // Doble filtro: id + user. Nadie arranca una sesión desde la rutina de
-      // otro usuario; devolvemos 404 (no 403) para no filtrar la existencia.
       const routine = await Routine.findOne({
         _id: parsed.data.routine,
         user: req.user.id,
@@ -564,31 +399,18 @@ export async function createSession(req, res, next) {
       routinePlans = plansFromRoutine(routine)
       doc.entries = routine.exercises.map((re) => ({
         exercise: re.exercise._id,
-        // Denormalización deliberada (ver comentario del modelo): el nombre
-        // y el músculo del ejercicio quedan congelados aquí para que el
-        // historial sobreviva a cambios o borrados en el catálogo.
         exerciseName: re.exercise.name?.es || re.exercise.name?.en || 'Ejercicio',
         muscle: re.exercise.muscle,
         tracking: re.exercise.tracking,
         order: re.order,
-        // Copia del superset: la sesión arranca con los bloques tal cual
-        // los dejó la rutina; el usuario puede modificarlos durante el
-        // entreno sin tocar la plantilla.
         groupId: re.groupId ?? null,
-        // El override de barra de la rutina viaja a la sesión; editar en
-        // vivo no toca la plantilla.
         barWeightKg: re.barWeightKg ?? null,
         notes: re.notes,
-        sets: [], // vacíos: se van rellenando durante el entrenamiento.
+        sets: [],
       }))
     }
 
     const session = await Session.create(doc)
-    // Mismo populate que /active y /:id: el frontend monta la vista live
-    // con esta respuesta y necesita `usesBar`, `equipment` y
-    // `defaultBarWeightKg` del catálogo para pintar el hint del total con
-    // barra y el popover de ajuste. Sin populate caerían en null y la UI
-    // esperaría a un refetch para enterarse.
     await session.populate('entries.exercise')
 
     res.status(201).json(withPlannedSets(session, routinePlans))
@@ -597,23 +419,8 @@ export async function createSession(req, res, next) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// PATCH /api/sessions/:id  -> edita campos
-// ---------------------------------------------------------------------------
+// PATCH /api/sessions/:id: edit fields
 
-/**
- * Por qué fetch + assign + save en vez de findOneAndUpdate con runValidators:
- *
- * El modelo tiene un pre('validate') que valida ENDEDAT >= STARTEDAT y los
- * campos requeridos por tracking en cada set. Esos hooks los dispara save(),
- * NO findOneAndUpdate (ni siquiera con runValidators, que solo corre los
- * validadores de path). Un PATCH con un set incompleto se colaría. La única
- * forma segura es cargar el documento, asignar, y llamar a save().
- *
- * Trade-off aceptado: dos round-trips a Mongo en vez de uno. La frecuencia
- * (un patch cada varios segundos durante un entreno) hace el coste
- * irrelevante.
- */
 export async function updateSession(req, res, next) {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ message: 'Sesión no encontrada' })
@@ -640,18 +447,12 @@ export async function updateSession(req, res, next) {
     if (data.startedAt !== undefined) session.startedAt = data.startedAt
     if (Object.prototype.hasOwnProperty.call(data, 'endedAt')) {
       session.endedAt = data.endedAt
-      // Si el usuario toca endedAt a mano, su valor manda y el "estimado"
-      // del cierre automático deja de ser cierto. El modelo deja ESTA
-      // decisión al servicio a propósito (ver comentario en session.model.js).
       session.durationEstimated = false
     }
 
     await session.save()
     res.json(session)
   } catch (err) {
-    // Errores de validación del modelo llegan aquí con name === 'ValidationError'
-    // o lanzados en el pre('validate'). Los convertimos en 400 limpios en vez
-    // de dejarlos escalar a 500.
     if (err?.name === 'ValidationError' || err?.name === 'Error') {
       return res.status(400).json({ message: err.message })
     }
@@ -659,21 +460,8 @@ export async function updateSession(req, res, next) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// POST /api/sessions/:id/finish  -> cierre
-// ---------------------------------------------------------------------------
+// POST /api/sessions/:id/finish: close a session
 
-/**
- * Endpoint propio en vez de un PATCH con endedAt: finish es una TRANSICIÓN DE
- * ESTADO (acaba el entreno, incrementa timesUsed en la rutina, en Fase 3
- * dispara el motor de insignias). Darle su propia ruta deja clara la
- * diferencia entre "actualizo un campo" y "aplico un evento del dominio".
- *
- * Idempotente a propósito: si la sesión ya está cerrada, devuelve 200 con
- * el estado actual y NO reincrementa el contador. Así el frontend puede
- * reintentar sin miedo (red flaky, doble tap en el botón) y sin cuadruplicar
- * el `timesUsed` de la rutina.
- */
 export async function finishSession(req, res, next) {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ message: 'Sesión no encontrada' })
@@ -687,7 +475,6 @@ export async function finishSession(req, res, next) {
       return res.status(404).json({ message: 'Sesión no encontrada' })
     }
 
-    // Idempotencia: ya cerrada -> no toca nada, devuelve 200 con el estado.
     if (session.endedAt) {
       return res.json(session)
     }
@@ -695,13 +482,6 @@ export async function finishSession(req, res, next) {
     session.endedAt = new Date()
     await session.save()
 
-    // Solo si venía de una rutina: incrementa su contador y mueve lastUsedAt.
-    // Sesión libre no cuenta para ninguna rutina.
-    //
-    // $inc + $set en la misma operación: una sola escritura, sin leer el
-    // documento. Si la rutina se borró entretanto, el update no hace nada
-    // (updateOne devuelve matchedCount: 0) y la sesión sigue cerrada: no es
-    // un error, es que el usuario borró su rutina mientras entrenaba.
     if (session.routine) {
       await Routine.updateOne(
         { _id: session.routine, user: req.user.id },
@@ -712,11 +492,6 @@ export async function finishSession(req, res, next) {
       )
     }
 
-    // Motor de insignias: cerrar una sesión es el evento del dominio que puede
-    // desbloquear una medalla. Va en try/catch propio porque NO debe tumbar el
-    // finish: si la evaluación falla, el entreno ya se cerró y el usuario no
-    // puede hacer nada con un 500 aquí. La próxima sesión (o el backfill)
-    // recupera lo que se perdiera, el motor es idempotente.
     try {
       await evaluateAndPersist(req.user.id)
     } catch (err) {
@@ -732,45 +507,10 @@ export async function finishSession(req, res, next) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// DELETE /api/sessions/:id  -> hard delete
-// ---------------------------------------------------------------------------
+// DELETE /api/sessions/:id: hard delete
 
-/**
- * Hard delete, mismo criterio que en rutinas y custom exercises. No hay
- * nada "aguas abajo" que se rompa: las estadísticas se derivan de las
- * sesiones VIVAS; borrar una la hace desaparecer del heatmap y del volumen,
- * que es exactamente lo que el usuario quiere al pulsar borrar.
- *
- * No tocamos routine.timesUsed al borrar: ese contador refleja "veces que se
- * CARGÓ y COMPLETÓ la rutina en su día", no un estado presente. Decrementar
- * al borrar lo convertiría en una cuenta volátil y perderíamos la historia.
- */
-// ---------------------------------------------------------------------------
-// POST /api/sessions/sweep  -> cierra sesiones huérfanas (admin)
-// ---------------------------------------------------------------------------
+// POST /api/sessions/sweep: close orphaned sessions (admin)
 
-/**
- * Cierra en lote las sesiones que llevan más de MAX_SESSION_HOURS abiertas.
- * Cubre el caso "el usuario se olvidó de darle a terminar y se fue a casa".
- *
- * Por qué un endpoint y no un `setInterval` en Node:
- *   - Fly.io reinicia contenedores y un timer en memoria se pierde.
- *   - Un endpoint es reproducible desde fuera (curl + token), testeable
- *     a mano y disparable por cualquier scheduler (Fly cron, GH Actions,
- *     cron-job.org). La máquina que lo llama es intercambiable.
- *
- * Por qué `endedAt = startedAt + MAX_SESSION_HOURS` y no `endedAt = now`:
- *   - El cron puede correr a las 2 h o a las 2 h y 7 min. Usar `now`
- *     metería ese jitter en la duración "real" de las sesiones cerradas.
- *   - Fijar el final al límite del dominio (4 h) es consistente con lo que
- *     el flag `durationEstimated: true` ya promete al usuario: "no sabemos
- *     cuándo acabaste, asumimos el máximo".
- *
- * updateMany atómico en Mongo: no cargamos N documentos a Node para iterar;
- * una sola operación los cierra todos y nos dice cuántos. Si no hay ninguno,
- * `modifiedCount` es 0 y el 200 vale igual (idempotente).
- */
 export async function sweepSessions(req, res, next) {
   try {
     const now = new Date()
@@ -779,8 +519,6 @@ export async function sweepSessions(req, res, next) {
     const result = await Session.updateMany(
       { endedAt: null, startedAt: { $lt: cutoff } },
       [
-        // Pipeline update: `endedAt` depende de `startedAt` del propio doc,
-        // así que necesito el update aggregation (array), no el clásico.
         {
           $set: {
             endedAt: {

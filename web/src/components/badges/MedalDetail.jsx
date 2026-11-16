@@ -1,3 +1,5 @@
+// Modal with a medal's artwork, description, earned date and share action.
+
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, useReducedMotion } from 'motion/react'
@@ -8,34 +10,14 @@ import { HEX_CLIP, localized } from '../../lib/badgeDisplay.js'
 import { badgeArtUrl } from '../../lib/badgeArt.js'
 import { shareBadge } from '../../lib/shareBadge.js'
 
-/*
-  Detalle de una insignia. Se abre al tocar una medalla del muro.
-
-  Bottom-sheet en móvil (se pega al pulgar, que es donde está el dedo) y modal
-  centrado en escritorio. Un solo componente con clases responsive en vez de
-  dos: la lógica (foco, Esc, compartir) es la misma y no queremos mantenerla
-  duplicada.
-
-  Compartir solo aparece en las ganadas. Una bloqueada no tiene nada que
-  mostrar más allá de qué le falta, y un botón "compartir" ahí invitaría a
-  presumir de algo que no se tiene.
-
-  No lleva prop `open`: quien la quiere ver la monta y quien la cierra la
-  desmonta. Así el estado de compartir nace limpio en cada apertura.
-*/
-
 export default function MedalDetail({ badge, lang, onClose }) {
   const { t } = useTranslation()
-  // Con reduced motion, initial={false} hace que el panel aparezca ya en su
-  // posición final: no hay transición que ver, pero el overlay funciona igual.
   const reduceMotion = useReducedMotion()
 
   const panelRef = useRef(null)
   const closeRef = useRef(null)
-  // Capturado en el primer render, antes de que el foco se mueva al botón de
-  // cerrar. Si lo leyéramos en un efecto, ya sería el propio diálogo.
   const [opener] = useState(() => document.activeElement)
-  const [shareState, setShareState] = useState('idle') // idle | busy | error
+  const [shareState, setShareState] = useState('idle')
 
   const name = localized(badge.name, lang)
   const why = localized(badge.description, lang)
@@ -48,8 +30,6 @@ export default function MedalDetail({ badge, lang, onClose }) {
         })
       : null
 
-  // Foco al entrar en el botón de cerrar y de vuelta al botón que abrió el
-  // diálogo al salir. Sin esto, quien navega con teclado pierde su sitio.
   useEffect(() => {
     closeRef.current?.focus()
     return () => {
@@ -57,9 +37,6 @@ export default function MedalDetail({ badge, lang, onClose }) {
     }
   }, [opener])
 
-  // Esc cierra y Tab no sale del panel. aria-modal le dice al lector de
-  // pantalla que lo de detrás no existe; si el Tab se escapara, el usuario
-  // activaría controles que no está oyendo.
   useEffect(() => {
     function onKeyDown(e) {
       if (e.key === 'Escape') {
@@ -150,9 +127,6 @@ export default function MedalDetail({ badge, lang, onClose }) {
         </button>
 
         {artUrl ? (
-          // El SVG es el medallón completo (ver lib/badgeArt.js): el oro trae
-          // su propio halo, coherente con Glow-Is-Earned. alt="" porque el
-          // nombre ya está en el <h2> que titula el diálogo.
           <img src={artUrl} alt="" draggable={false} className="h-36 w-36" />
         ) : (
           <div
@@ -193,8 +167,6 @@ export default function MedalDetail({ badge, lang, onClose }) {
             <p className="text-sm text-text-muted">{t('medals.detail.locked')}</p>
             {progress?.current != null && (
               <div className="flex w-full flex-col items-center gap-1">
-                {/* Mismo criterio que la tarjeta del muro: relleno neutro, el
-                    verde es solo para "ganada". */}
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
                   <div
                     className="h-full rounded-full bg-text-muted"

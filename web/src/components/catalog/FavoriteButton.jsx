@@ -1,13 +1,9 @@
+// Star toggle to add or remove an exercise from favorites.
+
 import { useTranslation } from 'react-i18next'
 import { DumbbellIcon } from '../icons/NavIcons.jsx'
 import { useFavorites } from '../../lib/useFavorites.js'
 
-/*
-  Botón mancuerna de "favorito". Marcada → `text-warn` (amarillo); sin
-  marcar → `text-text-muted` que ilumina en hover. stopPropagation en el
-  click porque suele vivir dentro de una card clicable (ExerciseCard /
-  ExerciseRow): el toggle NO debe abrir el modal de info.
-*/
 export default function FavoriteButton({ exerciseId, size = 'md' }) {
   const { t } = useTranslation()
   const { isFavorite, toggle } = useFavorites()
@@ -25,7 +21,6 @@ export default function FavoriteButton({ exerciseId, size = 'md' }) {
       aria-pressed={fav}
       aria-label={fav ? t('favorites.remove') : t('favorites.add')}
       onClick={(e) => {
-        // Evitar que un parent clicable (card del catálogo) reciba el click.
         e.stopPropagation()
         toggle(exerciseId).catch(() => {})
       }}

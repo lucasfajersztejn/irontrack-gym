@@ -1,18 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 
-/*
-  Muro de insignias. Un fetch al montar; sin caché a mano porque solo lo pide
-  la pantalla de Medallas. Mismo molde que useRecords / useStalledLifts.
-
-  Contrato del backend (`GET /api/badges`):
-    {
-      badges: [{ slug, name:{es,en}, description:{es,en}, category, tier,
-                 iconUrl, unlocked, unlockedAt, progress:{ current, target, pct } }],
-      counts: { unlocked, total }
-    }
-    - badges vienen ordenados por categoría y tier; el frontend solo agrupa.
-*/
+// Hook for the user's badges.
 export function useBadges() {
   const [state, setState] = useState({
     loading: true,

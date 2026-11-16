@@ -1,18 +1,9 @@
+// Bottom sheet with exercise help: demo GIF, muscles and instructions.
+
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExerciseAlias, useExerciseName } from '../../lib/exerciseName.js'
 
-/*
-  Hoja de ayuda del ejercicio: GIF grande arriba + instrucciones por idioma
-  abajo + cerrar. Pensada para el momento "entre series, en el gimnasio":
-  pulgar en el móvil, luz dura, el usuario quiere verificar rápido la postura
-  sin salir de la sesión.
-
-  Fuente de datos: `exercise` llega populado desde /api/sessions/active
-  (sessionController.getActiveSession hace populate). Si por alguna razón el
-  objeto no tiene gifUrl (ejercicios custom del propio usuario), mostramos
-  un placeholder honesto en vez de un hueco roto.
-*/
 export default function ExerciseHelpSheet({ open, onClose, exercise }) {
   const { t, i18n } = useTranslation()
   const [imgFailed, setImgFailed] = useState(false)
@@ -31,17 +22,12 @@ export default function ExerciseHelpSheet({ open, onClose, exercise }) {
     }
   }, [open])
 
-  // Resetea el estado de fallo de imagen al cambiar de ejercicio para que
-  // una red flaky en el ejercicio A no esconda el GIF del ejercicio B.
-  // También cerramos el editor para que no "arrastre" un draft a otro.
   useEffect(() => {
     setImgFailed(false)
     setEditing(false)
     setDraft('')
   }, [exercise?._id])
 
-  // Auto-focus al input al abrir el editor; sin esto el usuario tiene que
-  // tocar el campo tras pulsar el lápiz.
   useEffect(() => {
     if (editing) inputRef.current?.focus()
   }, [editing])
@@ -62,7 +48,7 @@ export default function ExerciseHelpSheet({ open, onClose, exercise }) {
     try {
       await setAlias(value)
     } catch {
-      /* el error ya hace rollback en useExerciseAlias */
+      // ignore
     }
     setEditing(false)
   }
@@ -71,7 +57,7 @@ export default function ExerciseHelpSheet({ open, onClose, exercise }) {
     try {
       await clear()
     } catch {
-      /* idem */
+      // ignore
     }
     setEditing(false)
   }
@@ -93,11 +79,6 @@ export default function ExerciseHelpSheet({ open, onClose, exercise }) {
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             {editing ? (
-              /*
-                Modo edición del alias: input al ancho de la cabecera +
-                acciones compactas abajo. Enter guarda, Esc cancela — las
-                mismas teclas que uno espera en un "rename" de app.
-              */
               <div className="flex flex-col gap-2">
                 <input
                   ref={inputRef}
@@ -152,11 +133,6 @@ export default function ExerciseHelpSheet({ open, onClose, exercise }) {
                     {name}
                   </h2>
                   {isAliased && (
-                    /*
-                      Nombre canónico debajo para que el usuario no pierda la
-                      referencia (importante: el catálogo público usa este
-                      nombre, y los compañeros también). Clamp a una línea.
-                    */
                     <p className="mt-0.5 line-clamp-1 text-xs italic text-text-muted">
                       {t('training.aliasOriginal', { name: canonical })}
                     </p>

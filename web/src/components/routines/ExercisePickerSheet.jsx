@@ -1,3 +1,5 @@
+// Bottom sheet to search and pick exercises to add to a routine.
+
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '../catalog/SearchInput.jsx'
@@ -10,24 +12,6 @@ import { useCatalog } from '../../lib/useCatalog.js'
 import { resolveExerciseName } from '../../lib/exerciseName.js'
 import { useUser } from '../../contexts/UserContext.jsx'
 
-/*
-  Hoja (bottom sheet en mobile, modal centrada en desktop) para elegir un
-  ejercicio del catálogo y añadirlo a una rutina. Reusa el hook de catálogo
-  y las piezas de UI del browser: search, pills, y la row densa.
-
-  No filtramos los ejercicios ya añadidos: el usuario a veces repite el
-  mismo ejercicio con tempo o orden distinto en la misma rutina — bloquearlo
-  sería una decisión de negocio sin respaldo. En su lugar, mostramos un
-  pequeño "ya en la rutina" en los que ya están y permitimos añadirlo igual.
-
-  El click sobre una row dispara onPick y cierra la hoja desde fuera; esta
-  pieza no decide la navegación.
-
-  "+ Crear" vive en dos sitios: el header (siempre visible) y el empty state
-  cuando una búsqueda no devuelve nada. El segundo cubre el flujo "no lo
-  encuentro, lo creo con este nombre": pasamos el texto buscado como
-  initialName para que llegue prefilled a la hoja.
-*/
 export default function ExercisePickerSheet({
   open,
   onClose,
@@ -51,7 +35,6 @@ export default function ExercisePickerSheet({
   const [createOpen, setCreateOpen] = useState(false)
   const [infoExercise, setInfoExercise] = useState(null)
 
-  // Resetear filtros al cerrar para que la próxima apertura arranque limpia.
   useEffect(() => {
     if (!open) {
       setFilters({
@@ -66,7 +49,6 @@ export default function ExercisePickerSheet({
     }
   }, [open])
 
-  // Bloquear scroll del fondo mientras la hoja está abierta.
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
@@ -79,9 +61,6 @@ export default function ExercisePickerSheet({
   if (!open) return null
 
   function handleCreated(created) {
-    // Refrescar el catálogo en segundo plano por si el usuario cancela la
-    // auto-selección y busca el nuevo ejercicio a mano. onPick cierra el
-    // picker completo desde fuera, así que no toca cerrar aquí.
     refetch()
     setCreateOpen(false)
     onPick(created)
@@ -158,13 +137,6 @@ export default function ExercisePickerSheet({
             value={filters.bodyPart}
             onChange={(bodyPart) => setFilters((f) => ({ ...f, bodyPart }))}
           />
-          {/*
-            Toggle de favoritos en la misma fila que los grupos: comparte
-            vocabulario con el pill de "Favoritos" del catálogo para que el
-            usuario reconozca el patrón. Mancuerna + fondo warn/15 cuando
-            está activo. Se posiciona después del wrap de bodyPart para que
-            no estorbe al escaneo de grupos corporales.
-          */}
           <button
             type="button"
             onClick={() =>
@@ -197,14 +169,6 @@ export default function ExercisePickerSheet({
               const picked = alreadySet.has(ex._id)
               const name = resolveExerciseName(ex, aliases, lang)
               return (
-                /*
-                  Hermanos a nivel DOM: ExerciseRow (que ya se autogestiona
-                  como role="button" para no colisionar con el FavoriteButton
-                  que lleva dentro) + el (i) a la derecha + un checkmark
-                  flotante. Si envolviésemos el conjunto en un <button>, el
-                  <button> del favorito que vive en ExerciseRow dispararía el
-                  warning "<button> cannot be a descendant of <button>".
-                */
                 <div
                   key={ex._id}
                   className={`relative flex items-stretch gap-1 rounded-container ${
@@ -284,12 +248,6 @@ export default function ExercisePickerSheet({
   )
 }
 
-/*
-  Empty state con doble intención: si el usuario estaba buscando algo, el CTA
-  principal es "crear 'X'" con su término prellenado; si no, invita a crear
-  uno sin asumir nombre. El mensaje secundario cambia también para no decir
-  "prueba otros filtros" cuando acabamos de ofrecer crearlo.
-*/
 function EmptyState({ searchTerm, onCreate }) {
   const { t } = useTranslation()
   const trimmed = searchTerm?.trim() ?? ''

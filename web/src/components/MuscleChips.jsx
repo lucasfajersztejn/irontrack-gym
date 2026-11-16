@@ -1,15 +1,7 @@
+// Chips listing an exercise's primary (green) and secondary (gray) muscles.
+
 import { useTranslation } from 'react-i18next'
 
-/*
-  Chips de grupos musculares con jerarquía primario/secundario. Reutilizado
-  en /stats/week (sesión expandida) y en el detalle de rutina (/routines/:id):
-  el mismo lenguaje visual en los dos sitios para que el usuario asocie
-  "verde = carga principal, gris con sec. = asistente".
-
-  El componente no decide los datos: recibe las listas ya unificadas. El
-  caller se encarga de deduplicar y de quitar secundarios que ya aparecen
-  como primarios (ver `breakdownForSession` / `routineMuscles`).
-*/
 export default function MuscleChips({
   primary = [],
   secondary = [],

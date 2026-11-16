@@ -1,3 +1,5 @@
+// Public landing route with OAuth sign-in (Google, GitHub) and demo access.
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -8,24 +10,6 @@ import { GoogleIcon, GitHubIcon } from '../components/icons/ProviderIcons.jsx'
 import OAuthButton from '../components/OAuthButton.jsx'
 import HeatmapPreview from '../components/HeatmapPreview.jsx'
 import LegalFooter from '../components/LegalFooter.jsx'
-
-/*
-  Landing / Login. Un único componente con las dos variantes:
-  - mobile: columna, heatmap arriba, botones debajo
-  - desktop (lg): dos columnas, hero a la izquierda, card de login a la
-    derecha
-  Mantener ambos en el mismo archivo evita duplicar textos y variantes de
-  copy; los breakpoints `lg:` cambian el layout sin cambiar los datos.
-
-  Google y GitHub están activos en el backend (config/auth.js). Los dos
-  botones son reales; no hay proveedores pendientes, así que ningún botón
-  lleva el chip "Pronto" (ver spec §5).
-
-  El label del botón se compone con t('landing.continueWith') + el nombre de
-  marca; guardamos solo el nombre (Google, GitHub…) en PROVIDERS porque es un
-  nombre propio que no se traduce, y así el bundle lleva una sola plantilla
-  en vez de cuatro frases casi idénticas por idioma.
-*/
 
 const PROVIDERS = [
   { id: 'google', name: 'Google', icon: GoogleIcon, enabled: true },
@@ -67,11 +51,6 @@ function OAuthStack({ onError }) {
   )
 }
 
-/*
-  Entrada a la cuenta demo compartida (lib/auth.js). Es un enlace de texto y no
-  un botón de proveedor: la demo no es OAuth y no debe competir con Google y
-  GitHub. Usa el mismo patrón busy/error que OAuthStack.
-*/
 function DemoLink({ onError }) {
   const { t } = useTranslation()
   const { refetch } = useUser()
@@ -82,8 +61,6 @@ function DemoLink({ onError }) {
     setBusy(true)
     try {
       await signInAsDemo()
-      // La cookie ya es de la demo, pero UserContext sigue marcando al invitado.
-      // Refrescar antes de navegar evita que /home rebote de vuelta a la landing.
       await refetch()
       navigate('/home', { replace: true })
     } catch (err) {
@@ -109,15 +86,10 @@ export default function Landing() {
   const { t } = useTranslation()
   const [error, setError] = useState(null)
 
-  // returnObjects: el bundle guarda los chips como un array, así el número de
-  // chips lo decide la traducción y no el componente.
   const chips = t('landing.chips', { returnObjects: true })
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Ambiente espacial: dos gradientes radiales difusos. Los colores
-          se derivan de los tokens --color-accent y --color-link vía
-          color-mix, así que si la paleta cambia los gradientes la siguen. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -168,17 +140,12 @@ export default function Landing() {
         </header>
 
         <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-[1.3fr_1fr] items-center gap-16 px-10 py-12">
-          {/* Hero */}
           <section className="space-y-8">
             <h1 className="font-display text-hero font-bold">
               {t('landing.heroLine1')}
               <br />
               <span className="text-accent">{t('landing.heroLine2')}</span>
             </h1>
-            {/* text-pretty redistribuye la última línea del párrafo para
-                evitar que "guarda." quede sola (straggler). Chrome y Safari
-                lo honran nativamente; en navegadores que lo ignoran el
-                texto cae al modo "normal" sin romper nada. */}
             <p className="max-w-lg text-lg leading-relaxed text-pretty text-text-muted">
               {t('landing.heroSubDesktop')}
             </p>
@@ -197,7 +164,6 @@ export default function Landing() {
             <HeatmapPreview size="wide" />
           </section>
 
-          {/* Login card */}
           <section className="rounded-container bg-surface p-8 shadow-glow-landing">
             <h2 className="font-display text-2xl font-semibold">
               {t('landing.loginTitle')}

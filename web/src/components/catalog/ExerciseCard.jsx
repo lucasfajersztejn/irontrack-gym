@@ -1,18 +1,9 @@
+// Catalog grid card for one exercise: GIF thumbnail, name and muscle chips.
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FavoriteButton from './FavoriteButton.jsx'
 import { useExerciseName } from '../../lib/exerciseName.js'
-
-/*
-  Card del catálogo (desktop). GIF cuadrado grande arriba, nombre debajo,
-  chips de músculo + equipamiento al pie. Si el ejercicio es custom del
-  usuario, aparece un chip azul "Custom" junto a los otros.
-
-  El GIF se enlaza al CDN de jsDelivr tal como lo trae el backend; no se
-  descarga ni se transforma. Mientras carga, mostramos un placeholder
-  tonal para evitar layout shift (los GIFs del catálogo son todos
-  cuadrados ~600×600).
-*/
 
 function PlaceholderIcon({ size }) {
   return (
@@ -34,12 +25,6 @@ function PlaceholderIcon({ size }) {
   )
 }
 
-/*
-  GIF con fallback a placeholder. Dos razones para fallar: el ejercicio no
-  trae gifUrl (custom del usuario) o el CDN cae/404 (red o versión del
-  dataset). En los dos casos pintamos el icono por defecto — nunca una
-  <img> rota.
-*/
 function GifThumb({ src, loaded, failed, onLoad, onError }) {
   const showPlaceholder = !src || failed
   return (
@@ -80,12 +65,6 @@ function Chip({ children, tone = 'default' }) {
   )
 }
 
-/*
-  Si recibimos onClick la card se convierte en button para abrir el modal de
-  info (GIF grande + instrucciones). Si no, mantiene semántica de article
-  (uso decorativo). Mantenemos el patrón "same component, two renders"
-  antes de crear dos archivos paralelos.
-*/
 export default function ExerciseCard({ exercise, onClick }) {
   const { t } = useTranslation()
   const [loaded, setLoaded] = useState(false)
@@ -108,13 +87,6 @@ export default function ExerciseCard({ exercise, onClick }) {
           <FavoriteButton exerciseId={exercise._id} />
         </div>
       </div>
-      {/*
-        min-h de 2 líneas en el nombre bloquea la posición del chip y del
-        equipamiento: aunque el nombre sea de una sola línea, reserva el
-        espacio de dos, así todos los cards presentan el chip a la misma
-        altura y el equipamiento también. line-clamp-2 corta por arriba si
-        el nombre fuera más largo.
-      */}
       <div className="flex flex-col gap-1.5">
         <h3 className="line-clamp-2 min-h-[2.1rem] font-display text-sm font-semibold leading-tight text-text">
           {name}
@@ -135,12 +107,6 @@ export default function ExerciseCard({ exercise, onClick }) {
   )
 
   if (onClick) {
-    /*
-      role="button" sobre <article> en lugar de <button>: la card contiene
-      un FavoriteButton real y <button><button/></button> es HTML inválido
-      (React chilla en dev y causa warnings en SSR). Esta forma pasa la
-      a11y mientras mantiene el FavoriteButton como botón real.
-    */
     const handleKey = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()

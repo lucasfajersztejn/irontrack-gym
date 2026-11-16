@@ -2,24 +2,8 @@ import mongoose from 'mongoose'
 import { z } from 'zod'
 import Routine from '../models/routine.model.js'
 
-/**
- * ObjectId "tipo string" en los endpoints.
- *
- * Mongoose auto-castea string -> ObjectId en find/update/create, así que no
- * hace falta `new mongoose.Types.ObjectId(...)` por todas partes. El regex
- * valida la forma antes de llegar a la base: así un id malformado devuelve
- * 400/404 limpio y no un cast error 500.
- */
 const objectIdSchema = z.string().regex(/^[a-f0-9]{24}$/i, 'ObjectId inválido')
 
-/**
- * Un ejercicio dentro del body de create/update.
- *
- * Los targets son opcionales porque dependen del tipo de ejercicio: una cinta
- * no tiene `targetReps` ni `targetWeightKg`; un ejercicio de fuerza no tiene
- * `targetDurationSec`. El modelo lo deja ya como opcional; Zod se limita a
- * validar los rangos razonables.
- */
 const exerciseEntrySchema = z.object({
   exercise: objectIdSchema,
   order: z.number().int().min(0),
@@ -28,13 +12,7 @@ const exerciseEntrySchema = z.object({
   targetWeightKg: z.number().min(0).optional(),
   targetDurationSec: z.number().int().min(0).optional(),
   targetDistanceM: z.number().min(0).optional(),
-  // Peso de la barra planificado para este ejercicio dentro de la rutina
-  // (solo tiene sentido para barra olímpica, que varía por gimnasio). El
-  // modelo lo acepta null = "usa el peso baked del ejercicio".
   barWeightKg: z.number().min(0).max(50).optional(),
-  // groupId del superset: cliente lo genera (crypto.randomUUID()). Validamos
-  // forma (string <=64) para que no se cuele basura ni se pase un ObjectId
-  // confundido con una referencia real.
   groupId: z.string().trim().max(64).nullable().optional(),
   notes: z.string().trim().max(500).optional(),
 })
@@ -45,11 +23,6 @@ const createSchema = z.object({
   exercises: z.array(exerciseEntrySchema).min(1, 'Al menos un ejercicio'),
 })
 
-/**
- * PATCH acepta un subset. Pedimos que el body traiga al menos un campo,
- * porque un PATCH vacío es casi siempre un error del cliente, no una
- * intención real.
- */
 const updateSchema = z.object({
   name: z.string().trim().min(1).max(60).optional(),
   description: z.string().trim().max(500).optional(),
@@ -58,34 +31,13 @@ const updateSchema = z.object({
   message: 'El PATCH necesita al menos un campo',
 })
 
-// ---------------------------------------------------------------------------
-// GET /api/routines  -> lista resumida de MIS rutinas
-// ---------------------------------------------------------------------------
+// GET /api/routines: summary list of my routines
 
-/**
- * Devuelve un "summary" por rutina (sin el array completo de ejercicios).
- * El motivo es evitar traer 20 kB por rutina solo para pintar una lista;
- * el detalle completo se pide con GET /:id cuando el usuario abre una rutina.
- *
- * Lo resuelve una aggregation pipeline en vez de un find + map en JS:
- *   - $size calcula el conteo en el servidor de Mongo.
- *   - $project nunca envía el array `exercises` por la red.
- *
- * Interview: "el `exerciseCount` lo calcula Mongo, no Node — no transporto
- * datos que no voy a usar."
- */
 export async function listRoutines(req, res, next) {
   try {
     const userId = new mongoose.Types.ObjectId(req.user.id)
     const result = await Routine.aggregate([
       { $match: { user: userId } },
-      /*
-        Lookup barato: traemos solo el `muscle` primario de cada ejercicio
-        referenciado para poder pintar chips de grupo en la card de rutina.
-        Nunca el documento entero: cada ejercicio del catálogo pesa KB (gifUrl,
-        instructions). Con el pipeline interno de $project limitamos lo que
-        viaja desde la colección 'exercises'.
-      */
       {
         $lookup: {
           from: 'exercises',
@@ -113,9 +65,6 @@ export async function listRoutines(req, res, next) {
           exerciseCount: { $size: { $ifNull: ['$exercises', []] } },
         },
       },
-      // Orden manual: lo decide el usuario arrastrando en /routines. El
-      // createdAt como desempate deja las nuevas detrás de las existentes
-      // cuando dos comparten `order` tras una migración (default 0).
       { $sort: { order: 1, createdAt: 1 } },
     ])
     res.json(result)
@@ -124,9 +73,7 @@ export async function listRoutines(req, res, next) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// POST /api/routines  -> crea una rutina del usuario
-// ---------------------------------------------------------------------------
+// POST /api/routines: create a routine
 
 export async function createRoutine(req, res, next) {
   const parsed = createSchema.safeParse(req.body)
@@ -137,12 +84,6 @@ export async function createRoutine(req, res, next) {
     })
   }
   try {
-    // Asigna la posición al final de la lista del usuario. Hacemos un
-    // findOne proyectando solo `order` (más barato que aggregate) y
-    // sumamos 1. Entre este read y el create no hay transacción: si dos
-    // creates concurrentes caen con el mismo max, ambos quedan en la misma
-    // posición y el usuario reordena. No vale la pena pagar una txn para
-    // un contador cosmético.
     const last = await Routine.findOne({ user: req.user.id })
       .sort({ order: -1 })
       .select('order')
@@ -151,8 +92,6 @@ export async function createRoutine(req, res, next) {
 
     const routine = await Routine.create({
       ...parsed.data,
-      // Fuerza el owner desde la sesión: nunca de req.body. Si lo leyéramos
-      // del body, un cliente podría crear rutinas en nombre de otro user.
       user: req.user.id,
       order: nextOrder,
     })
@@ -162,13 +101,9 @@ export async function createRoutine(req, res, next) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// PATCH /api/routines/reorder  -> reordena las rutinas del usuario
-// ---------------------------------------------------------------------------
+// PATCH /api/routines/reorder: reorder routines
 
 const reorderSchema = z.object({
-  // Array de ObjectIds en el orden final deseado. El índice en el array
-  // pasa a ser el `order` del documento.
   ids: z
     .array(objectIdSchema)
     .min(1, 'Al menos una rutina')
@@ -185,18 +120,11 @@ export async function reorderRoutines(req, res, next) {
   }
   const { ids } = parsed.data
 
-  // Duplicados en el array = payload inconsistente. Mejor 400 explícito
-  // que dejar que el bulkWrite deje una rutina en dos órdenes distintos
-  // (último gana, pero el estado final es ambiguo para el cliente).
   if (new Set(ids).size !== ids.length) {
     return res.status(400).json({ message: 'IDs duplicados' })
   }
 
   try {
-    // Invariante 3 (CLAUDE.md): toda consulta filtra por usuario. Antes
-    // de escribir, comprobamos que TODOS los ids son del usuario. Si
-    // falta alguno, 403 sin tocar nada — así un cliente con un id ajeno
-    // no reordena la rutina de otro.
     const owned = await Routine.find({
       _id: { $in: ids },
       user: req.user.id,
@@ -208,9 +136,6 @@ export async function reorderRoutines(req, res, next) {
       return res.status(403).json({ message: 'IDs no pertenecen al usuario' })
     }
 
-    // bulkWrite: un round-trip, N updateOnes. Cada update lleva el filtro
-    // por user para defensa en profundidad (si el array llegara con un id
-    // migrado entre el check y el write, el filtro lo bloquea).
     await Routine.bulkWrite(
       ids.map((id, index) => ({
         updateOne: {
@@ -226,21 +151,15 @@ export async function reorderRoutines(req, res, next) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/routines/:id  -> detalle de UNA rutina, con ejercicios populados
-// ---------------------------------------------------------------------------
+// GET /api/routines/:id: one routine with populated exercises
 
 export async function getRoutine(req, res, next) {
-  // Si el id ni siquiera es un ObjectId válido, evitamos el cast error.
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ message: 'Rutina no encontrada' })
   }
   try {
     const routine = await Routine.findOne({
       _id: req.params.id,
-      // Doble filtro: id + user. Si el id existe pero es de otro usuario,
-      // devolvemos 404 (no 403) a propósito: 403 confirmaría "existe pero no
-      // es tuya". 404 no filtra información sobre la existencia del recurso.
       user: req.user.id,
     })
       .populate('exercises.exercise')
@@ -255,16 +174,8 @@ export async function getRoutine(req, res, next) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// PATCH /api/routines/:id  -> actualiza campos sueltos
-// ---------------------------------------------------------------------------
+// PATCH /api/routines/:id: update fields
 
-/**
- * Si viene `exercises`, se reemplaza el array ENTERO. Decidido así para
- * evitar el pozo de parchear subdocumentos por índice: reordenar + añadir +
- * borrar en un solo PATCH se vuelve ambiguo rapido. El cliente manda la
- * lista final; el servidor la guarda tal cual.
- */
 export async function updateRoutine(req, res, next) {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ message: 'Rutina no encontrada' })
@@ -282,9 +193,6 @@ export async function updateRoutine(req, res, next) {
       { $set: parsed.data },
       {
         new: true,
-        // Clave: findOneAndUpdate NO corre validadores por defecto. Si no lo
-        // activas, puedes meter `name: ""` o cualquier basura que el schema
-        // rechazaría en .save(). Esto los corre.
         runValidators: true,
       },
     )
@@ -297,17 +205,8 @@ export async function updateRoutine(req, res, next) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// DELETE /api/routines/:id  -> hard delete
-// ---------------------------------------------------------------------------
+// DELETE /api/routines/:id: hard delete
 
-/**
- * Hard delete, no soft delete. ¿Por qué podemos permitírnoslo?
- * Porque las sesiones históricas no se rompen: `session.routineName` guarda
- * una COPIA congelada del nombre al crear la sesión. El historial sigue
- * leyéndose aunque la rutina haya desaparecido. Esta es la razón de ser
- * de esa denormalización, no un capricho.
- */
 export async function deleteRoutine(req, res, next) {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ message: 'Rutina no encontrada' })
@@ -320,7 +219,6 @@ export async function deleteRoutine(req, res, next) {
     if (!deleted) {
       return res.status(404).json({ message: 'Rutina no encontrada' })
     }
-    // 204 = No Content. No devolvemos cuerpo porque el recurso ya no existe.
     res.status(204).send()
   } catch (err) {
     next(err)

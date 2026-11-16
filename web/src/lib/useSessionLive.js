@@ -2,23 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 import { enqueueSessionPatch } from './offlineQueue.js'
 
-/*
-  Estado "live" de la sesión activa: toma el documento inicial del backend,
-  mantiene el array de entries en local, y persiste con un PATCH debounced
-  (500 ms de inactividad) a /api/sessions/:id.
-
-  Reglas:
-  - El backend reemplaza `entries` ENTERO en el PATCH (ver sessionController),
-    así que cada mutación local vuelve a enviar el array completo.
-  - El modelo valida series por tracking (weight_reps requiere weightKg+reps,
-    time requiere durationSec, etc.). Para no 400 en cada tecla, filtramos
-    SOLO las series completas al armar el payload. Las series incompletas
-    viven en estado local hasta que el usuario rellene los campos; en el
-    recarga reaparecen las que ya se sincronizaron.
-  - Token de carrera: si un PATCH tarda y mientras llega otra mutación,
-    solo el último "gana" el status para no mostrar "guardado" sobre un
-    cambio aún en vuelo.
-*/
+// Live session state with debounced PATCH autosave.
 
 const DEBOUNCE_MS = 500
 
@@ -41,30 +25,16 @@ function normalize(session) {
     muscle: e.muscle,
     tracking: e.tracking,
     order: e.order,
-    // El backend copia groupId de la rutina al crear la sesión y lo acepta
-    // en el PATCH. Si no lo leemos aquí (y no lo reenviamos en
-    // toApiEntries), el primer PATCH lo borra en DB y los bloques de
-    // superserie se deshacen solos al recargar.
     groupId: e.groupId ?? null,
-    // Mismo motivo: el override de barra de la sesión persistiría en DB
-    // pero sin leerlo + reenviarlo volvería a null al primer PATCH.
     barWeightKg: e.barWeightKg ?? null,
     notes: e.notes ?? '',
     sets: (e.sets ?? []).map((s) => ({ ...s })),
-    // Sidecar: viene en la respuesta de POST /sessions cuando la sesión
-    // sale de una rutina. Lo preservamos en estado local para que el
-    // prefill de "+ Añadir serie" lo consulte como fallback cuando el
-    // usuario nunca ha hecho el ejercicio. NO viaja en el PATCH (ver
-    // toApiEntries): es solo contexto de UI.
     plannedSets: e.plannedSets ?? null,
   }))
 }
 
 function toApiEntries(entries) {
   return entries.map((e, i) => {
-    // exercise puede venir como ObjectId string (sesión creada), como objeto
-    // populado si el backend hubiera hecho populate (hoy no), o como objeto
-    // completo cuando lo añadimos nosotros desde el picker.
     const exerciseId = typeof e.exercise === 'string' ? e.exercise : e.exercise?._id
     return {
       exercise: exerciseId,
@@ -89,10 +59,6 @@ function cleanSet(s, order) {
   if (s.addedWeightKg != null) out.addedWeightKg = s.addedWeightKg
   if (s.durationSec != null) out.durationSec = s.durationSec
   if (s.distanceM != null) out.distanceM = s.distanceM
-  // RIR (Reps In Reserve) solo se recoge en fuerza; cardio no lo renderiza.
-  // Si el usuario lo deja vacío el campo se omite del PATCH y el set guarda
-  // sin señal de intensidad — nada de ceros silenciosos que oscurecerían
-  // falsamente el heatmap.
   if (s.rir != null) out.rir = s.rir
   if (s.restSec != null) out.restSec = s.restSec
   return out
@@ -100,18 +66,12 @@ function cleanSet(s, order) {
 
 export function useSessionLive(initialSession) {
   const [entries, setEntries] = useState(() => normalize(initialSession))
-  // idle | saving | saved | queued | error
-  // `queued` = el PATCH falló por falta de red y se guardó en la cola
-  // offline; se reenviará solo al volver la conexión. La UI lo pinta
-  // distinto de `error`: no es un fallo del usuario ni del backend.
   const [status, setStatus] = useState('idle')
   const sessionIdRef = useRef(initialSession?._id)
   const timerRef = useRef(null)
   const tokenRef = useRef(0)
   const firstRef = useRef(true)
 
-  // Debounce PATCH tras cada cambio de entries. Primer render se salta: no
-  // tiene sentido re-enviar lo que acabamos de recibir del backend.
   useEffect(() => {
     if (firstRef.current) {
       firstRef.current = false
@@ -130,10 +90,6 @@ export function useSessionLive(initialSession) {
         })
         if (myToken === tokenRef.current) setStatus('saved')
       } catch (err) {
-        // Error de red (fetch rechaza antes de ver respuesta) = sin status.
-        // Lo mandamos a la cola offline; el PATCH se reintentará solo
-        // cuando vuelva la conexión. Un 4xx/5xx real lo tratamos como
-        // `error` porque reencolarlo sería bucle de payload inválido.
         if (err?.status == null) {
           await enqueueSessionPatch(sessionIdRef.current, body)
           if (myToken === tokenRef.current) setStatus('queued')
@@ -151,10 +107,6 @@ export function useSessionLive(initialSession) {
   const removeEntry = (i) => setEntries((es) => es.filter((_, j) => j !== i))
 
   const addEntry = (exercise) => {
-    // Copia los campos denormalizados del catálogo. Si en el futuro el
-    // ejercicio se renombra o se borra, el nombre y el músculo congelados
-    // aquí siguen pintando el historial (mismo contrato que el createSession
-    // del backend al cargar una rutina).
     const name =
       exercise.name?.es || exercise.name?.en || exercise.exerciseName || 'Ejercicio'
     setEntries((es) => [
@@ -165,8 +117,6 @@ export function useSessionLive(initialSession) {
         muscle: exercise.muscle,
         tracking: exercise.tracking,
         order: es.length,
-        // Un ejercicio añadido a mitad de sesión entra siempre solo: agrupar
-        // es flujo de planificación, no de ejecución.
         groupId: null,
         notes: '',
         sets: [],
@@ -174,14 +124,6 @@ export function useSessionLive(initialSession) {
     ])
   }
 
-  /*
-    La serie nace VACÍA. Antes se copiaban los valores de la anterior, pero
-    eso escribe en la sesión números que el usuario no ha levantado: si se
-    olvida de corregirlos, se guardan como si los hubiera hecho. Ahora la
-    referencia viaja como placeholder (ver suggestionForSet en
-    SessionExerciseCard) y solo se persiste lo que teclea — toApiEntries
-    filtra las series incompletas, así que una fila intacta no llega a DB.
-  */
   const addSet = (entryIndex) =>
     setEntries((es) =>
       es.map((e, j) =>
@@ -210,9 +152,6 @@ export function useSessionLive(initialSession) {
       }),
     )
 
-  // setEntries plano para transformaciones de bloque (p. ej. agrupar /
-  // desagrupar superserie con las utilidades de lib/supersets.js). Es la
-  // misma API que un useState, así que el caller puede pasar un reducer.
   return {
     entries,
     status,

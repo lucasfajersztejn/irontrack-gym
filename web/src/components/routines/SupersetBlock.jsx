@@ -1,18 +1,7 @@
+// Visual wrapper grouping superset exercises, with an ungroup action.
+
 import { useTranslation } from 'react-i18next'
 
-/*
-  Wrapper visual para un bloque de superserie. Dos ejercicios o más del
-  mismo groupId se renderizan dentro.
-
-  Lenguaje visual:
-  - Borde izquierdo acento (verde) + chip "SUPERSET" arriba: comunica
-    jerarquía sin ocupar una card entera. El borde cose las filas
-    verticalmente de forma barata (nada de wrappers nested).
-  - Botón "Separar" discreto en la cabecera del bloque.
-
-  No gestiona el estado del grupo: recibe `onUngroup` para desvincular todo
-  el bloque y los hijos (las filas) ya tienen sus propios handlers.
-*/
 export default function SupersetBlock({ children, onUngroup }) {
   const { t } = useTranslation()
   return (
@@ -45,11 +34,6 @@ export default function SupersetBlock({ children, onUngroup }) {
           </button>
         )}
       </header>
-      {/*
-        Gap reducido entre filas del bloque (gap-1 vs gap-2 fuera): el borde
-        izquierdo las cose; apretar la separación refuerza la idea de "esto
-        es un bloque único".
-      */}
       <div className="flex flex-col gap-1">{children}</div>
     </section>
   )

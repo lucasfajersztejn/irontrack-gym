@@ -1,17 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 
-/*
-  Detalle de UNA sesión (`GET /api/sessions/:id`) con entries populados.
-
-  Lazy respecto al id: sin `id` no hay fetch, no cargamos sesiones por
-  curiosidad. Cada cambio de id dispara un fetch nuevo; no cacheamos
-  entre ids porque el consumidor (SelectedWorkoutCard) solo necesita el
-  último elegido en pantalla.
-
-  Devuelve shape idéntico al que ya usa `useHomeData.latestDetail`, lo
-  que facilita reutilizar `breakdownForSession()` por encima.
-*/
+// Hook for one session's detail.
 export function useSessionDetail(sessionId) {
   const [state, setState] = useState({
     loading: Boolean(sessionId),

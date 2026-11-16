@@ -1,20 +1,4 @@
-/*
-  Genera la tarjeta de una insignia para compartir (formato Stories, 9:16) y la
-  entrega al usuario.
-
-  Por qué <canvas> y no html2canvas o similar: no hay librería de imagen en el
-  proyecto y no queremos añadir una dependencia para pintar 4 formas y 3
-  textos. Un canvas nativo da control total de la tipografía y del tamaño, y
-  el resultado es un PNG estable en cualquier dispositivo.
-
-  Por qué Web Share con ficheros y no un enlace a Instagram: Instagram no tiene
-  API web para publicar en Stories. El flujo real es generar el PNG y abrir la
-  hoja de compartir del sistema, donde el usuario elige Stories. En escritorio
-  (sin soporte de ficheros en navigator.share) caemos a descargar el PNG.
-
-  Nada sale del navegador: no hay subida al servidor ni dominio propio, así que
-  respeta el invariante de "sin email ni servicios de terceros".
-*/
+// Renders a badge share card to a PNG.
 
 import { badgeArtUrl } from './badgeArt.js'
 import {
@@ -30,8 +14,6 @@ import {
 const WIDTH = 1080
 const HEIGHT = 1920
 
-// Paleta de DESIGN.md / index.css. Los valores van duplicados aquí porque el
-// canvas no lee variables CSS; si cambian los tokens, cambiar también esto.
 const COLORS = {
   bg: '#0d1117',
   text: '#c9d1d9',
@@ -39,8 +21,6 @@ const COLORS = {
   accent: '#39d353',
 }
 
-// Mismo trazo que TrophyIcon (viewBox 24, stroke 1.8). Path2D acepta la
-// gramática de path SVG tal cual, así que no duplicamos la geometría a mano.
 const TROPHY_PATHS = [
   'M8 4h8v4a4 4 0 0 1-8 0z',
   'M8 6H5a2 2 0 0 0 3 4M16 6h3a2 2 0 0 1-3 4',
@@ -49,7 +29,6 @@ const TROPHY_PATHS = [
 ]
 
 function drawHexagon(ctx, cx, cy, size) {
-  // Mismas proporciones que HEX_CLIP (25% / 75% / 50%).
   const x0 = cx - size / 2
   const y0 = cy - size / 2
   ctx.beginPath()
@@ -75,16 +54,6 @@ function drawTrophy(ctx, cx, cy, size) {
   ctx.restore()
 }
 
-/*
-  Carga el SVG de arte de la insignia como <img> y espera a decodificarlo.
-
-  Por qué <img> + drawImage y no fetch + Path2D: un <img> de origen propio
-  (/badges/… se sirve desde el mismo dominio) se pinta en el canvas sin
-  "ensuciarlo". Un canvas tainted haría que toBlob() lanzara SecurityError y
-  la tarjeta no se podría compartir. Mismo origen = toBlob sigue funcionando.
-  El decode() espera a que el SVG esté rasterizable; si falla, quien llama cae
-  al hexágono genérico en vez de bloquear el compartir.
-*/
 async function loadArtImage(url) {
   const img = new Image()
   img.src = url
@@ -92,20 +61,16 @@ async function loadArtImage(url) {
   return img
 }
 
-// Pinta la tarjeta completa y devuelve un Blob PNG. Es asíncrona porque espera
-// a las fuentes, al arte y a toBlob.
+// Render the full badge card and return a PNG Blob.
 export async function renderBadgeCard({ name, why, earnedLabel, slug, tier }) {
   await ensureFonts()
 
-  // Una insignia sin arte mapeado (slug nuevo) devuelve null y pinta el
-  // hexágono genérico, igual que antes de que existiera el arte.
   const artUrl = badgeArtUrl({ slug, tier, unlocked: true })
   let artImg = null
   if (artUrl) {
     try {
       artImg = await loadArtImage(artUrl)
     } catch {
-      // Arte roto o no servido: seguimos con el fallback genérico.
       artImg = null
     }
   }
@@ -118,8 +83,6 @@ export async function renderBadgeCard({ name, why, earnedLabel, slug, tier }) {
   ctx.fillStyle = COLORS.bg
   ctx.fillRect(0, 0, WIDTH, HEIGHT)
 
-  // Resplandor verde detrás del hexágono. Es la única superficie donde el
-  // verde puede ser protagonista: es el trofeo, no un elemento de interfaz.
   const glowX = WIDTH / 2
   const glowY = 720
   const glow = ctx.createRadialGradient(glowX, glowY, 0, glowX, glowY, 620)
@@ -128,8 +91,6 @@ export async function renderBadgeCard({ name, why, earnedLabel, slug, tier }) {
   ctx.fillStyle = glow
   ctx.fillRect(0, 0, WIDTH, HEIGHT)
 
-  // El glow se queda detrás también con arte: los SVG dorados traen su propio
-  // halo, y el resplandor verde de fondo es la marca de "ganada" de la tarjeta.
   const hexSize = 480
   if (artImg) {
     ctx.drawImage(artImg, glowX - hexSize / 2, glowY - hexSize / 2, hexSize, hexSize)
@@ -164,11 +125,7 @@ export async function renderBadgeCard({ name, why, earnedLabel, slug, tier }) {
   return canvasToPngBlob(canvas)
 }
 
-/*
-  Devuelve 'shared' si se entregó a la hoja de compartir, 'cancelled' si el
-  usuario la cerró (no es un error) y 'downloaded' si se cayó a descarga.
-  Lanza solo si no se pudo generar la imagen ni descargarla.
-*/
+// Render and share a badge card.
 export async function shareBadge({ slug, name, why, earnedLabel, tier }) {
   const blob = await renderBadgeCard({ name, why, earnedLabel, slug, tier })
   return deliverPng(blob, `irontrack-${slug}.png`, name)

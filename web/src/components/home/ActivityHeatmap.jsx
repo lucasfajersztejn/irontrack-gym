@@ -1,18 +1,8 @@
+// Activity heatmap (GitHub-style grid) of training days with selectable date ranges.
+
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { levelsFromCells } from '../../lib/stats.js'
-
-/*
-  Rejilla tipo GitHub: 7 filas × N semanas, con labels de mes arriba y días
-  (lun/mié/vie) a la izquierda. Los días futuros se pintan como celda vacía
-  pero no se agrupan con "no entreno". Los días fuera del año seleccionado
-  (semanas que empiezan en diciembre del año anterior o terminan en enero
-  del siguiente) se renderizan invisibles para que la rejilla no mienta.
-
-  En mobile se habilita overflow horizontal: un año completo son 53 columnas
-  y no caben a 375 px. El contenedor fija un min-width que escala con las
-  semanas; el usuario arrastra lateral si hace falta.
-*/
 
 const LEVEL_CLASSES = [
   'bg-[color-mix(in_srgb,var(--color-border)_55%,transparent)]',
@@ -22,8 +12,6 @@ const LEVEL_CLASSES = [
   'bg-heat-4',
 ]
 
-// Lun = 0, Mar = 1, …, Dom = 6. Una fecha "ancla" de un lunes conocido
-// (2024-01-01 era lunes) basta para formatear los nombres cortos vía Intl.
 const MON_ANCHOR = new Date(2024, 0, 1)
 
 function dayLabels(locale) {
@@ -42,7 +30,6 @@ function monthLabels(cells, weeks, locale) {
   const out = []
   let lastMonth = -1
   for (let w = 0; w < weeks; w++) {
-    // El "lunes" de la columna es la primera celda del grupo de 7.
     const monday = cells[w * 7]?.date
     if (!monday) continue
     const m = monday.getMonth()
@@ -106,14 +93,6 @@ export default function ActivityHeatmap({
       ? t('home.last12Weeks')
       : t('home.yearActivity', { year: range })
 
-  /*
-    Tamaño de celda FIJO (12 px) + gap FIJO (3 px). Antes la rejilla usaba
-    1fr por columna y se estiraba al ancho disponible: 12 semanas = celdas
-    gigantes, 53 semanas = celdas razonables. Al fijar el tamaño, 12 w
-    ocupa su ancho natural (~195 px) y queda compacta y legible, mientras
-    que un año (~865 px) sigue necesitando el overflow-x. La escala así es
-    la misma a 12 semanas que a un año — como en GitHub.
-  */
   const CELL = 12
   const GAP = 3
   const STEP = CELL + GAP
@@ -134,7 +113,6 @@ export default function ActivityHeatmap({
 
       <div className="scrollbar-hidden overflow-x-auto">
         <div className="inline-block">
-          {/* Etiquetas de mes posicionadas por columna real (no por %) */}
           <div
             className="relative mb-1.5 ml-[36px] h-3 text-[10px] text-text-muted"
             style={{ width: `${weeks * STEP - GAP}px` }}
@@ -151,8 +129,6 @@ export default function ActivityHeatmap({
           </div>
 
           <div className="flex gap-[3px]">
-            {/* Columna de días (lun/mié/vie visibles, el resto en blanco
-                para no cargar y mantener alineación por fila) */}
             <div
               className="grid gap-[3px] text-[10px] text-text-muted"
               style={{
@@ -170,7 +146,6 @@ export default function ActivityHeatmap({
               ))}
             </div>
 
-            {/* Rejilla de celdas con tamaño fijo */}
             <div
               style={{
                 display: 'grid',

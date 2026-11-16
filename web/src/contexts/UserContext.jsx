@@ -1,18 +1,10 @@
+// User context: loads the current user and exposes it with optimistic local updates.
+
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import i18n from '../i18n/index.js'
 import { api } from '../lib/api.js'
 import { listLinkedProviders } from '../lib/auth.js'
 
-/*
-  Fuente de verdad del estado de autenticación en el frontend. Una sola
-  llamada a /api/me resuelve dos preguntas: ¿hay sesión? y ¿tiene username?
-  Usar también authClient.useSession() de Better Auth sería duplicar estado
-  y abrir carreras entre ambas respuestas. Mejor uno manda, el otro queda
-  para llamar signIn/signOut.
-
-  Un 401 no es un error ruidoso: significa "no autenticado" y es el estado
-  habitual al abrir la Landing. Cualquier otro error sí se registra.
-*/
 const UserContext = createContext({
   user: null,
   loading: true,
@@ -48,12 +40,6 @@ export function UserProvider({ children }) {
     fetchMe()
   }, [fetchMe])
 
-  /*
-    Proveedores OAuth vinculados. Better Auth no viaja dentro de /api/me,
-    así que lo pedimos aparte una sola vez por sesión autenticada. Vive
-    aquí (en lugar de en Ajustes) para que la sidebar también pueda mostrar
-    "Conectado con X" sin una segunda llamada por arranque.
-  */
   useEffect(() => {
     if (!user) {
       setLinkedProviders([])
@@ -72,11 +58,6 @@ export function UserProvider({ children }) {
     }
   }, [user?.id])
 
-  /*
-    El usuario eligió su idioma en el onboarding y vive en settings.locale.
-    Sin esto, i18next se queda con el idioma del navegador y la Home ignora
-    la preferencia del usuario tras un login desde otro equipo.
-  */
   useEffect(() => {
     const locale = user?.settings?.locale
     if (locale && i18n.language !== locale) {
@@ -84,23 +65,10 @@ export function UserProvider({ children }) {
     }
   }, [user?.settings?.locale])
 
-  /*
-    updateUser: merge local sin ir al servidor. Para cuando un endpoint ya
-    devuelve el estado actualizado (p. ej. PUT /api/me/favorites responde
-    { favoriteExercises }) y no queremos pagar un refetch de /api/me entero
-    — el refetch pone loading=true y hace parpadear a toda la app.
-  */
   const updateUser = useCallback((partial) => {
     setUser((prev) => (prev ? { ...prev, ...partial } : prev))
   }, [])
 
-  /*
-    clearUser: deja al usuario como invitado SIN ir al servidor. Es lo que se
-    usa tras sign-out y borrado de cuenta: la cookie ya no existe, así que un
-    refetch de /api/me solo provoca un 401 inútil (ruido en consola) para
-    acabar en el mismo `null`. Ponerlo a null a mano es inmediato y le basta a
-    ProtectedRoute para echar a la landing.
-  */
   const clearUser = useCallback(() => {
     setUser(null)
     setLoading(false)

@@ -1,22 +1,7 @@
+// Popover to pick the barbell bar weight (presets or custom) for a routine entry.
+
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-/*
-  Popover de ajuste del peso de la barra PARA ESTA SESIÓN.
-
-  Vive en el header del ejercicio porque el peso de la barra afecta a cómo
-  se interpreta cada input de peso (en modo plates: 20 kg/lado + barra 20
-  = 60 total; cambiar la barra a 15 corre la cuenta). Ponerlo per-sesión
-  es la demanda real: el usuario entrena en gimnasios distintos y la barra
-  cambia entre ellos; forzarle a abrir Ajustes rompe el flujo.
-
-  Presets habituales (15 / 20 / 25 kg) + input libre con step 0.5.
-  Pulsar un preset o Escape cierra; cualquier input arbitrario se confirma
-  con el botón "Hecho" o perdiendo el foco al clicar fuera.
-
-  No persiste nada per se: el componente padre llama onChange(nextKg) y
-  Session.entries[i].barWeightKg se encarga de viajar al PATCH.
-*/
 
 const PRESETS = [15, 20, 25]
 
@@ -54,7 +39,6 @@ export default function BarWeightPopover({ value, onChange, currentKg }) {
   function commitDraft() {
     const n = Number(draft)
     if (draft === '' || Number.isNaN(n)) {
-      // Entrada vacía = "volver al default global" (null en DB).
       onChange(null)
     } else {
       onChange(n)

@@ -1,18 +1,7 @@
+// Animated KPI tile for a single headline stat.
+
 import { motion, useReducedMotion } from 'motion/react'
 
-/*
-  Tarjeta de estadística reutilizable. El número grande usa font-display para
-  dar jerarquía (DESIGN.md) y .tabular para que una variación de 1 dígito no
-  salte el ancho. El slot `footer` acepta nodo libre: barra de progreso,
-  chip "Récord", gráfico pequeño, etc.
-
-  Prop `size`:
-    - `"md"` (default): padding e interlineado compactos. Para grids de 3.
-    - `"lg"`: más padding y la cifra escala hasta 3.25rem. Se usa en las
-      dos tiles del bloque Actividad (Racha + Esta semana) porque viven
-      en grid-cols-2 junto al dashboard semanal y en móvil se veían
-      enanas frente a las cards grandes de abajo.
-*/
 export default function StatTile({
   icon,
   label,
@@ -37,13 +26,6 @@ export default function StatTile({
         <span>{icon}</span>
         <span className="truncate">{label}</span>
       </div>
-      {/*
-        min-w-0 deja que la fila se encoja dentro de la card; sin él, el
-        contenido fuerza su ancho natural y el sufijo se sale (grid de 3
-        columnas en móviles estrechos). La cifra es fluida: con `lg`
-        el techo sube a 3.25rem para equiparar la altura visual al
-        dashboard semanal que se renderiza debajo.
-      */}
       <div className="flex min-w-0 items-baseline gap-1 md:gap-2">
         <span
           className={`tabular font-display font-semibold leading-none tracking-tight text-text ${
