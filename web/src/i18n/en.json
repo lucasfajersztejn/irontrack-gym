@@ -102,6 +102,15 @@
       "expandAria": "Show {{name}} progress",
       "collapseAria": "Hide {{name}} progress"
     },
+    "medalsTeaser": {
+      "title": "Medal wall",
+      "caption": "of {{total}} unlocked",
+      "emptyTitle": "No medals yet",
+      "emptyHint": "Browse the wall and see what's left to earn.",
+      "hint": "See what's left and how to earn it.",
+      "cta": "Open the wall",
+      "aria": "Open the medal wall"
+    },
     "streak": "Current streak",
     "days": "days",
     "thisWeek": "This week",
