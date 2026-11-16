@@ -8,6 +8,7 @@ import SelectedWorkoutCard from '../components/home/SelectedWorkoutCard.jsx'
 import StalledCard from '../components/home/StalledCard.jsx'
 import StatTile from '../components/home/StatTile.jsx'
 import ActivityHeatmap from '../components/home/ActivityHeatmap.jsx'
+import MedalsTeaserCard from '../components/home/MedalsTeaserCard.jsx'
 import WeekDashboard from './WeekStats.jsx'
 import {
   CalendarIcon,
@@ -218,6 +219,11 @@ export default function Home() {
         availableRanges={availableRanges.ranges}
         onRangeChange={setHeatmapRange}
       />
+
+      {/* Bloque 6 — teaser del muro de medallas. Va al final, tras el heatmap,
+          como puerta de navegación. Siempre visible (incluso con 0 medallas):
+          es un atajo, no un dato. */}
+      <MedalsTeaserCard />
     </div>
   )
 }

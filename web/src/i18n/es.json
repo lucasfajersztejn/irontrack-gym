@@ -102,6 +102,15 @@
       "expandAria": "Ver la evolución de {{name}}",
       "collapseAria": "Ocultar la evolución de {{name}}"
     },
+    "medalsTeaser": {
+      "title": "Muro de medallas",
+      "caption": "de {{total}} desbloqueadas",
+      "emptyTitle": "Aún no tienes medallas",
+      "emptyHint": "Mira el muro y descubre qué te falta por conseguir.",
+      "hint": "Mira qué te falta y cómo conseguirlo.",
+      "cta": "Abrir el muro",
+      "aria": "Abrir el muro de medallas"
+    },
     "streak": "Racha actual",
     "days": "días",
     "thisWeek": "Esta semana",
