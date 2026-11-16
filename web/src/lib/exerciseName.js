@@ -69,6 +69,28 @@ export function useExerciseAlias(exerciseId) {
     [aliases, updateUser],
   )
 
+  const clear = useCallback(async () => {
+    if (!id) return
+    const snapshot = aliases
+    applyLocal((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setSaving(true)
+    try {
+      const res = await api(`/api/me/aliases/${id}`, { method: 'DELETE' })
+      if (res?.exerciseAliases) {
+        updateUser({ exerciseAliases: res.exerciseAliases })
+      }
+    } catch (err) {
+      updateUser({ exerciseAliases: snapshot })
+      throw err
+    } finally {
+      setSaving(false)
+    }
+  }, [id, aliases, applyLocal, updateUser])
+
   const setAlias = useCallback(
     async (nameRaw) => {
       if (!id) return
@@ -92,30 +114,8 @@ export function useExerciseAlias(exerciseId) {
         setSaving(false)
       }
     },
-    [id, aliases, applyLocal, updateUser],
+    [id, aliases, applyLocal, updateUser, clear],
   )
-
-  const clear = useCallback(async () => {
-    if (!id) return
-    const snapshot = aliases
-    applyLocal((prev) => {
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
-    setSaving(true)
-    try {
-      const res = await api(`/api/me/aliases/${id}`, { method: 'DELETE' })
-      if (res?.exerciseAliases) {
-        updateUser({ exerciseAliases: res.exerciseAliases })
-      }
-    } catch (err) {
-      updateUser({ exerciseAliases: snapshot })
-      throw err
-    } finally {
-      setSaving(false)
-    }
-  }, [id, aliases, applyLocal, updateUser])
 
   return { alias, setAlias, clear, saving }
 }
