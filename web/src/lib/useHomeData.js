@@ -12,6 +12,7 @@ export function useHomeData() {
     routines: [],
     activeSession: null,
     latestDetail: null,
+    badgeCounts: null,
   })
 
   useEffect(() => {
@@ -23,10 +24,11 @@ export function useHomeData() {
       const sessionsQuery =
         `/api/sessions?limit=50&from=${encodeURIComponent(since.toISOString())}`
 
-      const [sessionsRes, routinesRes, activeRes] = await Promise.allSettled([
+      const [sessionsRes, routinesRes, activeRes, badgesRes] = await Promise.allSettled([
         api(sessionsQuery),
         api('/api/routines/'),
         api('/api/sessions/active'),
+        api('/api/badges/counts'),
       ])
       if (cancelled) return
 
@@ -37,6 +39,10 @@ export function useHomeData() {
         ? routinesRes.value?.routines ?? routinesRes.value?.items ?? routinesRes.value ?? []
         : []
       const activeSession = activeRes.status === 'fulfilled' ? activeRes.value : null
+
+      const badgeCounts = badgesRes.status === 'fulfilled'
+        ? badgesRes.value?.counts ?? null
+        : null
 
       let latestDetail = null
       const mostRecent = sessions[0]
@@ -62,6 +68,7 @@ export function useHomeData() {
         routines,
         activeSession,
         latestDetail,
+        badgeCounts,
       })
     }
 
@@ -93,5 +100,6 @@ export function useHomeData() {
     routines: state.routines,
     activeSession: state.activeSession,
     suggestedRoutine,
+    badgeCounts: state.badgeCounts,
   }
 }

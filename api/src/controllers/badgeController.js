@@ -70,3 +70,16 @@ export const getBadges = async (req, res, next) => {
     next(err)
   }
 }
+
+/** GET /api/badges/counts: unlocked and total badge counts only */
+export const getBadgeCounts = async (req, res, next) => {
+  try {
+    const [unlocked, total] = await Promise.all([
+      UserBadge.countDocuments({ user: new mongoose.Types.ObjectId(req.user.id) }),
+      Badge.countDocuments(),
+    ])
+    res.json({ counts: { unlocked, total } })
+  } catch (err) {
+    next(err)
+  }
+}

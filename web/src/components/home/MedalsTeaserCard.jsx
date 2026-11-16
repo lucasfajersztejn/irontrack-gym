@@ -2,7 +2,6 @@
 
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useBadges } from '../../lib/useBadges.js'
 import { ChevronRightIcon, TrophyIcon } from '../icons/NavIcons.jsx'
 
 function Skeleton() {
@@ -19,13 +18,12 @@ function MedalStack() {
   )
 }
 
-export default function MedalsTeaserCard() {
+export default function MedalsTeaserCard({ loading, counts }) {
   const { t } = useTranslation()
-  const { loading, error, counts } = useBadges()
 
   if (loading) return <Skeleton />
 
-  const hasData = !error && counts.total > 0
+  const hasData = Boolean(counts) && counts.total > 0
   const isEmpty = hasData && counts.unlocked === 0
 
   return (
