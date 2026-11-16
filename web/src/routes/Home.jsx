@@ -170,7 +170,7 @@ export default function Home() {
         onRangeChange={setHeatmapRange}
       />
 
-      <MedalsTeaserCard />
+      <MedalsTeaserCard loading={data.loading} counts={data.badgeCounts} />
     </div>
   )
 }
