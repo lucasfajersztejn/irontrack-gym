@@ -71,24 +71,23 @@ export function useSessionLive(initialSession) {
   const timerRef = useRef(null)
   const tokenRef = useRef(0)
   const firstRef = useRef(true)
+  const entriesRef = useRef(entries)
+  const pendingRef = useRef(false)
+  const inflightRef = useRef(Promise.resolve(true))
 
-  useEffect(() => {
-    if (firstRef.current) {
-      firstRef.current = false
-      return
-    }
-    if (!sessionIdRef.current) return
-    clearTimeout(timerRef.current)
-    setStatus('saving')
-    timerRef.current = setTimeout(async () => {
-      const myToken = ++tokenRef.current
-      const body = { entries: toApiEntries(entries) }
+  // Sends the latest entries; resolves true once persisted, false if queued or failed.
+  const save = () => {
+    pendingRef.current = false
+    const myToken = ++tokenRef.current
+    const body = { entries: toApiEntries(entriesRef.current) }
+    const run = async () => {
       try {
         await api(`/api/sessions/${sessionIdRef.current}`, {
           method: 'PATCH',
           body,
         })
         if (myToken === tokenRef.current) setStatus('saved')
+        return true
       } catch (err) {
         if (err?.status == null) {
           await enqueueSessionPatch(sessionIdRef.current, body)
@@ -96,10 +95,34 @@ export function useSessionLive(initialSession) {
         } else if (myToken === tokenRef.current) {
           setStatus('error')
         }
+        return false
       }
-    }, DEBOUNCE_MS)
+    }
+    inflightRef.current = run()
+    return inflightRef.current
+  }
+
+  useEffect(() => {
+    entriesRef.current = entries
+    if (firstRef.current) {
+      firstRef.current = false
+      return
+    }
+    if (!sessionIdRef.current) return
+    clearTimeout(timerRef.current)
+    pendingRef.current = true
+    setStatus('saving')
+    timerRef.current = setTimeout(save, DEBOUNCE_MS)
     return () => clearTimeout(timerRef.current)
   }, [entries])
+
+  // Sends any pending autosave now and waits until it is committed.
+  const flush = async () => {
+    clearTimeout(timerRef.current)
+    await inflightRef.current
+    const ok = pendingRef.current ? await save() : await inflightRef.current
+    if (!ok) throw new Error('Session autosave failed')
+  }
 
   const updateEntry = (i, patch) =>
     setEntries((es) => es.map((e, j) => (j === i ? { ...e, ...patch } : e)))
@@ -155,6 +178,7 @@ export function useSessionLive(initialSession) {
   return {
     entries,
     status,
+    flush,
     updateEntry,
     removeEntry,
     addEntry,

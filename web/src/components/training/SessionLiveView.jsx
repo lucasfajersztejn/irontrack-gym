@@ -22,6 +22,7 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
   const {
     entries,
     status,
+    flush,
     updateEntry,
     updateSet,
     removeSet,
@@ -197,7 +198,7 @@ export default function SessionLiveView({ session, onFinish, onCancel, finishing
         confirmLabel={t('training.finish')}
         onConfirm={() => {
           setConfirmFinishOpen(false)
-          onFinish()
+          onFinish(flush)
         }}
         onCancel={() => setConfirmFinishOpen(false)}
         destructive={false}
