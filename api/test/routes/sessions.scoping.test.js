@@ -117,6 +117,48 @@ describe('Sesiones — aislamiento entre usuarios', () => {
   })
 })
 
+describe('listSessions — detalle inline (detail=1)', () => {
+  it('devuelve entries con secondaryMuscles y sets recortados en una sola request', async () => {
+    const app = buildTestApp(userA.toString())
+    const withSecondary = await Exercise.create({
+      slug: 'incline-press',
+      name: { es: 'Press inclinado', en: 'Incline press' },
+      muscle: 'pectorals',
+      equipment: 'barbell',
+      tracking: 'weight_reps',
+      secondaryMuscles: ['triceps', 'delts'],
+    })
+    await Session.create({
+      user: userA,
+      startedAt: new Date(),
+      endedAt: new Date(),
+      entries: [{
+        exercise: withSecondary._id,
+        exerciseName: 'Press inclinado',
+        muscle: 'pectorals',
+        tracking: 'weight_reps',
+        order: 0,
+        sets: [{ order: 0, weightKg: 60, reps: 8, completed: true }],
+      }],
+    })
+
+    const res = await request(app).get('/api/sessions?detail=1').expect(200)
+    expect(res.body).toHaveLength(1)
+    const entry = res.body[0].entries[0]
+    expect(entry.exercise._id).toBe(withSecondary._id.toString())
+    expect(entry.exercise.secondaryMuscles).toEqual(['triceps', 'delts'])
+    expect(entry.sets[0]).toMatchObject({ weightKg: 60, reps: 8, completed: true })
+  })
+
+  it('sin detail no incluye entries', async () => {
+    const app = buildTestApp(userA.toString())
+    await Session.create({ user: userA, startedAt: new Date() })
+
+    const res = await request(app).get('/api/sessions').expect(200)
+    expect(res.body[0].entries).toBeUndefined()
+  })
+})
+
 describe('Sesiones — ejercicio custom borrado', () => {
   it('crear sesión desde una rutina omite el ejercicio borrado y lo quita de la rutina', async () => {
     const app = buildTestApp(userA.toString())

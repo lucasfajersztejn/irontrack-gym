@@ -93,20 +93,12 @@ export function useWeeklyStats(weekStart) {
       const from = new Date(startMs)
       const to = new Date(startMs + WEEK_MS - 1)
       const query =
-        `/api/sessions?limit=50` +
+        `/api/sessions?limit=50&detail=1` +
         `&from=${encodeURIComponent(from.toISOString())}` +
         `&to=${encodeURIComponent(to.toISOString())}`
-      const summaries = await api(query)
-      const list = Array.isArray(summaries) ? summaries : []
-      const details = await Promise.all(
-        list.map((s) =>
-          api(`/api/sessions/${s._id}`).catch(() => null),
-        ),
-      )
-      const sessions = list.map((summary, i) => ({
-        summary,
-        detail: details[i],
-      }))
+      const rows = await api(query)
+      const list = Array.isArray(rows) ? rows : []
+      const sessions = list.map((row) => ({ summary: row, detail: row }))
       setState({ loading: false, error: null, sessions })
     } catch (err) {
       setState({ loading: false, error: err, sessions: [] })

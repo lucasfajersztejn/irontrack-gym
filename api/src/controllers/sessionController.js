@@ -64,7 +64,53 @@ const listQuerySchema = z.object({
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   routine: objectIdSchema.optional(),
+  detail: z.literal('1').optional(),
 })
+
+// Per-entry breakdown weekly stats needs, resolving secondaryMuscles from a single $lookup.
+const detailEntriesProjection = {
+  $map: {
+    input: { $ifNull: ['$entries', []] },
+    as: 'e',
+    in: {
+      exerciseName: '$$e.exerciseName',
+      muscle: '$$e.muscle',
+      tracking: '$$e.tracking',
+      exercise: {
+        _id: '$$e.exercise',
+        secondaryMuscles: {
+          $let: {
+            vars: {
+              ex: {
+                $first: {
+                  $filter: {
+                    input: '$_exDocs',
+                    as: 'x',
+                    cond: { $eq: ['$$x._id', '$$e.exercise'] },
+                  },
+                },
+              },
+            },
+            in: { $ifNull: ['$$ex.secondaryMuscles', []] },
+          },
+        },
+      },
+      sets: {
+        $map: {
+          input: { $ifNull: ['$$e.sets', []] },
+          as: 's',
+          in: {
+            completed: '$$s.completed',
+            weightKg: '$$s.weightKg',
+            reps: '$$s.reps',
+            durationSec: '$$s.durationSec',
+            distanceM: '$$s.distanceM',
+          },
+        },
+      },
+    },
+  },
+}
 
 const heatmapQuerySchema = z.object({
   from: z.coerce.date(),
@@ -84,7 +130,7 @@ export async function listSessions(req, res, next) {
       issues: parsed.error.issues,
     })
   }
-  const { page, limit, from, to, routine } = parsed.data
+  const { page, limit, from, to, routine, detail } = parsed.data
   try {
     const userId = new mongoose.Types.ObjectId(req.user.id)
     const match = { user: userId }
@@ -95,45 +141,61 @@ export async function listSessions(req, res, next) {
     }
     if (routine) match.routine = new mongoose.Types.ObjectId(routine)
 
-    const result = await Session.aggregate([
+    const projection = {
+      routine: 1,
+      routineName: 1,
+      startedAt: 1,
+      endedAt: 1,
+      durationEstimated: 1,
+      notes: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      entryCount: { $size: { $ifNull: ['$entries', []] } },
+      setCount: {
+        $sum: {
+          $map: {
+            input: { $ifNull: ['$entries', []] },
+            as: 'e',
+            in: { $size: { $ifNull: ['$$e.sets', []] } },
+          },
+        },
+      },
+      durationSec: {
+        $cond: [
+          { $ifNull: ['$endedAt', false] },
+          {
+            $round: [
+              { $divide: [{ $subtract: ['$endedAt', '$startedAt'] }, 1000] },
+            ],
+          },
+          null,
+        ],
+      },
+    }
+
+    const pipeline = [
       { $match: match },
       { $sort: { startedAt: -1 } },
       { $skip: (page - 1) * limit },
       { $limit: limit },
-      {
-        $project: {
-          routine: 1,
-          routineName: 1,
-          startedAt: 1,
-          endedAt: 1,
-          durationEstimated: 1,
-          notes: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          entryCount: { $size: { $ifNull: ['$entries', []] } },
-          setCount: {
-            $sum: {
-              $map: {
-                input: { $ifNull: ['$entries', []] },
-                as: 'e',
-                in: { $size: { $ifNull: ['$$e.sets', []] } },
-              },
-            },
-          },
-          durationSec: {
-            $cond: [
-              { $ifNull: ['$endedAt', false] },
-              {
-                $round: [
-                  { $divide: [{ $subtract: ['$endedAt', '$startedAt'] }, 1000] },
-                ],
-              },
-              null,
-            ],
-          },
+    ]
+
+    if (detail) {
+      pipeline.push({
+        $lookup: {
+          from: 'exercises',
+          localField: 'entries.exercise',
+          foreignField: '_id',
+          as: '_exDocs',
+          pipeline: [{ $project: { secondaryMuscles: 1 } }],
         },
-      },
-    ])
+      })
+      projection.entries = detailEntriesProjection
+    }
+
+    pipeline.push({ $project: projection })
+
+    const result = await Session.aggregate(pipeline)
     res.json(result)
   } catch (err) {
     next(err)
