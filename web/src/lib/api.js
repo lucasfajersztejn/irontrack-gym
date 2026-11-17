@@ -16,7 +16,7 @@ export async function api(path, { method = 'GET', body, headers = {} } = {}) {
   const data = await res.json().catch(() => null)
 
   if (!res.ok) {
-    const err = new Error(data?.error ?? res.statusText)
+    const err = new Error(data?.message ?? res.statusText)
     err.status = res.status
     err.payload = data
     throw err
