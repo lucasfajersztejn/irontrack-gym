@@ -107,9 +107,11 @@ export default function Landing() {
 
         <img
           src={vikingHero}
+          width="560"
+          height="575"
           alt=""
           aria-hidden="true"
-          className="mx-auto -mb-2 w-52 max-w-[65%] drop-shadow-[0_18px_40px_rgba(0,0,0,0.45)]"
+          className="mx-auto -mb-2 w-52 max-w-[65%] drop-shadow-[0_20px_45px_rgba(0,0,0,0.5)]"
         />
 
         <div className="space-y-3">
@@ -151,9 +153,11 @@ export default function Landing() {
           <section className="space-y-8">
             <img
               src={vikingHero}
+              width="560"
+              height="575"
               alt=""
               aria-hidden="true"
-              className="w-72 drop-shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
+              className="w-72 drop-shadow-[0_20px_45px_rgba(0,0,0,0.5)]"
             />
             <h1 className="font-display text-hero font-bold">
               {t('landing.heroLine1')}
