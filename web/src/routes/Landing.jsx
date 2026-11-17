@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { signInWithProvider, signInAsDemo } from '../lib/auth.js'
 import { useUser } from '../contexts/UserContext.jsx'
 import Logo from '../components/icons/Logo.jsx'
+import vikingHero from '../assets/viking-hero.png'
 import { GoogleIcon, GitHubIcon } from '../components/icons/ProviderIcons.jsx'
 import OAuthButton from '../components/OAuthButton.jsx'
 import HeatmapPreview from '../components/HeatmapPreview.jsx'
@@ -104,6 +105,13 @@ export default function Landing() {
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col gap-6 px-6 pt-8 pb-10 lg:hidden">
         <Logo />
 
+        <img
+          src={vikingHero}
+          alt=""
+          aria-hidden="true"
+          className="mx-auto -mb-2 w-52 max-w-[65%] drop-shadow-[0_18px_40px_rgba(0,0,0,0.45)]"
+        />
+
         <div className="space-y-3">
           <h1 className="font-display text-hero font-bold">
             {t('landing.heroLine1')}
@@ -141,6 +149,12 @@ export default function Landing() {
 
         <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-[1.3fr_1fr] items-center gap-16 px-10 py-12">
           <section className="space-y-8">
+            <img
+              src={vikingHero}
+              alt=""
+              aria-hidden="true"
+              className="w-72 drop-shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
+            />
             <h1 className="font-display text-hero font-bold">
               {t('landing.heroLine1')}
               <br />
