@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/*.log
+.git
+.github
+screenshots
+docs
+postman
+tools
+architecture
+.impeccable
+.claude
+.agents

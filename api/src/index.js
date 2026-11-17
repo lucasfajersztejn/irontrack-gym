@@ -6,6 +6,9 @@ if (process.env.FORCE_IPV4_DNS === '1') {
   dns.setServers(['8.8.8.8', '8.8.4.4'])
 }
 
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -26,7 +29,38 @@ connectDB()
 
 const app = express()
 
-app.use(helmet())
+// Trust Fly's proxy so secure cookies and client IPs resolve correctly.
+app.set('trust proxy', 1)
+
+// Static client is served same-origin; GIFs still load from the jsDelivr CDN.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: [
+          "'self'",
+          'data:',
+          'https://cdn.jsdelivr.net',
+          'https://*.googleusercontent.com',
+          'https://avatars.githubusercontent.com',
+        ],
+        fontSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+      },
+    },
+  })
+)
+
+// Built frontend copied into ./public at image build time.
+const clientDist = path.join(path.dirname(fileURLToPath(import.meta.url)), '../public')
+const hasClient = fs.existsSync(path.join(clientDist, 'index.html'))
+
+if (hasClient) {
+  app.use(express.static(clientDist, { index: false, maxAge: '1y' }))
+}
 
 const allowedOrigins = [
   ...(process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
@@ -69,6 +103,14 @@ app.use('/api/admin', adminRoutes)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', project: 'IronTrack API' })
 })
+
+// SPA fallback: non-API GETs resolve to index.html for client-side routing.
+if (hasClient) {
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api')) return next()
+    res.sendFile(path.join(clientDist, 'index.html'))
+  })
+}
 
 // Error handler central. En producción no filtra el stack.
 // eslint-disable-next-line no-unused-vars

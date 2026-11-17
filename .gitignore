@@ -24,3 +24,5 @@ PRODUCT.md
 DESIGN.md
 # Capturas de verificacion visual (locales, no se suben)
 screenshots
+# Fly.io CD workflow (local; enable later for auto-deploy)
+.github/workflows/fly-deploy.yml
