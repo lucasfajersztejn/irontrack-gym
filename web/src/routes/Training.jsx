@@ -93,10 +93,11 @@ export default function Training() {
     }
   }
 
-  async function finishSession() {
+  async function finishSession(flushAutosave) {
     if (!session?._id) return
     setFinishing(true)
     try {
+      await flushAutosave?.()
       const closed = await api(`/api/sessions/${session._id}/finish`, {
         method: 'POST',
       })
