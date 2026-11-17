@@ -7,6 +7,7 @@ import {
   deleteSession,
   listSessions,
 } from '../../src/controllers/sessionController.js'
+import { deleteExercise } from '../../src/controllers/exerciseController.js'
 
 /**
  * Mini app para tests.
@@ -38,6 +39,7 @@ export function buildTestApp(userId) {
   router.get('/sessions/:id', getSession)
   router.patch('/sessions/:id', updateSession)
   router.delete('/sessions/:id', deleteSession)
+  router.delete('/exercises/:id', deleteExercise)
   app.use('/api', router)
 
   app.use((err, _req, res, _next) => {
