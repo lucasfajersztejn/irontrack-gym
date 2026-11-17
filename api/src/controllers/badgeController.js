@@ -18,11 +18,11 @@ export const getBadges = async (req, res, next) => {
         .select(SESSION_METRIC_SELECT)
         .sort({ startedAt: 1 })
         .lean(),
-      User.findById(userId).select('weeklyGoal createdAt').lean(),
+      User.findById(userId).select('settings.weeklyGoal createdAt').lean(),
     ])
 
     const metrics = computeUserMetrics(sessions, {
-      weeklyGoal: user?.weeklyGoal,
+      weeklyGoal: user?.settings?.weeklyGoal,
       createdAt: user?.createdAt,
     })
     const unlockedByBadge = new Map(userBadges.map((ub) => [ub.badge.toString(), ub]))

@@ -417,11 +417,11 @@ export async function evaluateAndPersist(userId) {
       .lean(),
     Badge.find().lean(),
     UserBadge.find({ user: userId }).select('badge').lean(),
-    User.findById(userId).select('weeklyGoal createdAt').lean(),
+    User.findById(userId).select('settings.weeklyGoal createdAt').lean(),
   ])
 
   const metrics = computeUserMetrics(sessions, {
-    weeklyGoal: user?.weeklyGoal,
+    weeklyGoal: user?.settings?.weeklyGoal,
     createdAt: user?.createdAt,
   })
   const unlockedBadgeIds = new Set(existing.map((ub) => ub.badge.toString()))
