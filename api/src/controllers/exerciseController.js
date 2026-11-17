@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import { z } from 'zod'
 import Exercise from '../models/exercise.model.js'
 import Session from '../models/session.model.js'
+import Routine from '../models/routine.model.js'
 import User from '../models/user.model.js'
 import { attachExerciseNames } from '../lib/exerciseNames.js'
 import {
@@ -722,6 +723,11 @@ export const deleteExercise = async (req, res, next) => {
     if (!deleted) {
       return res.status(404).json({ message: 'Ejercicio no encontrado' })
     }
+    // Drop the deleted exercise from the user's routines.
+    await Routine.updateMany(
+      { user: req.user.id },
+      { $pull: { exercises: { exercise: deleted._id } } },
+    )
     res.status(204).send()
   } catch (err) {
     next(err)

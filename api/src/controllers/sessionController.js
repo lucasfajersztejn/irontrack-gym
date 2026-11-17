@@ -275,10 +275,13 @@ export async function getHeatmap(req, res, next) {
   }
 }
 
+// Skip routine entries whose exercise was deleted (populates to null).
+const liveRoutineExercises = (routine) => routine.exercises.filter((re) => re.exercise)
+
 function plansFromRoutine(routine) {
   if (!routine) return null
   return new Map(
-    routine.exercises.map((re) => [
+    liveRoutineExercises(routine).map((re) => [
       re.exercise._id.toString(),
       {
         targetSets: re.targetSets ?? 0,
@@ -397,7 +400,7 @@ export async function createSession(req, res, next) {
       doc.routine = routine._id
       doc.routineName = routine.name
       routinePlans = plansFromRoutine(routine)
-      doc.entries = routine.exercises.map((re) => ({
+      doc.entries = liveRoutineExercises(routine).map((re) => ({
         exercise: re.exercise._id,
         exerciseName: re.exercise.name?.es || re.exercise.name?.en || 'Ejercicio',
         muscle: re.exercise.muscle,

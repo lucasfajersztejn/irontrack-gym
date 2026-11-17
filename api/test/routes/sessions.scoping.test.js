@@ -116,3 +116,55 @@ describe('Sesiones — aislamiento entre usuarios', () => {
     expect(resB.body).toHaveLength(1)
   })
 })
+
+describe('Sesiones — ejercicio custom borrado', () => {
+  it('crear sesión desde una rutina omite el ejercicio borrado y lo quita de la rutina', async () => {
+    const app = buildTestApp(userA.toString())
+    const custom = await Exercise.create({
+      slug: 'custom-curl',
+      name: { es: 'Curl custom', en: 'Custom curl' },
+      muscle: 'biceps',
+      equipment: 'dumbbell',
+      tracking: 'weight_reps',
+      createdBy: userA,
+    })
+    const routine = await Routine.create({
+      user: userA,
+      name: 'Mixta',
+      exercises: [
+        { exercise: exercise._id, order: 0, targetSets: 3 },
+        { exercise: custom._id, order: 1, targetSets: 3 },
+      ],
+    })
+
+    await request(app).delete(`/api/exercises/${custom._id}`).expect(204)
+
+    const updated = await Routine.findById(routine._id)
+    expect(updated.exercises).toHaveLength(1)
+
+    const res = await request(app)
+      .post('/api/sessions')
+      .send({ startedAt: new Date().toISOString(), routine: routine._id })
+      .expect(201)
+    expect(res.body.entries).toHaveLength(1)
+    expect(res.body.entries[0].exerciseName).toBe('Press banca')
+  })
+
+  it('una rutina con refs colgantes no rompe crear sesión', async () => {
+    const app = buildTestApp(userA.toString())
+    const routine = await Routine.create({
+      user: userA,
+      name: 'Colgante',
+      exercises: [
+        { exercise: exercise._id, order: 0, targetSets: 3 },
+        { exercise: new mongoose.Types.ObjectId(), order: 1, targetSets: 3 },
+      ],
+    })
+
+    const res = await request(app)
+      .post('/api/sessions')
+      .send({ startedAt: new Date().toISOString(), routine: routine._id })
+      .expect(201)
+    expect(res.body.entries).toHaveLength(1)
+  })
+})
