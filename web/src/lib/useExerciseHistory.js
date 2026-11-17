@@ -61,7 +61,7 @@ export function useExerciseHistory(initialSession) {
 
     if (tracking === 'weight_reps') {
       let hit = null
-      if (set.weightKg != null && (base.heaviestKg == null || set.weightKg > base.heaviestKg)) {
+      if (set.weightKg > 0 && (base.heaviestKg == null || set.weightKg > base.heaviestKg)) {
         hit = { kind: PR_KIND.heaviestKg, value: set.weightKg }
         base.heaviestKg = set.weightKg
       }
