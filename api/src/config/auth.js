@@ -5,6 +5,7 @@ import { mongodbAdapter } from 'better-auth/adapters/mongodb'
 import Session from '../models/session.model.js'
 import Routine from '../models/routine.model.js'
 import Exercise from '../models/exercise.model.js'
+import UserBadge from '../models/userBadge.model.js'
 import { DEMO_ACCOUNT } from '../models/constants.js'
 
 const mongoClient = new MongoClient(process.env.MONGO_URI)
@@ -44,6 +45,7 @@ export const auth = betterAuth({
           Session.deleteMany({ user: user.id }),
           Routine.deleteMany({ user: user.id }),
           Exercise.deleteMany({ createdBy: user.id }),
+          UserBadge.deleteMany({ user: user.id }),
         ])
       },
     },
@@ -59,7 +61,6 @@ export const auth = betterAuth({
   },
 
   session: {
-    modelName: 'sessions',
     expiresIn: 60 * 60 * 24 * 30,
 
     freshAge: 0,
