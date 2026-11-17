@@ -24,7 +24,7 @@ const TABS = [
 
 function sidebarLinkClass({ isActive }) {
   const base =
-    'group flex items-center gap-3 rounded-card px-3 py-2 text-sm transition-colors'
+    'group flex items-center gap-3 rounded-card px-3 py-2.5 text-[15px] transition-colors'
   return isActive
     ? `${base} bg-surface-2 text-accent`
     : `${base} text-text-muted hover:text-text`
@@ -55,13 +55,13 @@ export default function AppShell() {
   return (
     <div className="min-h-screen overflow-x-hidden md:flex">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 md:flex">
-        <div className="px-2 pb-6">
+        <div className="px-2 pt-2 pb-8">
           <Logo />
         </div>
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-col gap-1.5">
           {TABS.map(({ to, labelKey, Icon }) => (
             <NavLink key={to} to={to} className={sidebarLinkClass}>
-              <Icon className="h-5 w-5" />
+              <Icon className="h-6 w-6" />
               <span>{t(labelKey)}</span>
             </NavLink>
           ))}

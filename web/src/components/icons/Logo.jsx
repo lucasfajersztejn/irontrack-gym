@@ -13,7 +13,7 @@ export default function Logo({ className = '', showWordmark = true }) {
         className="h-9 w-9 object-contain"
       />
       {showWordmark && (
-        <span className="font-display text-lg font-semibold tracking-tight text-text">
+        <span className="font-display text-xl font-semibold tracking-tight text-text">
           IronTrack
         </span>
       )}
