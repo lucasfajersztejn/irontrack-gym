@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import mongoose from 'mongoose'
 import Session from '../../src/models/session.model.js'
 import Badge from '../../src/models/badge.model.js'
+import User from '../../src/models/user.model.js'
 import UserBadge from '../../src/models/userBadge.model.js'
 import {
   computeUserMetrics,
@@ -633,5 +634,42 @@ describe('evaluateAndPersist', () => {
     const unlocked = await evaluateAndPersist(user)
     // Solo 1 sesión cerrada -> ni streak-2 ni sessions-2.
     expect(unlocked).toHaveLength(0)
+  })
+
+  it('usa la meta semanal de settings del usuario', async () => {
+    const goalUser = await User.create({
+      email: 'goal@example.com',
+      settings: { weeklyGoal: 3 },
+    })
+    await Badge.create({
+      slug: 'goal-week-1',
+      name: { es: 'Meta', en: 'Goal' },
+      description: { es: 'Meta semanal', en: 'Weekly goal' },
+      category: 'constancia',
+      tier: 'bronce',
+      rule: { type: 'maxGoalWeekStreak', operator: 'gte', value: 1 },
+    })
+    // 3 sesiones en la misma semana (lun 02 a mié 04 mar) con meta 3.
+    for (const day of [2, 3, 4]) {
+      const startedAt = new Date(`2026-03-0${day}T10:00:00Z`)
+      await Session.create({
+        user: goalUser._id,
+        startedAt,
+        endedAt: new Date(startedAt.getTime() + 3_600_000),
+        entries: [
+          {
+            exercise: new mongoose.Types.ObjectId(),
+            exerciseName: 'Press banca',
+            muscle: 'pectorals',
+            tracking: 'weight_reps',
+            order: 0,
+            sets: [{ order: 0, completed: true, weightKg: 100, reps: 5 }],
+          },
+        ],
+      })
+    }
+
+    const unlocked = await evaluateAndPersist(goalUser._id)
+    expect(unlocked.map((b) => b.slug)).toEqual(['goal-week-1'])
   })
 })
