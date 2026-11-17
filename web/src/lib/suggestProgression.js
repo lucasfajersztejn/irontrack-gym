@@ -41,7 +41,7 @@ export function suggestNextSetInSession({ lastSet } = {}) {
   const nextReps =
     reps == null
       ? null
-      : Math.max(1, isBigStep ? reps - 2 : Math.round(reps / 2))
+      : Math.max(1, isBigStep ? Math.round(reps / 2) : reps - 2)
 
   return {
     weightKg: snapToStep(weightKg + (isBigStep ? BIG_STEP_KG : STEP_KG)),

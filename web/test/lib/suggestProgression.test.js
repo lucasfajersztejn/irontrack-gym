@@ -55,17 +55,17 @@ describe('suggestNextSetInSession', () => {
     })
   })
 
-  it('takes a small step with halved reps at RIR 1-2', () => {
+  it('takes a small step with a small rep cut at RIR 1-2', () => {
     expect(suggestNextSetInSession({ lastSet: { weightKg: 80, reps: 10, rir: 2 } })).toEqual({
       weightKg: 82.5,
-      reps: 5,
+      reps: 8,
     })
   })
 
-  it('takes a big step at RIR 3 or more', () => {
+  it('takes a big step with halved reps at RIR 3 or more', () => {
     expect(suggestNextSetInSession({ lastSet: { weightKg: 80, reps: 10, rir: 3 } })).toEqual({
       weightKg: 85,
-      reps: 8,
+      reps: 5,
     })
   })
 
