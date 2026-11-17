@@ -1,23 +1,19 @@
 // App logo.
-export default function Logo({ className = '', showWordmark = true }) {
-  const accent = 'var(--color-accent)'
+import logoMark from '../../assets/logo-mark.png'
 
+export default function Logo({ className = '', showWordmark = true }) {
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
-      <svg
-        width="28"
-        height="28"
-        viewBox="0 0 28 28"
-        fill="none"
+      <img
+        src={logoMark}
+        width="36"
+        height="36"
+        alt=""
         aria-hidden="true"
-      >
-        <rect x="2" y="18" width="4" height="8" rx="1.5" fill={accent} opacity="0.55" />
-        <rect x="9" y="13" width="4" height="13" rx="1.5" fill={accent} opacity="0.75" />
-        <rect x="16" y="8" width="4" height="18" rx="1.5" fill={accent} opacity="0.9" />
-        <rect x="23" y="3" width="4" height="23" rx="1.5" fill={accent} />
-      </svg>
+        className="h-9 w-9 object-contain"
+      />
       {showWordmark && (
-        <span className="font-display text-lg font-semibold tracking-tight text-text">
+        <span className="font-display text-xl font-semibold tracking-tight text-text">
           IronTrack
         </span>
       )}
